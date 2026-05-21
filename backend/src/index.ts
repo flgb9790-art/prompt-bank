@@ -2,7 +2,6 @@ import cors from "cors";
 import express from "express";
 import fs from "fs";
 import path from "path";
-import { spawnSync } from "child_process";
 import { config, uploadsDir } from "./config";
 import { prisma } from "./db";
 import promptsRouter from "./routes/prompts.routes";
@@ -155,32 +154,9 @@ async function seedInitialData() {
   }
 }
 
-function ensureDatabaseSchema() {
-  const directUrl = process.env.DIRECT_URL?.trim();
-  if (!directUrl) {
-    throw new Error("DIRECT_URL is required to create database tables on startup.");
-  }
-
-  console.log("Applying database schema (direct connection)...");
-  const npx = process.platform === "win32" ? "npx.cmd" : "npx";
-  const result = spawnSync(npx, ["prisma", "db", "push", "--skip-generate"], {
-    cwd: process.cwd(),
-    env: { ...process.env, DATABASE_URL: directUrl },
-    stdio: "inherit",
-    timeout: 120_000
-  });
-
-  if (result.error) {
-    throw result.error;
-  }
-  if (result.status !== 0) {
-    throw new Error(`prisma db push failed (exit ${result.status ?? "unknown"})`);
-  }
-  console.log("Database schema is ready.");
-}
-
 async function bootstrap() {
-  ensureDatabaseSchema();
+  // Tables are created once via `npx prisma db push` locally (direct URL).
+  // Railway cannot reach Supabase direct :5432; runtime uses DATABASE_URL pooler only.
   await seedInitialData();
   app.listen(config.port, () => {
     console.log(`Backend running on http://localhost:${config.port}`);
