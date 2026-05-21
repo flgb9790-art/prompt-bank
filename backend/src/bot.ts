@@ -39,7 +39,6 @@ const categoryChoices = [
 ];
 
 const menuLabels = {
-  open: "🌐 Открыть Prompt Bank",
   add: "➕ Добавить промпт",
   search: "🔎 Найти промпт",
   recent: "🕘 Последние",
@@ -48,35 +47,14 @@ const menuLabels = {
   help: "ℹ️ Помощь"
 };
 
-const promptBankMenuUrl = "https://diplomatic-communication-production-6b54.up.railway.app/";
-
 function getExamplesActionKeyboard() {
   return Markup.inlineKeyboard([
     [Markup.button.callback("✅ Готово", "add_examples_done"), Markup.button.callback("⏭ Пропустить", "add_examples_skip")]
   ]);
 }
 
-function getMainInlineMenu() {
-  return Markup.inlineKeyboard([
-    [Markup.button.webApp(menuLabels.open, config.webAppUrl)],
-    [
-      Markup.button.callback(menuLabels.add, "menu_add_prompt"),
-      Markup.button.callback(menuLabels.search, "menu_search_prompt")
-    ],
-    [
-      Markup.button.callback(menuLabels.recent, "menu_recent"),
-      Markup.button.callback(menuLabels.favorites, "menu_favorites")
-    ],
-    [
-      Markup.button.callback(menuLabels.categories, "menu_categories"),
-      Markup.button.callback(menuLabels.help, "menu_help")
-    ]
-  ]);
-}
-
 function getMainReplyMenu() {
   return Markup.keyboard([
-    [{ text: menuLabels.open, web_app: { url: promptBankMenuUrl } }],
     [menuLabels.add, menuLabels.search],
     [menuLabels.recent, menuLabels.favorites],
     [menuLabels.categories, menuLabels.help]
@@ -276,12 +254,6 @@ export async function startBot() {
 
   bot.hears(menuLabels.help, async (ctx) => {
     await showHelp(ctx);
-  });
-
-  bot.hears(menuLabels.open, async (ctx) => {
-    await ctx.reply("Откройте Mini App кнопкой ниже:", Markup.inlineKeyboard([
-      [Markup.button.webApp(menuLabels.open, config.webAppUrl)]
-    ]));
   });
 
   bot.action(/^category_(.+)$/, async (ctx) => {

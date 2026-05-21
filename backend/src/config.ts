@@ -29,7 +29,7 @@ export const config = {
   botToken: process.env.BOT_TOKEN ?? "",
   webAppUrl: resolveWebAppUrl(),
   backendUrl: normalizeUrl(process.env.BACKEND_URL ?? "", "http://localhost:3001"),
-  seedDemoData: process.env.SEED_DEMO_DATA === "true" || process.env.NODE_ENV !== "production",
+  seedDemoData: process.env.SEED_DEMO_DATA === "true",
   adminTelegramIds: (process.env.ADMIN_TELEGRAM_IDS ?? "")
     .split(",")
     .map((item) => item.trim())
