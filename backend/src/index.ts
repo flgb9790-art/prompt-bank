@@ -155,31 +155,33 @@ async function seedInitialData() {
   }
 }
 
-function runPrismaDbPush() {
-  const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
-  const result = spawnSync(npmCommand, ["run", "prisma:push"], {
-    cwd: process.cwd(),
-    env: process.env,
-    stdio: "inherit"
-  });
-  if (result.status !== 0) {
-    throw new Error(`Failed to run prisma:push (exit ${result.status ?? "unknown"})`);
+function ensureDatabaseSchema() {
+  const directUrl = process.env.DIRECT_URL?.trim();
+  if (!directUrl) {
+    throw new Error("DIRECT_URL is required to create database tables on startup.");
   }
+
+  console.log("Applying database schema (direct connection)...");
+  const npx = process.platform === "win32" ? "npx.cmd" : "npx";
+  const result = spawnSync(npx, ["prisma", "db", "push", "--skip-generate"], {
+    cwd: process.cwd(),
+    env: { ...process.env, DATABASE_URL: directUrl },
+    stdio: "inherit",
+    timeout: 120_000
+  });
+
+  if (result.error) {
+    throw result.error;
+  }
+  if (result.status !== 0) {
+    throw new Error(`prisma db push failed (exit ${result.status ?? "unknown"})`);
+  }
+  console.log("Database schema is ready.");
 }
 
 async function bootstrap() {
-  try {
-    await seedInitialData();
-  } catch (error) {
-    const code = (error as { code?: string } | undefined)?.code;
-    if (code === "P2021") {
-      console.warn("Missing database tables detected. Running prisma db push and retrying startup...");
-      runPrismaDbPush();
-      await seedInitialData();
-    } else {
-      throw error;
-    }
-  }
+  ensureDatabaseSchema();
+  await seedInitialData();
   app.listen(config.port, () => {
     console.log(`Backend running on http://localhost:${config.port}`);
   });
