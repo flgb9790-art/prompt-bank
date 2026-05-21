@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { BarChart3, Heart, Layers, Sparkles } from "lucide-react";
 import { api, ApiError, setAuthTelegramId } from "./api";
 import type { Category, Prompt, PromptCreatePayload, TagStat, TelegramUser } from "./types";
+import type { PromptEditPayload } from "./components/PromptDetailsModal";
 import { PromptDetailsModal } from "./components/PromptDetailsModal";
 import { PromptForm } from "./components/PromptForm";
 import { AuthRequiredModal } from "./components/web/AuthRequiredModal";
@@ -230,20 +231,34 @@ export function WebApp() {
     }
   }
 
-  async function handleEditPrompt(promptId: number, data: { title: string; content: string; categoryId: number }) {
+  async function handleEditPrompt(promptId: number, data: PromptEditPayload) {
     if (!isAuthenticated) {
       askAuth();
       return;
     }
     try {
-      const updated = await api.updatePrompt(promptId, data);
-      setSelectedPrompt(updated);
+      await api.updatePrompt(promptId, {
+        title: data.title,
+        content: data.content,
+        categoryId: data.categoryId,
+        ...(data.coverMediaUrl !== undefined ? { coverMediaUrl: data.coverMediaUrl } : {}),
+        ...(data.coverMediaType !== undefined ? { coverMediaType: data.coverMediaType } : {})
+      });
+      for (const exampleId of data.removedExampleIds) {
+        await api.removeExample(exampleId);
+      }
+      for (const example of data.newExamples) {
+        await api.addExample(promptId, example);
+      }
+      const fresh = await api.getPrompt(promptId);
+      setSelectedPrompt(fresh);
       setToast("Промпт сохранен");
       await loadData();
     } catch (err) {
       if (!handleUnauthorized(err)) {
-        setToast("Ошибка загрузки");
+        setToast("Ошибка сохранения");
       }
+      throw err;
     }
   }
 

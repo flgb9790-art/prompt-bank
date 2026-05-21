@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { api, setAuthTelegramId } from "./api";
 import type { Category, Prompt, PromptCreatePayload, TelegramUser } from "./types";
+import type { PromptEditPayload } from "./components/PromptDetailsModal";
 import { Layout } from "./components/Layout";
 import { BottomNav, type TabKey } from "./components/BottomNav";
 import { HomePage } from "./pages/HomePage";
@@ -191,13 +192,22 @@ function MiniAppApp() {
     return () => clearTimeout(timer);
   }, [toastMessage]);
 
-  async function handleEditPrompt(promptId: number, data: { title: string; content: string; categoryId: number }) {
-    const updated = await api.updatePrompt(promptId, {
+  async function handleEditPrompt(promptId: number, data: PromptEditPayload) {
+    await api.updatePrompt(promptId, {
       title: data.title,
       content: data.content,
-      categoryId: data.categoryId
+      categoryId: data.categoryId,
+      ...(data.coverMediaUrl !== undefined ? { coverMediaUrl: data.coverMediaUrl } : {}),
+      ...(data.coverMediaType !== undefined ? { coverMediaType: data.coverMediaType } : {})
     });
-    setSelectedPrompt(updated);
+    for (const exampleId of data.removedExampleIds) {
+      await api.removeExample(exampleId);
+    }
+    for (const example of data.newExamples) {
+      await api.addExample(promptId, example);
+    }
+    const fresh = await api.getPrompt(promptId);
+    setSelectedPrompt(fresh);
     await loadData();
   }
 

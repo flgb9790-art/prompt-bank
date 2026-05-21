@@ -1,4 +1,4 @@
-import type { Category, MeResponse, Prompt, PromptCreatePayload, TagStat } from "./types";
+import type { Category, MeResponse, MediaType, Prompt, PromptCreatePayload, TagStat } from "./types";
 
 const configuredBaseUrl = (import.meta.env.VITE_BACKEND_URL as string | undefined)?.trim();
 const baseUrl = configuredBaseUrl || "";
@@ -72,7 +72,13 @@ export const api = {
   createPrompt(payload: PromptCreatePayload) {
     return request<Prompt>("/api/prompts", { method: "POST", body: JSON.stringify(payload) });
   },
-  updatePrompt(id: number, payload: Partial<PromptCreatePayload>) {
+  updatePrompt(
+    id: number,
+    payload: Partial<Omit<PromptCreatePayload, "examples" | "userId">> & {
+      coverMediaUrl?: string | null;
+      coverMediaType?: MediaType | null;
+    }
+  ) {
     return request<Prompt>(`/api/prompts/${id}`, { method: "PUT", body: JSON.stringify(payload) });
   },
   deletePrompt(id: number) {

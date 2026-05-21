@@ -1,7 +1,18 @@
 import { useEffect, useState } from "react";
 import { X } from "lucide-react";
 import { resolveMediaUrl } from "../api";
-import type { Category, Prompt } from "../types";
+import type { Category, MediaType, Prompt } from "../types";
+import { MediaUploader } from "./MediaUploader";
+
+export type PromptEditPayload = {
+  title: string;
+  content: string;
+  categoryId: number;
+  coverMediaUrl?: string | null;
+  coverMediaType?: MediaType | null;
+  removedExampleIds: number[];
+  newExamples: Array<{ url: string; type: MediaType; originalName?: string }>;
+};
 
 type Props = {
   prompt?: Prompt;
@@ -12,7 +23,7 @@ type Props = {
   onCopy: (prompt: Prompt) => void;
   onToggleFavorite: (id: number) => void;
   onDelete: (id: number) => void;
-  onEdit: (promptId: number, data: { title: string; content: string; categoryId: number }) => Promise<void>;
+  onEdit: (promptId: number, data: PromptEditPayload) => Promise<void>;
 };
 
 export function PromptDetailsModal({
@@ -30,19 +41,38 @@ export function PromptDetailsModal({
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [categoryId, setCategoryId] = useState<number>(0);
+  const [coverMedia, setCoverMedia] = useState<{ url: string; type: MediaType } | null>(null);
+  const [keptExampleIds, setKeptExampleIds] = useState<number[]>([]);
+  const [newExamples, setNewExamples] = useState<Array<{ url: string; type: MediaType; originalName?: string }>>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
 
+  function resetEditState(current: Prompt) {
+    setTitle(current.title);
+    setContent(current.content);
+    setCategoryId(current.categoryId);
+    setCoverMedia(
+      current.coverMediaUrl && current.coverMediaType
+        ? { url: current.coverMediaUrl, type: current.coverMediaType }
+        : null
+    );
+    setKeptExampleIds(current.examples.map((example) => example.id));
+    setNewExamples([]);
+    setSaveError("");
+  }
+
   useEffect(() => {
     if (!prompt) return;
-    setTitle(prompt.title);
-    setContent(prompt.content);
-    setCategoryId(prompt.categoryId);
-    setSaveError("");
+    resetEditState(prompt);
     setIsEditing(false);
   }, [prompt]);
 
   if (!prompt) return null;
+
+  const visibleExamples = [
+    ...prompt.examples.filter((example) => keptExampleIds.includes(example.id)),
+    ...newExamples.map((example, index) => ({ ...example, id: -(index + 1) }))
+  ];
 
   return (
     <div className={`fixed inset-0 z-50 flex justify-center bg-black/70 p-4 backdrop-blur-[2px] ${desktopMode ? "items-center" : "items-end"}`}>
@@ -79,6 +109,79 @@ export function PromptDetailsModal({
               className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm"
               placeholder="Текст промпта"
             />
+
+            <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+              <p className="mb-2 text-sm font-medium">Заставка / превью</p>
+              {coverMedia ? (
+                <div className="mb-2 flex max-h-48 items-center justify-center overflow-hidden rounded-xl border border-white/10 bg-black/30 p-1">
+                  {coverMedia.type === "video" ? (
+                    <video src={resolveMediaUrl(coverMedia.url)} controls className="max-h-44 w-full object-contain" />
+                  ) : (
+                    <img src={resolveMediaUrl(coverMedia.url)} alt="cover" className="max-h-44 w-full object-contain" />
+                  )}
+                </div>
+              ) : (
+                <p className="mb-2 text-xs text-muted">Заставка не задана</p>
+              )}
+              <div className="flex flex-wrap gap-2">
+                <MediaUploader
+                  label="Заменить заставку"
+                  onUploaded={(items) => {
+                    if (items[0]) setCoverMedia(items[0]);
+                  }}
+                />
+                {coverMedia ? (
+                  <button
+                    type="button"
+                    onClick={() => setCoverMedia(null)}
+                    className="rounded-xl border border-red-400/30 bg-red-500/10 px-3 py-2 text-xs text-red-300"
+                  >
+                    Удалить заставку
+                  </button>
+                ) : null}
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+              <p className="mb-2 text-sm font-medium">Примеры</p>
+              <div className="grid grid-cols-2 gap-2">
+                {visibleExamples.length ? (
+                  visibleExamples.map((example) => (
+                    <div key={example.id} className="relative overflow-hidden rounded-xl border border-white/10 bg-black/25 p-1">
+                      {example.type === "video" ? (
+                        <video src={resolveMediaUrl(example.url)} controls className="block max-h-40 w-full rounded-lg object-contain" />
+                      ) : (
+                        <img src={resolveMediaUrl(example.url)} alt="example" className="block max-h-40 w-full rounded-lg object-contain" />
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (example.id > 0) {
+                            setKeptExampleIds((prev) => prev.filter((id) => id !== example.id));
+                          } else {
+                            const index = -(example.id + 1);
+                            setNewExamples((prev) => prev.filter((_, idx) => idx !== index));
+                          }
+                        }}
+                        className="absolute right-2 top-2 rounded-lg bg-red-500/80 px-2 py-1 text-[10px] text-white"
+                      >
+                        Удалить
+                      </button>
+                    </div>
+                  ))
+                ) : (
+                  <p className="col-span-2 text-xs text-muted">Примеры не добавлены.</p>
+                )}
+              </div>
+              <div className="mt-2">
+                <MediaUploader
+                  label="Добавить примеры"
+                  multiple
+                  onUploaded={(items) => setNewExamples((prev) => [...prev, ...items])}
+                />
+              </div>
+            </div>
+
             {saveError ? <p className="text-xs text-red-400">{saveError}</p> : null}
             <div className="grid grid-cols-2 gap-2">
               <button
@@ -88,7 +191,23 @@ export function PromptDetailsModal({
                   setIsSaving(true);
                   setSaveError("");
                   try {
-                    await onEdit(prompt.id, { title: title.trim(), content: content.trim(), categoryId });
+                    const removedExampleIds = prompt.examples
+                      .map((example) => example.id)
+                      .filter((id) => !keptExampleIds.includes(id));
+
+                    const coverChanged =
+                      (prompt.coverMediaUrl ?? null) !== (coverMedia?.url ?? null) ||
+                      (prompt.coverMediaType ?? null) !== (coverMedia?.type ?? null);
+
+                    await onEdit(prompt.id, {
+                      title: title.trim(),
+                      content: content.trim(),
+                      categoryId,
+                      coverMediaUrl: coverChanged ? (coverMedia?.url ?? null) : undefined,
+                      coverMediaType: coverChanged ? (coverMedia?.type ?? null) : undefined,
+                      removedExampleIds,
+                      newExamples
+                    });
                     setIsEditing(false);
                   } catch {
                     setSaveError("Не удалось сохранить изменения.");
@@ -104,10 +223,7 @@ export function PromptDetailsModal({
                 type="button"
                 onClick={() => {
                   setIsEditing(false);
-                  setTitle(prompt.title);
-                  setContent(prompt.content);
-                  setCategoryId(prompt.categoryId);
-                  setSaveError("");
+                  resetEditState(prompt);
                 }}
                 className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm"
               >
@@ -182,7 +298,10 @@ export function PromptDetailsModal({
                 <div className="mt-5 grid grid-cols-2 gap-2">
                   <button
                     type="button"
-                    onClick={() => setIsEditing(true)}
+                    onClick={() => {
+                      resetEditState(prompt);
+                      setIsEditing(true);
+                    }}
                     className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm"
                   >
                     Редактировать

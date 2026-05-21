@@ -1,11 +1,13 @@
 import { Router } from "express";
 import multer from "multer";
 import path from "path";
+import { isSupabaseStorageEnabled } from "../config";
 import { getMediaKindByMime, resolveUploadPath } from "../services/media.service";
+import { persistMediaBuffer } from "../services/storage.service";
 
 const router = Router();
 
-const storage = multer.diskStorage({
+const diskStorage = multer.diskStorage({
   destination: (_req, file, cb) => {
     const kind = getMediaKindByMime(file.mimetype);
     if (!kind) {
@@ -21,7 +23,7 @@ const storage = multer.diskStorage({
 });
 
 const upload = multer({
-  storage,
+  storage: isSupabaseStorageEnabled() ? multer.memoryStorage() : diskStorage,
   fileFilter: (_req, file, cb) => {
     const kind = getMediaKindByMime(file.mimetype);
     if (!kind) {
@@ -41,8 +43,14 @@ router.post("/", upload.single("file"), async (req, res, next) => {
     if (!type) {
       return res.status(400).json({ message: "Unsupported file type" });
     }
+
+    if (isSupabaseStorageEnabled()) {
+      const saved = await persistMediaBuffer(type, req.file.buffer, req.file.originalname, req.file.mimetype);
+      return res.status(201).json(saved);
+    }
+
     const folder = type === "image" ? "images" : "videos";
-    res.status(201).json({
+    return res.status(201).json({
       url: `/uploads/${folder}/${req.file.filename}`,
       type,
       originalName: req.file.originalname

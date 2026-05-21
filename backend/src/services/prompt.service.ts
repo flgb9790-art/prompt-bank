@@ -14,8 +14,10 @@ type PromptCreateInput = {
   examples?: Array<{ url: string; type: MediaType; originalName?: string }>;
 };
 
-type PromptUpdateInput = Partial<Omit<PromptCreateInput, "userId">> & {
+type PromptUpdateInput = Partial<Omit<PromptCreateInput, "userId" | "examples">> & {
   isFavorite?: boolean;
+  coverMediaUrl?: string | null;
+  coverMediaType?: MediaType | null;
 };
 
 export class PromptService {
@@ -120,17 +122,18 @@ export class PromptService {
   static async update(id: number, input: PromptUpdateInput) {
     const keywords = input.content ? extractKeywords(input.content, input.title) : null;
 
+    const data: Record<string, unknown> = {};
+    if (input.title !== undefined) data.title = input.title;
+    if (input.content !== undefined) data.content = input.content;
+    if (input.categoryId !== undefined) data.categoryId = input.categoryId;
+    if (input.note !== undefined) data.note = input.note;
+    if (input.isFavorite !== undefined) data.isFavorite = input.isFavorite;
+    if (input.coverMediaUrl !== undefined) data.coverMediaUrl = input.coverMediaUrl;
+    if (input.coverMediaType !== undefined) data.coverMediaType = input.coverMediaType;
+
     await prisma.prompt.update({
       where: { id },
-      data: {
-        title: input.title,
-        content: input.content,
-        categoryId: input.categoryId,
-        note: input.note,
-        coverMediaUrl: input.coverMediaUrl,
-        coverMediaType: input.coverMediaType,
-        isFavorite: input.isFavorite
-      }
+      data
     });
 
     if (keywords) {

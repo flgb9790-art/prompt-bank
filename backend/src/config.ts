@@ -33,7 +33,16 @@ export const config = {
   adminTelegramIds: (process.env.ADMIN_TELEGRAM_IDS ?? "")
     .split(",")
     .map((item) => item.trim())
-    .filter(Boolean)
+    .filter(Boolean),
+  supabaseUrl: normalizeUrl(process.env.SUPABASE_URL ?? "", ""),
+  supabaseServiceKey: process.env.SUPABASE_SERVICE_ROLE_KEY ?? "",
+  supabaseStorageBucket: process.env.SUPABASE_STORAGE_BUCKET ?? "uploads"
 };
 
-export const uploadsDir = path.resolve(process.cwd(), "src", "uploads");
+export const uploadsDir = process.env.UPLOADS_DIR?.trim()
+  ? path.resolve(process.env.UPLOADS_DIR.trim())
+  : path.resolve(process.cwd(), "src", "uploads");
+
+export function isSupabaseStorageEnabled() {
+  return Boolean(config.supabaseUrl && config.supabaseServiceKey && config.supabaseStorageBucket);
+}

@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { uploadsDir } from "../config";
+import { persistMediaBuffer } from "./storage.service";
 
 export type MediaKind = "image" | "video";
 
@@ -30,20 +31,12 @@ export function resolveUploadPath(kind: MediaKind, filename: string) {
 }
 
 export async function saveFromRemoteUrl(remoteUrl: string, kind: MediaKind, originalName?: string) {
-  const ext = originalName?.includes(".")
-    ? originalName.slice(originalName.lastIndexOf("."))
-    : kind === "image"
-      ? ".jpg"
-      : ".mp4";
-  const filename = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}${ext}`;
-  const { diskPath, publicUrl } = resolveUploadPath(kind, filename);
-
   const response = await fetch(remoteUrl);
   if (!response.ok) {
     throw new Error(`Failed to fetch telegram file: ${response.status}`);
   }
 
   const arrayBuffer = await response.arrayBuffer();
-  fs.writeFileSync(diskPath, Buffer.from(arrayBuffer));
-  return { url: publicUrl, type: kind, originalName };
+  const contentType = response.headers.get("content-type") ?? undefined;
+  return persistMediaBuffer(kind, Buffer.from(arrayBuffer), originalName, contentType);
 }
