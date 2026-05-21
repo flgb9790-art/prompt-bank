@@ -1,6 +1,7 @@
-import { MediaType, Prisma } from "@prisma/client";
 import { prisma } from "../db";
 import { extractKeywords } from "../keywordExtractor";
+
+type MediaType = "image" | "video";
 
 type PromptCreateInput = {
   userId: number;
@@ -25,7 +26,7 @@ export class PromptService {
     limit?: number;
     offset?: number;
   }) {
-    const where: Prisma.PromptWhereInput = {};
+    const where: any = {};
 
     if (params.search) {
       where.OR = [
@@ -72,7 +73,7 @@ export class PromptService {
   static async create(input: PromptCreateInput) {
     const keywords = extractKeywords(input.content);
 
-    return prisma.$transaction(async (tx) => {
+    return prisma.$transaction(async (tx: any) => {
       const prompt = await tx.prompt.create({
         data: {
           userId: input.userId,
@@ -121,7 +122,7 @@ export class PromptService {
   static async update(id: number, input: PromptUpdateInput) {
     const keywords = input.content ? extractKeywords(input.content) : null;
 
-    return prisma.$transaction(async (tx) => {
+    return prisma.$transaction(async (tx: any) => {
       await tx.prompt.update({
         where: { id },
         data: {

@@ -1,8 +1,9 @@
-import { MediaType } from "@prisma/client";
 import { Router } from "express";
 import { prisma } from "../db";
 import { PromptService } from "../services/prompt.service";
 import { authRequired, isAdminRequest, readTelegramId } from "../auth";
+
+type MediaType = "image" | "video";
 
 const router = Router();
 

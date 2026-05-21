@@ -93,7 +93,7 @@ async function seedInitialData() {
 
   const baseUser = await prisma.user.findUniqueOrThrow({ where: { telegramId: "1" } });
   const categories = await prisma.category.findMany();
-  const getCategoryId = (slug: string) => categories.find((item) => item.slug === slug)?.id ?? categories[0].id;
+  const getCategoryId = (slug: string) => categories.find((item: any) => item.slug === slug)?.id ?? categories[0].id;
 
   const demoPrompts = [
     {

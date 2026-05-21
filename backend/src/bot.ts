@@ -1,10 +1,11 @@
 import { Markup, Telegraf } from "telegraf";
-import { MediaType } from "@prisma/client";
 import { config } from "./config";
 import { prisma } from "./db";
 import { PromptService } from "./services/prompt.service";
 import { extractKeywords } from "./keywordExtractor";
 import { saveFromRemoteUrl } from "./services/media.service";
+
+type MediaType = "image" | "video";
 
 type AddPromptState = {
   step: "title" | "content" | "category" | "cover" | "examples";
@@ -176,7 +177,7 @@ async function showFavoritePrompts(ctx: any) {
 
 async function showCategories(ctx: any) {
   const categories = await prisma.category.findMany({ orderBy: { sortOrder: "asc" } });
-  const buttons = categories.map((category) =>
+  const buttons = categories.map((category: any) =>
     [Markup.button.callback(`${category.icon ?? "📂"} ${category.name}`, `category_${category.slug}`)]
   );
   await ctx.reply("Выберите категорию:", Markup.inlineKeyboard(buttons));
@@ -320,7 +321,7 @@ export async function startBot() {
       await ctx.reply("Промпт не найден.");
       return;
     }
-    const tags = prompt.keywords.map((k) => `#${k.keyword.name}`).join(" ");
+    const tags = prompt.keywords.map((k: any) => `#${k.keyword.name}`).join(" ");
     await ctx.reply(
       `👁 ${prompt.title}\nКатегория: ${prompt.category.name}\nКлючевые слова: ${tags || "—"}\n\n${prompt.content}`
     );

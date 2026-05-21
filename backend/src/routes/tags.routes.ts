@@ -13,7 +13,7 @@ router.get("/", async (_req, res, next) => {
     });
 
     res.json(
-      tags.map((tag) => ({
+      tags.map((tag: any) => ({
         id: tag.id,
         name: tag.name,
         count: tag._count.prompts
