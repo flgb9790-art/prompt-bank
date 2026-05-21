@@ -33,7 +33,7 @@ function MiniAppApp() {
   const [createdPromptId, setCreatedPromptId] = useState<number>();
   const [searchQuery, setSearchQuery] = useState("");
   const [isAdmin, setIsAdmin] = useState(false);
-  const [user, setUser] = useState<TelegramUser>(mockTelegramUser);
+  const [user, setUser] = useState<TelegramUser>(() => resolveTelegramUser() ?? mockTelegramUser);
   const [toastMessage, setToastMessage] = useState("");
   const [isMiniAppExpanded, setIsMiniAppExpanded] = useState(true);
 
@@ -140,7 +140,6 @@ function MiniAppApp() {
         setUser(delayedUser);
       }
     }, 400);
-    loadData();
     return () => {
       clearTimeout(delayedSync);
       clearTimeout(stopForceExpandTimer);
@@ -152,7 +151,10 @@ function MiniAppApp() {
 
   useEffect(() => {
     setAuthTelegramId(String(user.id));
-    return () => setAuthTelegramId(null);
+    loadData();
+    return () => {
+      setAuthTelegramId(null);
+    };
   }, [user.id]);
 
   async function handleSavePrompt(payload: PromptCreatePayload) {
