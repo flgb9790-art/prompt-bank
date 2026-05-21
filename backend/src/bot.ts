@@ -200,7 +200,7 @@ export async function startBot() {
     { command: "start", description: "Открыть главное меню Prompt Bank" }
   ]);
   await bot.telegram.setChatMenuButton({
-    menu_button: {
+    menuButton: {
       type: "web_app",
       text: menuLabels.open,
       web_app: { url: config.webAppUrl }
