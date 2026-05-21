@@ -48,6 +48,8 @@ const menuLabels = {
   help: "ℹ️ Помощь"
 };
 
+const promptBankMenuUrl = "https://diplomatic-communication-production-6b54.up.railway.app/";
+
 function getExamplesActionKeyboard() {
   return Markup.inlineKeyboard([
     [Markup.button.callback("✅ Готово", "add_examples_done"), Markup.button.callback("⏭ Пропустить", "add_examples_skip")]
@@ -74,7 +76,7 @@ function getMainInlineMenu() {
 
 function getMainReplyMenu() {
   return Markup.keyboard([
-    [{ text: menuLabels.open, web_app: { url: config.webAppUrl } }],
+    [{ text: menuLabels.open, web_app: { url: promptBankMenuUrl } }],
     [menuLabels.add, menuLabels.search],
     [menuLabels.recent, menuLabels.favorites],
     [menuLabels.categories, menuLabels.help]
