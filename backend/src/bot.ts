@@ -520,25 +520,31 @@ async function finalizePrompt(ctx: any, telegramUserId: number) {
     return;
   }
 
-  const prompt = await PromptService.create({
-    userId: user.id,
-    title: add.title,
-    content: add.content,
-    categoryId: add.categoryId,
-    coverMediaUrl: add.coverMediaUrl,
-    coverMediaType: add.coverMediaType,
-    examples: add.examples
-  });
+  try {
+    const prompt = await PromptService.create({
+      userId: user.id,
+      title: add.title,
+      content: add.content,
+      categoryId: add.categoryId,
+      coverMediaUrl: add.coverMediaUrl,
+      coverMediaType: add.coverMediaType,
+      examples: add.examples
+    });
 
-  const keywords = extractKeywords(add.content).slice(0, 6).map((k) => `#${k}`).join(" ");
-  await ctx.reply(
-    `✅ Промпт сохранен!\nНазвание: ${prompt.title}\nКатегория: ${add.categoryName ?? prompt.category.name}\nКлючевые слова: ${keywords || "—"}\nМедиа: ${add.coverMediaUrl ? "1 заставка" : "0 заставок"}, ${add.examples.length} примера`,
-    Markup.inlineKeyboard([
-      [Markup.button.webApp("🌐 Открыть в Mini App", config.webAppUrl)],
-      [Markup.button.callback("➕ Добавить еще", "after_add_more")],
-      [Markup.button.callback("🏠 Главное меню", "after_add_menu")]
-    ])
-  );
+    const keywords = extractKeywords(add.content).slice(0, 6).map((k) => `#${k}`).join(" ");
+    await ctx.reply(
+      `✅ Промпт сохранен!\nНазвание: ${prompt.title}\nКатегория: ${add.categoryName ?? prompt.category.name}\nКлючевые слова: ${keywords || "—"}\nМедиа: ${add.coverMediaUrl ? "1 заставка" : "0 заставок"}, ${add.examples.length} примера`,
+      Markup.inlineKeyboard([
+        [Markup.button.webApp("🌐 Открыть в Mini App", config.webAppUrl)],
+        [Markup.button.callback("➕ Добавить еще", "after_add_more")],
+        [Markup.button.callback("🏠 Главное меню", "after_add_menu")]
+      ])
+    );
 
-  userStates.set(telegramUserId, { mode: "idle" });
+    userStates.set(telegramUserId, { mode: "idle" });
+  } catch (error) {
+    console.error("finalizePrompt error:", error);
+    await ctx.reply("Не удалось сохранить промпт. Попробуйте еще раз.");
+    userStates.set(telegramUserId, { mode: "idle" });
+  }
 }
