@@ -57,6 +57,7 @@ export function WebApp() {
   const [authRequiredOpen, setAuthRequiredOpen] = useState(false);
   const [telegramAuthModalOpen, setTelegramAuthModalOpen] = useState(false);
   const [user, setUser] = useState<TelegramUser | null>(parseSavedUser());
+  const [dbUserId, setDbUserId] = useState<number | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const isAuthenticated = Boolean(user);
 
@@ -119,6 +120,11 @@ export function WebApp() {
     [categories.length, prompts]
   );
 
+  const userPromptsCount = useMemo(() => {
+    if (!dbUserId) return 0;
+    return prompts.filter((prompt) => prompt.userId === dbUserId).length;
+  }, [dbUserId, prompts]);
+
   async function loadData() {
     setLoading(true);
     setError("");
@@ -133,6 +139,7 @@ export function WebApp() {
       setCategories(categoriesData);
       setTags(tagsData);
       setIsAdmin(Boolean(me.isAdmin && me.authenticated));
+      setDbUserId(me.user?.id ?? null);
     } catch (err) {
       setError("Не удалось загрузить данные.");
       console.error(err);
@@ -260,6 +267,7 @@ export function WebApp() {
 
   function logout() {
     setUser(null);
+    setDbUserId(null);
     setIsAdmin(false);
     setToast("Вы вышли");
     loadData();
@@ -394,7 +402,7 @@ export function WebApp() {
           <div className="glass-card max-w-xl p-5">
             <h2 className="text-lg font-semibold">Настройки</h2>
             <p className="mt-2 text-sm text-muted">Профиль Telegram: {user?.username ? `@${user.username}` : user?.first_name}</p>
-            <p className="text-sm text-muted">Добавленных промптов: {prompts.filter((prompt) => String(prompt.userId) === String(user?.id)).length}</p>
+            <p className="text-sm text-muted">Добавленных промптов: {userPromptsCount}</p>
             <button type="button" className="mt-4 rounded-xl bg-red-500/20 px-4 py-2 text-sm text-red-300" onClick={logout}>
               Выйти
             </button>
