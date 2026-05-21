@@ -44,6 +44,19 @@ body {
   min-height: 100%;
 }
 
+html.web-mode,
+html.web-mode body {
+  height: auto;
+  min-height: 100%;
+  overflow: auto;
+}
+
+html.web-mode #root {
+  height: auto;
+  min-height: 100%;
+  overflow: visible;
+}
+
 .app-shell {
   height: 100svh;
   min-height: 100svh;

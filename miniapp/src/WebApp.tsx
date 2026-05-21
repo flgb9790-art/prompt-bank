@@ -11,6 +11,7 @@ import { SortSelect } from "./components/web/SortSelect";
 import { StatsCard } from "./components/web/StatsCard";
 import { TelegramAuthModal } from "./components/web/TelegramAuthModal";
 import { Topbar } from "./components/web/Topbar";
+import { Pagination } from "./components/web/Pagination";
 import { ViewToggle } from "./components/web/ViewToggle";
 import { WebLayout } from "./components/web/WebLayout";
 
@@ -19,6 +20,7 @@ type ViewMode = "grid" | "list";
 type RoutePath = "/" | "/prompts" | "/favorites" | "/categories" | "/tags" | "/recent" | "/settings";
 
 const storageKey = "prompt-bank-web-auth";
+const PROMPTS_PER_PAGE = 12;
 const telegramAuthUrl = (import.meta.env.VITE_TELEGRAM_AUTH_URL as string | undefined)?.trim();
 const telegramBotUsernameFromEnv = (import.meta.env.VITE_TELEGRAM_BOT_USERNAME as string | undefined)?.trim();
 
@@ -59,7 +61,13 @@ export function WebApp() {
   const [user, setUser] = useState<TelegramUser | null>(parseSavedUser());
   const [dbUserId, setDbUserId] = useState<number | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [page, setPage] = useState(1);
   const isAuthenticated = Boolean(user);
+
+  useEffect(() => {
+    document.documentElement.classList.add("web-mode");
+    return () => document.documentElement.classList.remove("web-mode");
+  }, []);
 
   useEffect(() => {
     const onPopState = () => setPath(getRoutePath(window.location.pathname));
@@ -102,6 +110,10 @@ export function WebApp() {
     if (sort === "usage") bySearch.sort((a, b) => b.usageCount - a.usageCount);
     return bySearch;
   }, [activeCategory, activeTag, promptSearch, prompts, sort]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [activeCategory, activeTag, promptSearch, sort, path]);
 
   const categoryCounts = useMemo(() => {
     return prompts.reduce<Record<string, number>>((acc, prompt) => {
@@ -273,6 +285,32 @@ export function WebApp() {
     loadData();
   }
 
+  function renderPromptList(list: Prompt[]) {
+    const listTotalPages = Math.max(1, Math.ceil(list.length / PROMPTS_PER_PAGE));
+    const listPage = Math.min(page, listTotalPages);
+    const start = (listPage - 1) * PROMPTS_PER_PAGE;
+    const pageItems = list.slice(start, start + PROMPTS_PER_PAGE);
+
+    return (
+      <>
+        <PromptGrid
+          prompts={pageItems}
+          view={viewMode}
+          onOpenPrompt={setSelectedPrompt}
+          onCopyPrompt={handleCopy}
+          onToggleFavorite={handleToggleFavorite}
+        />
+        <Pagination
+          page={listPage}
+          totalPages={listTotalPages}
+          totalItems={list.length}
+          pageSize={PROMPTS_PER_PAGE}
+          onPageChange={setPage}
+        />
+      </>
+    );
+  }
+
   const content = (
     <>
       {path === "/" ? (
@@ -310,7 +348,7 @@ export function WebApp() {
             </div>
           </div>
 
-          <PromptGrid prompts={filteredPrompts.slice(0, 18)} view={viewMode} onOpenPrompt={setSelectedPrompt} onCopyPrompt={handleCopy} onToggleFavorite={handleToggleFavorite} />
+          {renderPromptList(filteredPrompts)}
         </div>
       ) : null}
 
@@ -343,19 +381,13 @@ export function WebApp() {
               </button>
             ) : null}
           </div>
-          <PromptGrid prompts={filteredPrompts} view={viewMode} onOpenPrompt={setSelectedPrompt} onCopyPrompt={handleCopy} onToggleFavorite={handleToggleFavorite} />
+          {renderPromptList(filteredPrompts)}
         </div>
       ) : null}
 
       {path === "/favorites" ? (
         isAuthenticated ? (
-          <PromptGrid
-            prompts={filteredPrompts.filter((prompt) => prompt.isFavorite)}
-            view={viewMode}
-            onOpenPrompt={setSelectedPrompt}
-            onCopyPrompt={handleCopy}
-            onToggleFavorite={handleToggleFavorite}
-          />
+          renderPromptList(filteredPrompts.filter((prompt) => prompt.isFavorite))
         ) : (
           <div className="glass-card empty-state mt-5">
             <p className="text-base font-medium text-slate-100">Войдите через Telegram, чтобы сохранять промпты в избранное.</p>
@@ -394,7 +426,7 @@ export function WebApp() {
       ) : null}
 
       {path === "/recent" ? (
-        <PromptGrid prompts={[...prompts].sort((a, b) => Number(new Date(b.createdAt)) - Number(new Date(a.createdAt))).slice(0, 30)} view={viewMode} onOpenPrompt={setSelectedPrompt} onCopyPrompt={handleCopy} onToggleFavorite={handleToggleFavorite} />
+        renderPromptList([...prompts].sort((a, b) => Number(new Date(b.createdAt)) - Number(new Date(a.createdAt))))
       ) : null}
 
       {path === "/settings" ? (
