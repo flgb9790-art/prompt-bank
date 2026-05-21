@@ -1,0 +1,569 @@
+import { Markup, Telegraf } from "telegraf";
+import { MediaType } from "@prisma/client";
+import { config } from "./config";
+import { prisma } from "./db";
+import { PromptService } from "./services/prompt.service";
+import { extractKeywords } from "./keywordExtractor";
+import { saveFromRemoteUrl } from "./services/media.service";
+
+type AddPromptState = {
+  step: "title" | "content" | "category" | "cover" | "examples";
+  title?: string;
+  content?: string;
+  categoryId?: number;
+  categoryName?: string;
+  coverMediaUrl?: string;
+  coverMediaType?: MediaType;
+  examples: Array<{ url: string; type: MediaType; originalName?: string }>;
+};
+
+type UserState = {
+  mode: "idle" | "adding" | "searching";
+  addPrompt?: AddPromptState;
+};
+
+const userStates = new Map<number, UserState>();
+
+const categoryChoices = [
+  { slug: "image-prompts", name: "Image Prompts", label: "📸 Image" },
+  { slug: "video-prompts", name: "Video Prompts", label: "🎬 Video" },
+  { slug: "cursor-codex", name: "Cursor / Codex", label: "🧠 Cursor" },
+  { slug: "telegram-bot", name: "Telegram Bot", label: "🤖 Telegram Bot" },
+  { slug: "beauty-cosmetology", name: "Beauty / Cosmetology", label: "💄 Beauty" },
+  { slug: "logo-branding", name: "Logo / Branding", label: "🎨 Logo" },
+  { slug: "landing-pages", name: "Landing Pages", label: "🖥 Landing" },
+  { slug: "ads-marketing", name: "Ads / Marketing", label: "📢 Ads" },
+  { slug: "sketchbook", name: "Sketchbook", label: "📓 Sketchbook" },
+  { slug: "other", name: "Other", label: "📦 Other" }
+];
+
+const menuLabels = {
+  open: "🌐 Открыть Prompt Bank",
+  add: "➕ Добавить промпт",
+  search: "🔎 Найти промпт",
+  recent: "🕘 Последние",
+  favorites: "⭐ Избранное",
+  categories: "📂 Категории",
+  help: "ℹ️ Помощь"
+};
+
+function getExamplesActionKeyboard() {
+  return Markup.inlineKeyboard([
+    [Markup.button.callback("✅ Готово", "add_examples_done"), Markup.button.callback("⏭ Пропустить", "add_examples_skip")]
+  ]);
+}
+
+function getMainInlineMenu() {
+  return Markup.inlineKeyboard([
+    [Markup.button.webApp(menuLabels.open, config.webAppUrl)],
+    [
+      Markup.button.callback(menuLabels.add, "menu_add_prompt"),
+      Markup.button.callback(menuLabels.search, "menu_search_prompt")
+    ],
+    [
+      Markup.button.callback(menuLabels.recent, "menu_recent"),
+      Markup.button.callback(menuLabels.favorites, "menu_favorites")
+    ],
+    [
+      Markup.button.callback(menuLabels.categories, "menu_categories"),
+      Markup.button.callback(menuLabels.help, "menu_help")
+    ]
+  ]);
+}
+
+function getMainReplyMenu() {
+  return Markup.keyboard([
+    [{ text: menuLabels.open, web_app: { url: config.webAppUrl } }],
+    [menuLabels.add, menuLabels.search],
+    [menuLabels.recent, menuLabels.favorites],
+    [menuLabels.categories, menuLabels.help]
+  ]).resize();
+}
+
+async function showWelcome(ctx: any) {
+  await ctx.reply(
+    "👋 Добро пожаловать в Prompt Bank!\nЗдесь можно хранить промпты, примеры изображений/видео, категории и быстро копировать лучшие промпты.\nВыберите действие ниже:",
+    getMainReplyMenu()
+  );
+}
+
+async function ensureUser(telegramUser: { id: number; username?: string; first_name?: string; last_name?: string }) {
+  return prisma.user.upsert({
+    where: { telegramId: String(telegramUser.id) },
+    update: {
+      username: telegramUser.username,
+      firstName: telegramUser.first_name,
+      lastName: telegramUser.last_name
+    },
+    create: {
+      telegramId: String(telegramUser.id),
+      username: telegramUser.username,
+      firstName: telegramUser.first_name,
+      lastName: telegramUser.last_name
+    }
+  });
+}
+
+function promptResultKeyboard(id: number) {
+  return Markup.inlineKeyboard([
+    [Markup.button.callback("📋 Скопировать", `copy_${id}`), Markup.button.callback("👁 Открыть", `open_${id}`)]
+  ]);
+}
+
+async function showPromptList(ctx: any, prompts: any[], emptyText: string) {
+  if (!prompts.length) {
+    await ctx.reply(emptyText);
+    return;
+  }
+
+  for (const prompt of prompts.slice(0, 5)) {
+    const tags = prompt.keywords.map((kw: any) => `#${kw.keyword.name}`).join(" ");
+    await ctx.reply(
+      `**${prompt.title}**\nКатегория: ${prompt.category.name}\nКлючевые слова: ${tags || "—"}`,
+      { parse_mode: "Markdown", ...promptResultKeyboard(prompt.id) }
+    );
+  }
+}
+
+async function handleTelegramMedia(ctx: any) {
+  const message = ctx.message;
+  if (!message) {
+    return null;
+  }
+
+  if ("photo" in message && Array.isArray(message.photo) && message.photo.length) {
+    const photo = message.photo[message.photo.length - 1];
+    const fileLink = await ctx.telegram.getFileLink(photo.file_id);
+    return saveFromRemoteUrl(fileLink.toString(), "image", "telegram-photo.jpg");
+  }
+
+  if ("video" in message && message.video) {
+    const fileLink = await ctx.telegram.getFileLink(message.video.file_id);
+    return saveFromRemoteUrl(fileLink.toString(), "video", message.video.file_name ?? "telegram-video.mp4");
+  }
+
+  return null;
+}
+
+async function beginAddPromptFlow(ctx: any, fromId: number) {
+  userStates.set(fromId, { mode: "adding", addPrompt: { step: "title", examples: [] } });
+  await ctx.reply("Введите название промпта:");
+}
+
+async function beginSearchFlow(ctx: any, fromId: number) {
+  userStates.set(fromId, { mode: "searching" });
+  await ctx.reply("Введите слово, тег или часть названия для поиска:");
+}
+
+async function showRecentPrompts(ctx: any) {
+  const prompts = await prisma.prompt.findMany({
+    take: 5,
+    orderBy: { createdAt: "desc" },
+    include: { category: true, keywords: { include: { keyword: true } } }
+  });
+  await showPromptList(ctx, prompts, "Пока нет сохраненных промптов.");
+}
+
+async function showFavoritePrompts(ctx: any) {
+  const prompts = await prisma.prompt.findMany({
+    where: { isFavorite: true },
+    take: 5,
+    orderBy: { updatedAt: "desc" },
+    include: { category: true, keywords: { include: { keyword: true } } }
+  });
+  await showPromptList(ctx, prompts, "Пока нет избранных промптов.");
+}
+
+async function showCategories(ctx: any) {
+  const categories = await prisma.category.findMany({ orderBy: { sortOrder: "asc" } });
+  const buttons = categories.map((category) =>
+    [Markup.button.callback(`${category.icon ?? "📂"} ${category.name}`, `category_${category.slug}`)]
+  );
+  await ctx.reply("Выберите категорию:", Markup.inlineKeyboard(buttons));
+}
+
+async function showHelp(ctx: any) {
+  await ctx.reply(
+    "Prompt Bank помогает хранить промпты, примеры, категории и теги.\nЧто можно делать:\n➕ Добавлять промпты\n🖼 Прикреплять картинки и видео\n🔎 Искать по названию, тексту и тегам\n⭐ Добавлять в избранное\n📋 Быстро копировать промпт\n🌐 Управлять всем через Mini App"
+  );
+}
+
+export async function startBot() {
+  if (!config.botToken) {
+    console.warn("BOT_TOKEN is empty. Telegram bot is disabled.");
+    return;
+  }
+
+  const bot = new Telegraf(config.botToken);
+  await bot.telegram.setMyCommands([
+    { command: "start", description: "Открыть главное меню Prompt Bank" }
+  ]);
+
+  bot.start(async (ctx) => {
+    const from = ctx.from;
+    if (!from) {
+      return;
+    }
+    await ensureUser(from);
+    userStates.set(from.id, { mode: "idle" });
+    await showWelcome(ctx);
+  });
+
+  bot.action("menu_add_prompt", async (ctx) => {
+    const from = ctx.from;
+    if (!from) {
+      return;
+    }
+    await ctx.answerCbQuery();
+    await beginAddPromptFlow(ctx, from.id);
+  });
+
+  bot.action("menu_search_prompt", async (ctx) => {
+    const from = ctx.from;
+    if (!from) {
+      return;
+    }
+    await ctx.answerCbQuery();
+    await beginSearchFlow(ctx, from.id);
+  });
+
+  bot.action("menu_recent", async (ctx) => {
+    await ctx.answerCbQuery();
+    await showRecentPrompts(ctx);
+  });
+
+  bot.action("menu_favorites", async (ctx) => {
+    await ctx.answerCbQuery();
+    await showFavoritePrompts(ctx);
+  });
+
+  bot.action("menu_categories", async (ctx) => {
+    await ctx.answerCbQuery();
+    await showCategories(ctx);
+  });
+
+  bot.action("menu_help", async (ctx) => {
+    await ctx.answerCbQuery();
+    await showHelp(ctx);
+  });
+
+  bot.hears(menuLabels.add, async (ctx) => {
+    const from = ctx.from;
+    if (!from) return;
+    await beginAddPromptFlow(ctx, from.id);
+  });
+
+  bot.hears(menuLabels.search, async (ctx) => {
+    const from = ctx.from;
+    if (!from) return;
+    await beginSearchFlow(ctx, from.id);
+  });
+
+  bot.hears(menuLabels.recent, async (ctx) => {
+    await showRecentPrompts(ctx);
+  });
+
+  bot.hears(menuLabels.favorites, async (ctx) => {
+    await showFavoritePrompts(ctx);
+  });
+
+  bot.hears(menuLabels.categories, async (ctx) => {
+    await showCategories(ctx);
+  });
+
+  bot.hears(menuLabels.help, async (ctx) => {
+    await showHelp(ctx);
+  });
+
+  bot.hears(menuLabels.open, async (ctx) => {
+    await ctx.reply("Откройте Mini App кнопкой ниже:", Markup.inlineKeyboard([
+      [Markup.button.webApp(menuLabels.open, config.webAppUrl)]
+    ]));
+  });
+
+  bot.action(/^category_(.+)$/, async (ctx) => {
+    await ctx.answerCbQuery();
+    const slug = ctx.match[1];
+    const prompts = await prisma.prompt.findMany({
+      where: { category: { slug } },
+      take: 5,
+      orderBy: { createdAt: "desc" },
+      include: { category: true, keywords: { include: { keyword: true } } }
+    });
+    await showPromptList(ctx, prompts, "В этой категории пока нет промптов.");
+  });
+
+  bot.action(/^copy_(\d+)$/, async (ctx) => {
+    await ctx.answerCbQuery("Скопируйте текст из сообщения ниже");
+    const id = Number(ctx.match[1]);
+    const prompt = await prisma.prompt.findUnique({ where: { id } });
+    if (!prompt) {
+      await ctx.reply("Промпт не найден.");
+      return;
+    }
+    await prisma.prompt.update({ where: { id }, data: { usageCount: { increment: 1 } } });
+    await ctx.reply(`📋 ${prompt.title}\n\n${prompt.content}`);
+  });
+
+  bot.action(/^open_(\d+)$/, async (ctx) => {
+    await ctx.answerCbQuery();
+    const id = Number(ctx.match[1]);
+    const prompt = await prisma.prompt.findUnique({
+      where: { id },
+      include: {
+        category: true,
+        keywords: { include: { keyword: true } },
+        examples: true
+      }
+    });
+    if (!prompt) {
+      await ctx.reply("Промпт не найден.");
+      return;
+    }
+    const tags = prompt.keywords.map((k) => `#${k.keyword.name}`).join(" ");
+    await ctx.reply(
+      `👁 ${prompt.title}\nКатегория: ${prompt.category.name}\nКлючевые слова: ${tags || "—"}\n\n${prompt.content}`
+    );
+  });
+
+  bot.action("add_skip_cover", async (ctx) => {
+    const from = ctx.from;
+    if (!from) {
+      return;
+    }
+    await ctx.answerCbQuery();
+    const state = userStates.get(from.id);
+    if (!state?.addPrompt || state.mode !== "adding") {
+      return;
+    }
+    state.addPrompt.step = "examples";
+    await ctx.reply(
+      "Хотите добавить примеры результата? Можно отправить несколько картинок или видео. Когда закончите, нажмите кнопку ‘Готово’.",
+      getExamplesActionKeyboard()
+    );
+  });
+
+  bot.action("add_examples_skip", async (ctx) => {
+    const from = ctx.from;
+    if (!from) {
+      return;
+    }
+    await ctx.answerCbQuery();
+    const state = userStates.get(from.id);
+    if (!state?.addPrompt || state.mode !== "adding") {
+      return;
+    }
+    state.addPrompt.examples = [];
+    await finalizePrompt(ctx, from.id);
+  });
+
+  bot.action("add_examples_done", async (ctx) => {
+    const from = ctx.from;
+    if (!from) {
+      return;
+    }
+    await ctx.answerCbQuery();
+    const state = userStates.get(from.id);
+    if (!state?.addPrompt || state.mode !== "adding") {
+      return;
+    }
+    await finalizePrompt(ctx, from.id);
+  });
+
+  bot.action("after_add_more", async (ctx) => {
+    const from = ctx.from;
+    if (!from) {
+      return;
+    }
+    await ctx.answerCbQuery();
+    userStates.set(from.id, { mode: "adding", addPrompt: { step: "title", examples: [] } });
+    await ctx.reply("Введите название промпта:");
+  });
+
+  bot.action("after_add_menu", async (ctx) => {
+    const from = ctx.from;
+    if (!from) {
+      return;
+    }
+    await ctx.answerCbQuery();
+    userStates.set(from.id, { mode: "idle" });
+    await ctx.reply("Главное меню:", getMainReplyMenu());
+  });
+
+  bot.action(/^add_cat_(.+)$/, async (ctx) => {
+    const from = ctx.from;
+    if (!from) {
+      return;
+    }
+    await ctx.answerCbQuery();
+    const state = userStates.get(from.id);
+    if (!state || state.mode !== "adding" || !state.addPrompt) {
+      return;
+    }
+    const slug = ctx.match[1];
+    const category = await prisma.category.findUnique({ where: { slug } });
+    if (!category) {
+      await ctx.reply("Категория не найдена, попробуйте еще раз.");
+      return;
+    }
+
+    state.addPrompt.categoryId = category.id;
+    state.addPrompt.categoryName = category.name;
+    state.addPrompt.step = "cover";
+
+    await ctx.reply(
+      "Отправьте картинку или видео для заставки промпта.\nМожно пропустить этот шаг.",
+      Markup.inlineKeyboard([[Markup.button.callback("⏭ Пропустить", "add_skip_cover")]])
+    );
+  });
+
+  bot.on("message", async (ctx, next) => {
+    const from = ctx.from;
+    if (!from) {
+      return next();
+    }
+    const state = userStates.get(from.id);
+    if (!state) {
+      return next();
+    }
+
+    try {
+      if (state.mode === "searching") {
+        if (!("text" in ctx.message)) {
+          await ctx.reply("Пожалуйста, отправьте текст для поиска.");
+          return;
+        }
+
+        const search = ctx.message.text.trim();
+        const prompts = await PromptService.list({ search, limit: 5 });
+        await showPromptList(ctx, prompts, "Ничего не найдено. Попробуйте другой запрос.");
+        state.mode = "idle";
+        return;
+      }
+
+      if (state.mode !== "adding" || !state.addPrompt) {
+        return next();
+      }
+
+      const add = state.addPrompt;
+      if (add.step === "title") {
+        if (!("text" in ctx.message)) {
+          await ctx.reply("Пожалуйста, отправьте текст с названием промпта.");
+          return;
+        }
+        add.title = ctx.message.text.trim();
+        add.step = "content";
+        await ctx.reply("Теперь отправьте сам промпт:");
+        return;
+      }
+
+      if (add.step === "content") {
+        if (!("text" in ctx.message)) {
+          await ctx.reply("Пожалуйста, отправьте текст промпта.");
+          return;
+        }
+        add.content = ctx.message.text.trim();
+        add.step = "category";
+        const rows = [];
+        for (let i = 0; i < categoryChoices.length; i += 2) {
+          const left = categoryChoices[i];
+          const right = categoryChoices[i + 1];
+          rows.push(
+            right
+              ? [
+                  Markup.button.callback(left.label, `add_cat_${left.slug}`),
+                  Markup.button.callback(right.label, `add_cat_${right.slug}`)
+                ]
+              : [Markup.button.callback(left.label, `add_cat_${left.slug}`)]
+          );
+        }
+        await ctx.reply("Выберите категорию промпта:", Markup.inlineKeyboard(rows));
+        return;
+      }
+
+      if (add.step === "cover") {
+        const media = await handleTelegramMedia(ctx);
+        if (!media) {
+          await ctx.reply("Пожалуйста, отправьте картинку или видео, либо нажмите «⏭ Пропустить».");
+          return;
+        }
+        add.coverMediaUrl = media.url;
+        add.coverMediaType = media.type;
+        add.step = "examples";
+        await ctx.reply(
+          "Хотите добавить примеры результата? Можно отправить несколько картинок или видео. Когда закончите, нажмите кнопку ‘Готово’.",
+          getExamplesActionKeyboard()
+        );
+        return;
+      }
+
+      if (add.step === "examples") {
+        const media = await handleTelegramMedia(ctx);
+        if (!media) {
+          await ctx.reply("Ожидаю картинку или видео. Когда закончите, нажмите «✅ Готово».", getExamplesActionKeyboard());
+          return;
+        }
+        add.examples.push({ url: media.url, type: media.type, originalName: media.originalName });
+        await ctx.reply("Пример добавлен. Можете отправить еще или нажать «✅ Готово».", getExamplesActionKeyboard());
+        return;
+      }
+    } catch (error) {
+      console.error(error);
+      await ctx.reply("Не удалось обработать сообщение. Попробуйте еще раз.");
+    }
+
+    return next();
+  });
+
+  bot.catch((error, ctx) => {
+    console.error("Bot error:", error);
+    ctx.reply("Произошла ошибка. Попробуйте еще раз чуть позже.");
+  });
+
+  await bot.launch();
+  console.log("Telegram bot started");
+}
+
+async function finalizePrompt(ctx: any, telegramUserId: number) {
+  const state = userStates.get(telegramUserId);
+  if (!state?.addPrompt) {
+    return;
+  }
+
+  const add = state.addPrompt;
+  if (!add.title || !add.content || !add.categoryId) {
+    await ctx.reply("Не хватает данных для сохранения. Запустите добавление заново.");
+    userStates.set(telegramUserId, { mode: "idle" });
+    return;
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { telegramId: String(telegramUserId) }
+  });
+  if (!user) {
+    await ctx.reply("Пользователь не найден. Используйте /start и попробуйте снова.");
+    return;
+  }
+
+  const prompt = await PromptService.create({
+    userId: user.id,
+    title: add.title,
+    content: add.content,
+    categoryId: add.categoryId,
+    coverMediaUrl: add.coverMediaUrl,
+    coverMediaType: add.coverMediaType,
+    examples: add.examples
+  });
+
+  const keywords = extractKeywords(add.content).slice(0, 6).map((k) => `#${k}`).join(" ");
+  await ctx.reply(
+    `✅ Промпт сохранен!\nНазвание: ${prompt.title}\nКатегория: ${add.categoryName ?? prompt.category.name}\nКлючевые слова: ${keywords || "—"}\nМедиа: ${add.coverMediaUrl ? "1 заставка" : "0 заставок"}, ${add.examples.length} примера`,
+    Markup.inlineKeyboard([
+      [Markup.button.webApp("🌐 Открыть в Mini App", config.webAppUrl)],
+      [Markup.button.callback("➕ Добавить еще", "after_add_more")],
+      [Markup.button.callback("🏠 Главное меню", "after_add_menu")]
+    ])
+  );
+
+  userStates.set(telegramUserId, { mode: "idle" });
+}

@@ -1,0 +1,80 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id         Int      @id @default(autoincrement())
+  telegramId String   @unique
+  username   String?
+  firstName  String?
+  lastName   String?
+  prompts    Prompt[]
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model Category {
+  id        Int      @id @default(autoincrement())
+  name      String
+  slug      String   @unique
+  icon      String?
+  color     String?
+  sortOrder Int      @default(0)
+  prompts   Prompt[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Prompt {
+  id             Int            @id @default(autoincrement())
+  userId         Int
+  title          String
+  content        String
+  note           String?
+  categoryId     Int
+  coverMediaUrl  String?
+  coverMediaType MediaType?
+  isFavorite     Boolean        @default(false)
+  usageCount     Int            @default(0)
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category       Category       @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  keywords       PromptKeyword[]
+  examples       MediaExample[]
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+}
+
+model Keyword {
+  id      Int            @id @default(autoincrement())
+  name    String         @unique
+  prompts PromptKeyword[]
+}
+
+model PromptKeyword {
+  promptId  Int
+  keywordId Int
+  prompt    Prompt  @relation(fields: [promptId], references: [id], onDelete: Cascade)
+  keyword   Keyword @relation(fields: [keywordId], references: [id], onDelete: Cascade)
+
+  @@id([promptId, keywordId])
+}
+
+model MediaExample {
+  id           Int       @id @default(autoincrement())
+  promptId     Int
+  url          String
+  type         MediaType
+  originalName String?
+  prompt       Prompt    @relation(fields: [promptId], references: [id], onDelete: Cascade)
+  createdAt    DateTime  @default(now())
+}
+
+enum MediaType {
+  image
+  video
+}

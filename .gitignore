@@ -1,0 +1,9 @@
+node_modules
+dist
+.env
+miniapp/.env
+backend/prisma/dev.db
+backend/src/uploads/images/*
+backend/src/uploads/videos/*
+!backend/src/uploads/images/.gitkeep
+!backend/src/uploads/videos/.gitkeep

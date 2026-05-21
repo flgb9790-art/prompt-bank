@@ -1,0 +1,17 @@
+{
+  "name": "prompt-bank-telegram-miniapp",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Prompt Bank MVP: Telegram bot + Telegram Mini App",
+  "scripts": {
+    "install:all": "npm install && npm --prefix backend install && npm --prefix miniapp install",
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:miniapp\"",
+    "dev:backend": "npm --prefix backend run dev",
+    "dev:miniapp": "npm --prefix miniapp run dev",
+    "prisma:migrate": "npm --prefix backend run prisma:migrate",
+    "prisma:studio": "npm --prefix backend run prisma:studio"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}
