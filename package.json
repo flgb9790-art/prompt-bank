@@ -5,9 +5,11 @@
   "description": "Prompt Bank MVP: Telegram bot + Telegram Mini App",
   "scripts": {
     "install:all": "npm install && npm --prefix backend install && npm --prefix miniapp install",
+    "build": "npm --prefix backend install && npm --prefix miniapp install && npm --prefix backend run build && npm --prefix miniapp run build",
     "dev": "concurrently \"npm run dev:backend\" \"npm run dev:miniapp\"",
     "dev:backend": "npm --prefix backend run dev",
     "dev:miniapp": "npm --prefix miniapp run dev",
+    "start": "npm --prefix backend run start",
     "prisma:migrate": "npm --prefix backend run prisma:migrate",
     "prisma:studio": "npm --prefix backend run prisma:studio"
   },
