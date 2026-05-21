@@ -26,9 +26,17 @@ export function PromptCard({ prompt, onOpen, onToggleFavorite, onCopy }: Props) 
         {prompt.coverMediaUrl ? (
           <div className="shrink-0 overflow-hidden rounded-xl border border-white/10 bg-black/25 p-1 shadow-inner">
             {prompt.coverMediaType === "video" ? (
-              <video src={resolveMediaUrl(prompt.coverMediaUrl)} className="block max-h-28 w-auto rounded-lg object-contain" />
+              <video
+                src={resolveMediaUrl(prompt.coverMediaUrl)}
+                className="pointer-events-none block max-h-28 w-auto rounded-lg object-contain"
+              />
             ) : (
-              <img src={resolveMediaUrl(prompt.coverMediaUrl)} alt={prompt.title} className="block max-h-28 w-auto rounded-lg object-contain" />
+              <img
+                src={resolveMediaUrl(prompt.coverMediaUrl)}
+                alt={prompt.title}
+                draggable={false}
+                className="pointer-events-none block max-h-28 w-auto rounded-lg object-contain"
+              />
             )}
           </div>
         ) : null}

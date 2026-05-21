@@ -151,7 +151,7 @@ export function WebApp() {
       setPrompts(promptsData);
       setCategories(categoriesData);
       setTags(tagsData);
-      setIsAdmin(Boolean(me.isAdmin && me.authenticated));
+      setIsAdmin(Boolean(me.isAdmin));
       setDbUserId(me.user?.id ?? null);
     } catch (err) {
       setError("Не удалось загрузить данные.");

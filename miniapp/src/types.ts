@@ -62,6 +62,15 @@ export type PromptCreatePayload = {
   examples: Array<{ url: string; type: MediaType; originalName?: string }>;
 };
 
+export type PromptUpdatePayload = {
+  title?: string;
+  content?: string;
+  categoryId?: number;
+  note?: string;
+  coverMediaUrl?: string | null;
+  coverMediaType?: MediaType | null;
+};
+
 export type MeResponse = {
   authenticated: boolean;
   isAdmin: boolean;

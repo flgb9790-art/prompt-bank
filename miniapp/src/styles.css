@@ -53,6 +53,59 @@ html.web-mode body {
 html.web-mode #root {
   height: 100%;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.web-app-shell {
+  display: grid;
+  height: 100dvh;
+  height: 100vh;
+  width: 100%;
+  overflow: hidden;
+  grid-template-rows: auto 1fr;
+}
+
+.web-app-sidebar {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.web-app-header {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.web-app-main {
+  grid-column: 1;
+  grid-row: 2;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (min-width: 1024px) {
+  .web-app-shell {
+    grid-template-columns: 312px minmax(0, 1fr);
+    grid-template-rows: auto 1fr;
+  }
+
+  .web-app-sidebar {
+    grid-column: 1;
+    grid-row: 1 / span 2;
+  }
+
+  .web-app-header {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .web-app-main {
+    grid-column: 2;
+    grid-row: 2;
+  }
 }
 
 .app-shell {

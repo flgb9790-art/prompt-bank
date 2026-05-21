@@ -102,13 +102,8 @@ export function PromptDetailsModal({
                 </option>
               ))}
             </select>
-            <textarea
-              value={content}
-              onChange={(event) => setContent(event.target.value)}
-              rows={5}
-              className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm"
-              placeholder="Текст промпта"
-            />
+
+            <p className="text-sm font-semibold text-indigo-200">Изображения и примеры</p>
 
             <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
               <p className="mb-2 text-sm font-medium">Заставка / превью</p>
@@ -181,6 +176,14 @@ export function PromptDetailsModal({
                 />
               </div>
             </div>
+
+            <textarea
+              value={content}
+              onChange={(event) => setContent(event.target.value)}
+              rows={5}
+              className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm"
+              placeholder="Текст промпта"
+            />
 
             {saveError ? <p className="text-xs text-red-400">{saveError}</p> : null}
             <div className="grid grid-cols-2 gap-2">
@@ -304,14 +307,16 @@ export function PromptDetailsModal({
                     }}
                     className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm"
                   >
-                    Редактировать
+                    Редактировать (текст и фото)
                   </button>
                   <button type="button" onClick={() => onDelete(prompt.id)} className="rounded-xl bg-red-500/20 px-3 py-2 text-sm text-red-300">
                     Удалить
                   </button>
                 </div>
               ) : (
-                <p className="mt-5 text-xs text-muted">Редактирование и удаление доступны только администратору.</p>
+                <p className="mt-5 text-xs text-muted">
+                  Чтобы заменить битые изображения, войдите через Telegram (кнопка «Войти») под аккаунтом администратора, затем нажмите «Редактировать (текст и фото)».
+                </p>
               )}
             </div>
           </div>
