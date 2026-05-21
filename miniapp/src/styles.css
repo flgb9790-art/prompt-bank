@@ -46,15 +46,13 @@ body {
 
 html.web-mode,
 html.web-mode body {
-  height: auto;
-  min-height: 100%;
-  overflow: auto;
+  height: 100%;
+  overflow: hidden;
 }
 
 html.web-mode #root {
-  height: auto;
-  min-height: 100%;
-  overflow: visible;
+  height: 100%;
+  overflow: hidden;
 }
 
 .app-shell {
