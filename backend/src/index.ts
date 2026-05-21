@@ -2,6 +2,7 @@ import cors from "cors";
 import express from "express";
 import fs from "fs";
 import path from "path";
+import { spawnSync } from "child_process";
 import { config, uploadsDir } from "./config";
 import { prisma } from "./db";
 import promptsRouter from "./routes/prompts.routes";
@@ -80,6 +81,10 @@ async function seedInitialData() {
     });
   }
 
+  if (!config.seedDemoData) {
+    return;
+  }
+
   const promptsCount = await prisma.prompt.count();
   if (promptsCount > 0) {
     return;
@@ -150,8 +155,31 @@ async function seedInitialData() {
   }
 }
 
+function runPrismaDbPush() {
+  const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
+  const result = spawnSync(npmCommand, ["run", "prisma:push"], {
+    cwd: process.cwd(),
+    env: process.env,
+    stdio: "inherit"
+  });
+  if (result.status !== 0) {
+    throw new Error(`Failed to run prisma:push (exit ${result.status ?? "unknown"})`);
+  }
+}
+
 async function bootstrap() {
-  await seedInitialData();
+  try {
+    await seedInitialData();
+  } catch (error) {
+    const code = (error as { code?: string } | undefined)?.code;
+    if (code === "P2021") {
+      console.warn("Missing database tables detected. Running prisma db push and retrying startup...");
+      runPrismaDbPush();
+      await seedInitialData();
+    } else {
+      throw error;
+    }
+  }
   app.listen(config.port, () => {
     console.log(`Backend running on http://localhost:${config.port}`);
   });
