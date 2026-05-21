@@ -71,7 +71,7 @@ export class PromptService {
   }
 
   static async create(input: PromptCreateInput) {
-    const keywords = extractKeywords(input.content);
+    const keywords = extractKeywords(input.content, input.title);
 
     const prompt = await prisma.prompt.create({
       data: {
@@ -118,7 +118,7 @@ export class PromptService {
   }
 
   static async update(id: number, input: PromptUpdateInput) {
-    const keywords = input.content ? extractKeywords(input.content) : null;
+    const keywords = input.content ? extractKeywords(input.content, input.title) : null;
 
     await prisma.prompt.update({
       where: { id },
