@@ -442,11 +442,7 @@ export function PromptDetailsModal({
                       Удалить
                     </button>
                   </div>
-                ) : (
-                  <p className="mt-4 text-xs text-[var(--muted)]">
-                    Чтобы заменить битые изображения, войдите через Telegram под аккаунтом администратора, затем нажмите «Редактировать».
-                  </p>
-                )}
+                ) : null}
               </div>
             </div>
           )}
