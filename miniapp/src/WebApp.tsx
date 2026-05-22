@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { BarChart3, Heart, Layers, Sparkles } from "lucide-react";
+import { BarChart3, Heart, Layers, Sparkles, X } from "lucide-react";
 import { api, ApiError, setAuthTelegramId } from "./api";
 import type { Category, Prompt, PromptCreatePayload, TagStat, TelegramUser } from "./types";
 import type { PromptEditPayload } from "./components/PromptDetailsModal";
@@ -282,6 +282,7 @@ export function WebApp() {
       window.history.pushState({}, "", `${url.pathname}${url.search}`);
       setSelectedPrompt(undefined);
     }
+    setActiveTag(undefined);
     setPath(nextPath);
   }
 
@@ -645,8 +646,18 @@ export function WebApp() {
       />
       {isAddModalOpen && isAuthenticated && isAdmin ? (
         <div className="modal-overlay fixed inset-0 z-[75] grid place-items-center p-4">
-          <div className="modal-panel max-h-[90vh] w-full max-w-[720px] overflow-y-auto p-6">
-            <h3 className="mb-4 text-lg font-semibold text-[var(--text)]">Новый промпт</h3>
+          <div className="modal-panel add-prompt-modal max-h-[90vh] w-full overflow-y-auto p-6">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <h3 className="text-lg font-semibold text-[var(--text)]">Новый промпт</h3>
+              <button
+                type="button"
+                onClick={() => setIsAddModalOpen(false)}
+                className="btn-ghost-icon h-9 w-9"
+                aria-label="Закрыть"
+              >
+                <X size={16} />
+              </button>
+            </div>
             <PromptForm categories={categories} user={user!} onSubmit={handleSavePrompt} onCancel={() => setIsAddModalOpen(false)} />
           </div>
         </div>

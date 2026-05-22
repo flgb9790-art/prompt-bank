@@ -48,7 +48,7 @@ export function PromptForm({ categories, user, onSubmit, onCancel }: Props) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="prompt-form space-y-4">
       <div>
         <label className="mb-2 block text-sm text-[var(--muted)]">Название промпта</label>
         <input required value={title} onChange={(e) => setTitle(e.target.value)} className="form-input" />
@@ -67,31 +67,49 @@ export function PromptForm({ categories, user, onSubmit, onCancel }: Props) {
         <label className="mb-2 block text-sm text-[var(--muted)]">Текст промпта</label>
         <textarea required rows={6} value={content} onChange={(e) => setContent(e.target.value)} className="form-textarea" />
       </div>
-      <div className="flex flex-wrap gap-2">
-        {keywordsPreview.map((word) => (
-          <span key={word} className="tag-pill bg-[var(--primary-soft)] text-[var(--primary)]">
-            #{word}
-          </span>
-        ))}
+      {keywordsPreview.length ? (
+        <div className="flex flex-wrap gap-2">
+          {keywordsPreview.map((word) => (
+            <span key={word} className="tag-pill bg-[var(--primary-soft)] text-[var(--primary)]">
+              {word}
+            </span>
+          ))}
+        </div>
+      ) : null}
+
+      <div className="prompt-form-media-block">
+        <p className="mb-2 text-sm font-medium text-[var(--text)]">Заставка / превью</p>
+        <div className="edit-media-toolbar">
+          <MediaUploader
+            compact
+            label="Выбрать файл"
+            onUploaded={(items) => {
+              if (items[0]) setCoverMedia(items[0]);
+            }}
+          />
+          {coverMedia ? (
+            <span className="text-xs text-[var(--muted)]">Файл выбран</span>
+          ) : (
+            <span className="text-xs text-[var(--muted)]">Не выбран</span>
+          )}
+        </div>
       </div>
 
-      <div className="upload-zone">
-        <MediaUploader
-          label="Заставка/превью (image или video)"
-          onUploaded={(items) => {
-            if (items[0]) setCoverMedia(items[0]);
-          }}
-        />
-      </div>
-      <div className="upload-zone">
-        <MediaUploader label="Примеры результата (несколько image/video)" multiple onUploaded={(items) => setExamples((prev) => [...prev, ...items])} />
+      <div className="prompt-form-media-block">
+        <p className="mb-2 text-sm font-medium text-[var(--text)]">Примеры результата</p>
+        <div className="edit-media-toolbar">
+          <MediaUploader compact label="Добавить файлы" multiple onUploaded={(items) => setExamples((prev) => [...prev, ...items])} />
+          {examples.length ? (
+            <span className="text-xs text-[var(--muted)]">Добавлено: {examples.length}</span>
+          ) : null}
+        </div>
       </div>
 
       <div>
-        <label className="mb-2 block text-sm text-[var(--muted)]">Заметка (optional)</label>
+        <label className="mb-2 block text-sm text-[var(--muted)]">Заметка (необязательно)</label>
         <textarea rows={2} value={note} onChange={(e) => setNote(e.target.value)} className="form-textarea min-h-[80px]" />
       </div>
-      {error && <p className="text-xs text-[var(--red)]">{error}</p>}
+      {error ? <p className="text-xs text-[var(--red)]">{error}</p> : null}
       <div className="grid grid-cols-2 gap-2">
         <button disabled={loading} type="submit" className="btn-primary justify-center">
           {loading ? "Сохраняем..." : "Сохранить промпт"}

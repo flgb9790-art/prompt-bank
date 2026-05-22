@@ -13,11 +13,24 @@ type Props = {
   onToggleFavorite: (id: number) => void;
   onCopyPrompt: (prompt: Prompt) => void;
   onTagClick?: (tag: string) => void;
+  activeTag?: string;
+  onClearTag?: () => void;
 };
 
 type SortMode = "new" | "old" | "usage" | "favorites";
 
-export function PromptsPage({ prompts, categories, loading, error, onOpenPrompt, onToggleFavorite, onCopyPrompt, onTagClick }: Props) {
+export function PromptsPage({
+  prompts,
+  categories,
+  loading,
+  error,
+  onOpenPrompt,
+  onToggleFavorite,
+  onCopyPrompt,
+  onTagClick,
+  activeTag,
+  onClearTag
+}: Props) {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<string>();
   const [sort, setSort] = useState<SortMode>("new");
@@ -42,15 +55,23 @@ export function PromptsPage({ prompts, categories, loading, error, onOpenPrompt,
     if (category) {
       list = list.filter((item) => item.category.slug === category);
     }
+    if (activeTag) {
+      list = list.filter((item) => item.keywords.some((itemKeyword) => itemKeyword.keyword.name === activeTag));
+    }
     if (sort === "new") list.sort((a, b) => Number(new Date(b.createdAt)) - Number(new Date(a.createdAt)));
     if (sort === "old") list.sort((a, b) => Number(new Date(a.createdAt)) - Number(new Date(b.createdAt)));
     if (sort === "usage") list.sort((a, b) => b.usageCount - a.usageCount);
     if (sort === "favorites") list = list.filter((item) => item.isFavorite);
     return list;
-  }, [prompts, query, category, sort]);
+  }, [prompts, query, category, sort, activeTag]);
 
   return (
     <div className="space-y-3 pb-1">
+      {activeTag ? (
+        <button type="button" className="chip active" onClick={onClearTag}>
+          {activeTag} ×
+        </button>
+      ) : null}
       <SearchBar value={query} onChange={setQuery} placeholder="Поиск по названию, тексту, тегам..." />
       <CategoryTabs categories={categoriesWithPrompts} active={category} onSelect={setCategory} />
 

@@ -163,37 +163,16 @@ export function PromptCard({ prompt, variant = "mobile", onOpen, onToggleFavorit
     >
       <CardPreview prompt={prompt} variant="mobile" />
       <div className="prompt-card-body prompt-card-body--mobile">
-        <button
-          type="button"
-          className={`prompt-card-star-mobile ${prompt.isFavorite ? "active" : ""}`}
-          onClick={(event) => {
-            event.stopPropagation();
-            onToggleFavorite(prompt.id);
-          }}
-          aria-label="Избранное"
-        >
-          <Star size={18} fill={prompt.isFavorite ? "currentColor" : "none"} />
-        </button>
-        <h3 className="prompt-card-title">{prompt.title}</h3>
+        <h3 className="prompt-card-title prompt-card-title--mobile">{prompt.title}</h3>
         <span className={`category-badge category-badge-mobile ${badgeClass}`}>{prompt.category.name}</span>
         <p className="prompt-card-excerpt prompt-card-excerpt--mobile">{prompt.content}</p>
         <div className="prompt-card-tags prompt-card-tags--mobile">
-          {prompt.keywords.slice(0, 2).map((item) => (
+          {prompt.keywords.slice(0, 3).map((item) => (
             <TagPill key={item.keyword.id} name={item.keyword.name} onClick={onTagClick} />
           ))}
         </div>
       </div>
-      <button
-        type="button"
-        className="prompt-card-copy-mobile"
-        onClick={(event) => {
-          event.stopPropagation();
-          onCopy(prompt);
-        }}
-        aria-label="Копировать"
-      >
-        <Copy size={16} />
-      </button>
+      <CardActions prompt={prompt} onToggleFavorite={onToggleFavorite} onCopy={onCopy} />
     </article>
   );
 }

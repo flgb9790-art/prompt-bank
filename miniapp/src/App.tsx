@@ -99,6 +99,7 @@ function MiniAppApp() {
   const [selectedPrompt, setSelectedPrompt] = useState<Prompt>();
   const [createdPromptId, setCreatedPromptId] = useState<number>();
   const [searchQuery, setSearchQuery] = useState("");
+  const [activeTag, setActiveTag] = useState<string>();
   const [isAdmin, setIsAdmin] = useState(false);
   const [user, setUser] = useState<TelegramUser>(() => resolveTelegramUser() ?? mockTelegramUser);
   const [toastMessage, setToastMessage] = useState("");
@@ -320,10 +321,18 @@ function MiniAppApp() {
     setPrompts((prev) => prev.filter((item) => item.id !== id));
   }
 
+  function handleTabChange(nextTab: TabKey) {
+    setActiveTag(undefined);
+    if (nextTab !== "search") {
+      setSearchQuery("");
+    }
+    setTab(nextTab);
+  }
+
   function handleSelectTag(tagName: string) {
     closePromptModal();
-    setSearchQuery(tagName);
-    setTab("search");
+    setActiveTag(tagName);
+    setTab("prompts");
   }
 
   async function handleCopyPrompt(prompt: Prompt) {
@@ -374,9 +383,9 @@ function MiniAppApp() {
           onCopyPrompt={handleCopyPrompt}
           onToggleFavorite={handleToggleFavorite}
           onTagClick={handleSelectTag}
-          onCreate={isAdmin ? () => setTab("add") : undefined}
+          onCreate={isAdmin ? () => handleTabChange("add") : undefined}
           showCreateButton={isAdmin}
-          onViewAll={() => setTab("prompts")}
+          onViewAll={() => handleTabChange("prompts")}
         />
       )}
       {tab === "prompts" && (
@@ -389,6 +398,8 @@ function MiniAppApp() {
           onToggleFavorite={handleToggleFavorite}
           onCopyPrompt={handleCopyPrompt}
           onTagClick={handleSelectTag}
+          activeTag={activeTag}
+          onClearTag={() => setActiveTag(undefined)}
         />
       )}
       {tab === "search" && (
@@ -433,7 +444,7 @@ function MiniAppApp() {
           categories={categories}
           user={user}
           onSave={handleSavePrompt}
-          onCancel={() => setTab("home")}
+          onCancel={() => handleTabChange("home")}
           successPromptId={createdPromptId}
           onOpenPrompt={() => {
             const created = prompts.find((item) => item.id === createdPromptId);
@@ -444,11 +455,11 @@ function MiniAppApp() {
           onAddMore={() => setCreatedPromptId(undefined)}
           onGoHome={() => {
             setCreatedPromptId(undefined);
-            setTab("home");
+            handleTabChange("home");
           }}
         />
       )}
-      <BottomNav current={tab === "add" ? "home" : tab} onChange={setTab} />
+      <BottomNav current={tab === "add" ? "home" : tab} onChange={handleTabChange} />
       <PromptDetailsModal
         prompt={selectedPrompt}
         categories={categories}

@@ -54,7 +54,7 @@ export function MobileWebShell({
 
       {canCreate && currentPath !== "/settings" ? (
         <button type="button" onClick={onCreatePrompt} className="cta-button mx-0 mb-[88px]">
-          <Plus size={20} />
+          <Plus size={20} className="cta-button-icon" strokeWidth={2.5} />
           Новый промпт
         </button>
       ) : null}

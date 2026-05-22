@@ -1,5 +1,4 @@
-import type { ReactNode } from "react";
-import { BarChart3, Heart, Layers, Sparkles } from "lucide-react";
+import { BarChart3, Heart, Layers, Plus, Sparkles } from "lucide-react";
 import type { Prompt } from "../types";
 import { PromptCard } from "../components/PromptCard";
 
@@ -15,7 +14,17 @@ type Props = {
   showCreateButton?: boolean;
 };
 
-export function HomePage({ prompts, stats, onOpenPrompt, onCopyPrompt, onToggleFavorite, onTagClick, onCreate, onViewAll, showCreateButton = true }: Props) {
+export function HomePage({
+  prompts,
+  stats,
+  onOpenPrompt,
+  onCopyPrompt,
+  onToggleFavorite,
+  onTagClick,
+  onCreate,
+  onViewAll,
+  showCreateButton = true
+}: Props) {
   return (
     <div className="space-y-4 pb-4">
       <section>
@@ -23,11 +32,23 @@ export function HomePage({ prompts, stats, onOpenPrompt, onCopyPrompt, onToggleF
         <p className="welcome-subtitle">Здесь хранятся все ваши промпты. Легко находите, копируйте и улучшайте.</p>
       </section>
 
-      <section className="grid grid-cols-2 gap-3">
-        <MobileStat icon={<Layers size={20} />} label="Всего промптов" value={stats.total} iconBg="bg-[var(--primary-soft)] text-[var(--primary)]" />
-        <MobileStat icon={<Heart size={20} />} label="Избранных" value={stats.favorites} iconBg="bg-[#fdf2f8] text-pink-600" />
-        <MobileStat icon={<Sparkles size={20} />} label="Категорий" value={stats.categories} iconBg="bg-[var(--blue-soft)] text-[var(--blue)]" />
-        <MobileStat icon={<BarChart3 size={20} />} label="Использований" value={stats.usage} iconBg="bg-[var(--purple-soft)] text-[var(--purple)]" />
+      <section className="grid grid-cols-2 gap-2.5">
+        <div className="stat-tile-mobile">
+          <p className="stat-tile-value">{stats.total}</p>
+          <p className="stat-tile-label">Всего</p>
+        </div>
+        <div className="stat-tile-mobile">
+          <p className="stat-tile-value">{stats.favorites}</p>
+          <p className="stat-tile-label">Избранные</p>
+        </div>
+        <div className="stat-tile-mobile">
+          <p className="stat-tile-value">{stats.categories}</p>
+          <p className="stat-tile-label">Категории</p>
+        </div>
+        <div className="stat-tile-mobile">
+          <p className="stat-tile-value">{stats.usage}</p>
+          <p className="stat-tile-label">Использ.</p>
+        </div>
       </section>
 
       <section>
@@ -42,7 +63,15 @@ export function HomePage({ prompts, stats, onOpenPrompt, onCopyPrompt, onToggleF
         {prompts.length ? (
           <div className="mt-4 flex flex-col gap-3">
             {prompts.slice(0, 8).map((prompt) => (
-              <PromptCard key={prompt.id} prompt={prompt} variant="mobile" onOpen={onOpenPrompt} onCopy={onCopyPrompt} onToggleFavorite={onToggleFavorite} onTagClick={onTagClick} />
+              <PromptCard
+                key={prompt.id}
+                prompt={prompt}
+                variant="mobile"
+                onOpen={onOpenPrompt}
+                onCopy={onCopyPrompt}
+                onToggleFavorite={onToggleFavorite}
+                onTagClick={onTagClick}
+              />
             ))}
           </div>
         ) : (
@@ -55,31 +84,10 @@ export function HomePage({ prompts, stats, onOpenPrompt, onCopyPrompt, onToggleF
 
       {showCreateButton && onCreate ? (
         <button type="button" onClick={onCreate} className="cta-button">
-          ➕ Новый промпт
+          <Plus size={20} className="cta-button-icon" strokeWidth={2.5} />
+          Новый промпт
         </button>
       ) : null}
-    </div>
-  );
-}
-
-function MobileStat({
-  icon,
-  label,
-  value,
-  iconBg
-}: {
-  icon: ReactNode;
-  label: string;
-  value: number;
-  iconBg: string;
-}) {
-  return (
-    <div className="stat-card-mobile">
-      <div className={`stat-icon-mobile ${iconBg}`}>{icon}</div>
-      <div>
-        <p className="stat-value-mobile">{value}</p>
-        <p className="stat-label-mobile">{label}</p>
-      </div>
     </div>
   );
 }
