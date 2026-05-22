@@ -155,7 +155,7 @@ export function PromptCard({ prompt, variant = "mobile", onOpen, onToggleFavorit
     );
   }
 
-  const mobileTags = prompt.keywords.slice(0, 8);
+  const mobileTags = prompt.keywords.slice(0, 3);
 
   return (
     <article className="prompt-card-mobile fade-up">
@@ -169,14 +169,11 @@ export function PromptCard({ prompt, variant = "mobile", onOpen, onToggleFavorit
             if (event.key === "Enter") onOpen(prompt);
           }}
         >
-          <CardPreview prompt={prompt} variant="mobile" />
-          <div className="prompt-card-body prompt-card-body--mobile">
-            <h3 className="prompt-card-title prompt-card-title--mobile">{prompt.title}</h3>
-            <span className={`category-badge category-badge-mobile ${badgeClass}`}>{prompt.category.name}</span>
-            <p className="prompt-card-excerpt prompt-card-excerpt--mobile">{prompt.content}</p>
+          <div className="prompt-card-mobile-media">
+            <CardPreview prompt={prompt} variant="mobile" />
             {mobileTags.length ? (
               <div
-                className="prompt-card-tags prompt-card-tags--under-text"
+                className="prompt-card-tags prompt-card-tags--under-photo"
                 onClick={(event) => event.stopPropagation()}
               >
                 {mobileTags.map((item) => (
@@ -184,6 +181,11 @@ export function PromptCard({ prompt, variant = "mobile", onOpen, onToggleFavorit
                 ))}
               </div>
             ) : null}
+          </div>
+          <div className="prompt-card-body prompt-card-body--mobile">
+            <h3 className="prompt-card-title prompt-card-title--mobile">{prompt.title}</h3>
+            <span className={`category-badge category-badge-mobile ${badgeClass}`}>{prompt.category.name}</span>
+            <p className="prompt-card-excerpt prompt-card-excerpt--mobile">{prompt.content}</p>
           </div>
         </div>
         <CardActions prompt={prompt} onToggleFavorite={onToggleFavorite} onCopy={onCopy} layout="stacked" />

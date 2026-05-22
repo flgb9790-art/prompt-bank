@@ -552,8 +552,8 @@ html.web-mode #root {
   flex: 0 0 128px;
   aspect-ratio: 4 / 5;
   height: auto;
-  margin: 14px;
-  align-self: center;
+  margin: 14px 14px 14px 14px;
+  align-self: flex-start;
   flex-shrink: 0;
 }
 
@@ -578,7 +578,7 @@ html.web-mode #root {
   box-shadow: var(--shadow-card);
   display: flex;
   flex-direction: row;
-  align-items: stretch;
+  align-items: flex-start;
   overflow: hidden;
   position: relative;
   transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
@@ -613,15 +613,16 @@ html.web-mode #root {
 
 .prompt-card-mobile-row {
   display: flex;
-  align-items: stretch;
+  align-items: flex-start;
   gap: 10px;
-  min-height: 132px;
+  min-height: 148px;
 }
 
 .prompt-card-mobile-open {
   flex: 1 1 auto;
   min-width: 0;
   display: flex;
+  align-items: flex-start;
   gap: 12px;
   cursor: pointer;
   text-align: left;
@@ -634,16 +635,36 @@ html.web-mode #root {
   opacity: 0.92;
 }
 
-.prompt-card-tags--under-text {
-  margin-top: 8px;
+.prompt-card-mobile-media {
+  flex: 0 0 112px;
+  width: 112px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.prompt-card-tags--under-photo {
   display: flex;
   flex-wrap: nowrap;
   align-items: center;
-  gap: 5px;
+  gap: 4px;
   overflow: hidden;
-  max-width: 100%;
-  min-height: 22px;
+  width: 100%;
+  min-height: 20px;
   flex-shrink: 0;
+}
+
+.prompt-card-tags--under-photo .tag-pill {
+  flex: 0 1 auto;
+  max-width: 72px;
+  height: 20px;
+  padding: 0 6px;
+  font-size: 10px;
+  line-height: 20px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .prompt-card-body {
@@ -719,9 +740,10 @@ html.web-mode #root {
   font-size: 13px;
   line-height: 17px;
   display: -webkit-box;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
   -webkit-box-orient: vertical;
-  flex: 0 1 auto;
+  flex: 1 1 auto;
   min-height: 0;
 }
 
@@ -827,7 +849,7 @@ html.web-mode #root {
   box-shadow: 0 6px 18px rgba(16, 24, 40, 0.04);
   display: flex;
   flex-direction: row;
-  align-items: stretch;
+  align-items: flex-start;
   overflow: hidden;
   padding: 12px;
   gap: 12px;
@@ -840,6 +862,7 @@ html.web-mode #root {
   flex: 0 0 84px;
   aspect-ratio: 4 / 5;
   height: auto;
+  align-self: flex-start;
   border-radius: 12px;
 }
 
@@ -900,7 +923,13 @@ html.web-mode #root {
   align-self: stretch;
   justify-content: space-between;
   min-height: 100%;
-  padding: 2px 0;
+  padding: 6px 0;
+  box-sizing: border-box;
+}
+
+.prompt-card-list .prompt-card-actions--stacked,
+.prompt-card-mobile-row .prompt-card-actions--stacked {
+  align-self: stretch;
 }
 
 .prompt-card-action.active {

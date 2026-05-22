@@ -273,7 +273,7 @@ export function WebApp() {
     });
   }
 
-  function navigate(nextPath: RoutePath) {
+  function navigate(nextPath: RoutePath, options?: { keepTag?: boolean }) {
     if (window.location.pathname !== nextPath) {
       const url = new URL(window.location.href);
       url.pathname = nextPath;
@@ -281,7 +281,9 @@ export function WebApp() {
       window.history.pushState({}, "", `${url.pathname}${url.search}`);
       setSelectedPrompt(undefined);
     }
-    setActiveTag(undefined);
+    if (!options?.keepTag) {
+      setActiveTag(undefined);
+    }
     setPath(nextPath);
   }
 
@@ -447,7 +449,7 @@ export function WebApp() {
     setActiveCategory(undefined);
     setPromptSearch("");
     setPage(1);
-    navigate("/prompts");
+    navigate("/prompts", { keepTag: true });
   }
 
   function renderPromptList(list: Prompt[]) {
@@ -528,8 +530,16 @@ export function WebApp() {
 
       {path === "/prompts" ? (
         <div>
+          {activeTag ? (
+            <div className="mb-3">
+              <h2 className="text-base font-semibold text-[var(--text)]">
+                Тег: {activeTag}
+                <span className="ml-2 text-sm font-normal text-[var(--muted)]">({filteredPrompts.length})</span>
+              </h2>
+            </div>
+          ) : null}
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <h2 className="section-title">Все промпты</h2>
+            <h2 className="section-title">{activeTag ? "Промпты по тегу" : "Все промпты"}</h2>
             <div className="flex items-center gap-2">
               <SortSelect value={sort} onChange={setSort} />
               <ViewToggle value={viewMode} onChange={setViewMode} />
@@ -587,7 +597,7 @@ export function WebApp() {
               <button
                 key={tag.id}
                 type="button"
-                className={`chip ${activeTag === tag.name ? "active" : ""}`}
+                className={`chip ${activeTag === normalizeTagName(tag.name) ? "active" : ""}`}
                 onClick={() => handleSelectTag(tag.name)}
               >
                 {tag.name} ({tag.count})
