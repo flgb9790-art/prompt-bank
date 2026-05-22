@@ -482,7 +482,11 @@ export function WebApp() {
         <div>
           <div className="welcome-block">
             <h1 className="welcome-title lg:text-[24px]">Добро пожаловать! 👋</h1>
-            <p className="welcome-subtitle">Здесь хранятся все ваши промпты. Легко находите, копируйте и улучшайте.</p>
+            <p className="welcome-subtitle">
+              {isAdmin
+                ? "Здесь хранятся все промпты банка. Легко находите, копируйте и управляйте контентом."
+                : "Готовые промпты для работы. Ищите по категориям и тегам, копируйте и сохраняйте в избранное."}
+            </p>
           </div>
 
           <div className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-[18px]">

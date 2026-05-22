@@ -9,14 +9,15 @@ datasource db {
 }
 
 model User {
-  id         Int      @id @default(autoincrement())
-  telegramId String   @unique
+  id         Int        @id @default(autoincrement())
+  telegramId String     @unique
   username   String?
   firstName  String?
   lastName   String?
   prompts    Prompt[]
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  favorites  Favorite[]
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
 }
 
 model Category {
@@ -40,12 +41,12 @@ model Prompt {
   categoryId     Int
   coverMediaUrl  String?
   coverMediaType MediaType?
-  isFavorite     Boolean        @default(false)
   usageCount     Int            @default(0)
   user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   category       Category       @relation(fields: [categoryId], references: [id], onDelete: Restrict)
   keywords       PromptKeyword[]
   examples       MediaExample[]
+  favorites      Favorite[]
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
 }
@@ -73,6 +74,17 @@ model MediaExample {
   originalName String?
   prompt       Prompt    @relation(fields: [promptId], references: [id], onDelete: Cascade)
   createdAt    DateTime  @default(now())
+}
+
+model Favorite {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  promptId  Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  prompt    Prompt   @relation(fields: [promptId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, promptId])
 }
 
 enum MediaType {

@@ -2,20 +2,29 @@ import { Router } from "express";
 import { prisma } from "../db";
 import { PromptService } from "../services/prompt.service";
 import { authRequired, isAdminRequest, readTelegramId } from "../auth";
+import { resolveUserIdByTelegramId } from "../user";
 
 type MediaType = "image" | "video";
 
 const router = Router();
 
+async function optionalUserId(req: { header: (name: string) => string | undefined }) {
+  const telegramId = readTelegramId(req as any);
+  if (!telegramId) return undefined;
+  return resolveUserIdByTelegramId(telegramId);
+}
+
 router.get("/", async (req, res, next) => {
   try {
+    const userId = await optionalUserId(req);
     const prompts = await PromptService.list({
       search: req.query.search as string | undefined,
       category: req.query.category as string | undefined,
       favorite: req.query.favorite as string | undefined,
       limit: req.query.limit ? Number(req.query.limit) : undefined,
       offset: req.query.offset ? Number(req.query.offset) : undefined,
-      lite: req.query.lite === "1" || req.query.lite === "true"
+      lite: req.query.lite === "1" || req.query.lite === "true",
+      userId
     });
     res.json(prompts);
   } catch (error) {
@@ -35,12 +44,7 @@ router.post("/", async (req, res, next) => {
     let userId = Number(req.body.userId);
 
     if (requesterTelegramId) {
-      const requester = await prisma.user.upsert({
-        where: { telegramId: requesterTelegramId },
-        update: {},
-        create: { telegramId: requesterTelegramId }
-      });
-      userId = requester.id;
+      userId = await resolveUserIdByTelegramId(requesterTelegramId);
     }
 
     if (!Number.isFinite(userId)) {
@@ -71,7 +75,8 @@ router.post("/", async (req, res, next) => {
 
 router.get("/:id", async (req, res, next) => {
   try {
-    const prompt = await PromptService.getById(Number(req.params.id));
+    const userId = await optionalUserId(req);
+    const prompt = await PromptService.getById(Number(req.params.id), userId);
     if (!prompt) {
       return res.status(404).json({ message: "Prompt not found" });
     }
@@ -89,8 +94,10 @@ router.put("/:id", async (req, res, next) => {
     if (!isAdminRequest(req)) {
       return res.status(403).json({ message: "Only admin can edit prompts" });
     }
+    const userId = await optionalUserId(req);
     const updated = await PromptService.update(Number(req.params.id), req.body);
-    res.json(updated);
+    const withFavorite = await PromptService.getById(updated.id, userId);
+    res.json(withFavorite ?? updated);
   } catch (error) {
     next(error);
   }
@@ -114,7 +121,12 @@ router.delete("/:id", async (req, res, next) => {
 router.post("/:id/favorite", authRequired, async (req, res, next) => {
   try {
     const id = Number(req.params.id);
-    const updated = await PromptService.toggleFavorite(id);
+    const telegramId = readTelegramId(req);
+    if (!telegramId) {
+      return res.status(401).json({ error: "AUTH_REQUIRED" });
+    }
+    const userId = await resolveUserIdByTelegramId(telegramId);
+    const updated = await PromptService.toggleFavorite(id, userId);
     if (!updated) {
       return res.status(404).json({ message: "Prompt not found" });
     }
@@ -127,7 +139,8 @@ router.post("/:id/favorite", authRequired, async (req, res, next) => {
 router.post("/:id/usage", async (req, res, next) => {
   try {
     const id = Number(req.params.id);
-    const updated = await PromptService.incrementUsage(id);
+    const userId = await optionalUserId(req);
+    const updated = await PromptService.incrementUsage(id, userId);
     res.json(updated);
   } catch (error) {
     next(error);
@@ -136,6 +149,9 @@ router.post("/:id/usage", async (req, res, next) => {
 
 router.post("/:id/examples", authRequired, async (req, res, next) => {
   try {
+    if (!isAdminRequest(req)) {
+      return res.status(403).json({ message: "Only admin can add examples" });
+    }
     const id = Number(req.params.id);
     const created = await prisma.mediaExample.create({
       data: {
@@ -153,6 +169,9 @@ router.post("/:id/examples", authRequired, async (req, res, next) => {
 
 router.delete("/examples/:id", authRequired, async (req, res, next) => {
   try {
+    if (!isAdminRequest(req)) {
+      return res.status(403).json({ message: "Only admin can delete examples" });
+    }
     await prisma.mediaExample.delete({ where: { id: Number(req.params.id) } });
     res.status(204).send();
   } catch (error) {

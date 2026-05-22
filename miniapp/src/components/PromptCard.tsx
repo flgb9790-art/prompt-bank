@@ -151,28 +151,36 @@ export function PromptCard({ prompt, variant = "mobile", onOpen, onToggleFavorit
     );
   }
 
+  const mobileTags = prompt.keywords.slice(0, 6);
+
   return (
-    <article
-      role="button"
-      tabIndex={0}
-      onClick={() => onOpen(prompt)}
-      onKeyDown={(event) => {
-        if (event.key === "Enter") onOpen(prompt);
-      }}
-      className="prompt-card-mobile fade-up"
-    >
-      <CardPreview prompt={prompt} variant="mobile" />
-      <div className="prompt-card-body prompt-card-body--mobile">
-        <h3 className="prompt-card-title prompt-card-title--mobile">{prompt.title}</h3>
-        <span className={`category-badge category-badge-mobile ${badgeClass}`}>{prompt.category.name}</span>
-        <p className="prompt-card-excerpt prompt-card-excerpt--mobile">{prompt.content}</p>
-        <div className="prompt-card-tags prompt-card-tags--mobile">
-          {prompt.keywords.slice(0, 3).map((item) => (
+    <article className="prompt-card-mobile fade-up">
+      <div className="prompt-card-mobile-row">
+        <div
+          role="button"
+          tabIndex={0}
+          className="prompt-card-mobile-open"
+          onClick={() => onOpen(prompt)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") onOpen(prompt);
+          }}
+        >
+          <CardPreview prompt={prompt} variant="mobile" />
+          <div className="prompt-card-body prompt-card-body--mobile">
+            <h3 className="prompt-card-title prompt-card-title--mobile">{prompt.title}</h3>
+            <span className={`category-badge category-badge-mobile ${badgeClass}`}>{prompt.category.name}</span>
+            <p className="prompt-card-excerpt prompt-card-excerpt--mobile">{prompt.content}</p>
+          </div>
+        </div>
+        <CardActions prompt={prompt} onToggleFavorite={onToggleFavorite} onCopy={onCopy} />
+      </div>
+      {mobileTags.length ? (
+        <div className="prompt-card-mobile-tags-row">
+          {mobileTags.map((item) => (
             <TagPill key={item.keyword.id} name={item.keyword.name} onClick={onTagClick} />
           ))}
         </div>
-      </div>
-      <CardActions prompt={prompt} onToggleFavorite={onToggleFavorite} onCopy={onCopy} />
+      ) : null}
     </article>
   );
 }

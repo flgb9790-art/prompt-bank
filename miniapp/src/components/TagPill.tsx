@@ -20,8 +20,12 @@ export function TagPill({ name, onClick, active = false, variant = "default" }: 
       <button
         type="button"
         className={className}
+        onPointerDown={(event) => event.stopPropagation()}
+        onTouchStart={(event) => event.stopPropagation()}
+        onMouseDown={(event) => event.stopPropagation()}
         onClick={(event) => {
           event.stopPropagation();
+          event.preventDefault();
           onClick(name);
         }}
       >

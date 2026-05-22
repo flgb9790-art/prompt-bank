@@ -53,6 +53,10 @@ function getExamplesActionKeyboard() {
   ]);
 }
 
+function isBotAdmin(telegramId: number) {
+  return config.adminTelegramIds.includes(String(telegramId));
+}
+
 function getMainReplyMenu() {
   return Markup.keyboard([
     [menuLabels.add, menuLabels.search],
@@ -61,10 +65,36 @@ function getMainReplyMenu() {
   ]).resize();
 }
 
-async function showWelcome(ctx: any) {
+async function showUserWelcome(ctx: any) {
+  const cleared = await ctx.reply("…", Markup.removeKeyboard());
+  await ctx.deleteMessage(cleared.message_id).catch(() => undefined);
+  await ctx.reply(
+    "👋 Добро пожаловать в Prompt Bank!\n\nЗдесь собраны готовые промпты: ищите по категориям и тегам, копируйте и сохраняйте в избранное.\n\nОткройте приложение, чтобы начать.",
+    Markup.inlineKeyboard([[Markup.button.webApp("🌐 Открыть Prompt Bank", buildMiniAppUrl())]])
+  );
+}
+
+async function showAdminWelcome(ctx: any) {
   await ctx.reply(
     "👋 Добро пожаловать в Prompt Bank!\nЗдесь можно хранить промпты, примеры изображений/видео, категории и быстро копировать лучшие промпты.\nВыберите действие ниже:",
     getMainReplyMenu()
+  );
+}
+
+async function showWelcome(ctx: any) {
+  const from = ctx.from;
+  if (!from) return;
+  if (isBotAdmin(from.id)) {
+    await showAdminWelcome(ctx);
+  } else {
+    await showUserWelcome(ctx);
+  }
+}
+
+async function denyNonAdminAdd(ctx: any) {
+  await ctx.reply(
+    "Добавлять и редактировать промпты могут только администраторы.\nОткройте приложение, чтобы просматривать и копировать промпты.",
+    Markup.inlineKeyboard([[Markup.button.webApp("🌐 Открыть Prompt Bank", buildMiniAppUrl())]])
   );
 }
 
@@ -135,6 +165,10 @@ async function handleTelegramMedia(ctx: any) {
 }
 
 async function beginAddPromptFlow(ctx: any, fromId: number) {
+  if (!isBotAdmin(fromId)) {
+    await denyNonAdminAdd(ctx);
+    return;
+  }
   userStates.set(fromId, { mode: "adding", addPrompt: { step: "title", examples: [] } });
   await ctx.reply("Введите название промпта:");
 }
@@ -154,8 +188,12 @@ async function showRecentPrompts(ctx: any) {
 }
 
 async function showFavoritePrompts(ctx: any) {
+  const from = ctx.from;
+  if (!from) return;
+
+  const user = await ensureUser(from);
   const prompts = await prisma.prompt.findMany({
-    where: { isFavorite: true },
+    where: { favorites: { some: { userId: user.id } } },
     take: 5,
     orderBy: { updatedAt: "desc" },
     include: { category: true, keywords: { include: { keyword: true } } }
@@ -172,8 +210,19 @@ async function showCategories(ctx: any) {
 }
 
 async function showHelp(ctx: any) {
+  const from = ctx.from;
+  if (!from) return;
+
+  if (isBotAdmin(from.id)) {
+    await ctx.reply(
+      "Prompt Bank помогает хранить промпты, примеры, категории и теги.\nЧто можно делать:\n➕ Добавлять промпты\n🖼 Прикреплять картинки и видео\n🔎 Искать по названию, тексту и тегам\n⭐ Добавлять в избранное\n📋 Быстро копировать промпт\n🌐 Управлять всем через Mini App"
+    );
+    return;
+  }
+
   await ctx.reply(
-    "Prompt Bank помогает хранить промпты, примеры, категории и теги.\nЧто можно делать:\n➕ Добавлять промпты\n🖼 Прикреплять картинки и видео\n🔎 Искать по названию, тексту и тегам\n⭐ Добавлять в избранное\n📋 Быстро копировать промпт\n🌐 Управлять всем через Mini App"
+    "Prompt Bank — библиотека готовых промптов.\n\n🔎 Искать по названию, тексту и тегам\n⭐ Сохранять в личное избранное\n📋 Копировать промпты в один клик\n🌐 Открыть полный каталог в приложении",
+    Markup.inlineKeyboard([[Markup.button.webApp("🌐 Открыть Prompt Bank", buildMiniAppUrl())]])
   );
 }
 
@@ -351,6 +400,10 @@ export async function startBot() {
       return;
     }
     await ctx.answerCbQuery();
+    if (!isBotAdmin(from.id)) {
+      await denyNonAdminAdd(ctx);
+      return;
+    }
     userStates.set(from.id, { mode: "adding", addPrompt: { step: "title", examples: [] } });
     await ctx.reply("Введите название промпта:");
   });
@@ -362,7 +415,7 @@ export async function startBot() {
     }
     await ctx.answerCbQuery();
     userStates.set(from.id, { mode: "idle" });
-    await ctx.reply("Главное меню:", getMainReplyMenu());
+    await showWelcome(ctx);
   });
 
   bot.action(/^add_cat_(.+)$/, async (ctx) => {
@@ -371,6 +424,10 @@ export async function startBot() {
       return;
     }
     await ctx.answerCbQuery();
+    if (!isBotAdmin(from.id)) {
+      await denyNonAdminAdd(ctx);
+      return;
+    }
     const state = userStates.get(from.id);
     if (!state || state.mode !== "adding" || !state.addPrompt) {
       return;
@@ -418,6 +475,12 @@ export async function startBot() {
 
       if (state.mode !== "adding" || !state.addPrompt) {
         return next();
+      }
+
+      if (!isBotAdmin(from.id)) {
+        state.mode = "idle";
+        await denyNonAdminAdd(ctx);
+        return;
       }
 
       const add = state.addPrompt;

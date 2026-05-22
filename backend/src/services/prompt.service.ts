@@ -15,7 +15,6 @@ type PromptCreateInput = {
 };
 
 type PromptUpdateInput = Partial<Omit<PromptCreateInput, "userId" | "examples">> & {
-  isFavorite?: boolean;
   coverMediaUrl?: string | null;
   coverMediaType?: MediaType | null;
 };
@@ -27,6 +26,22 @@ const promptInclude = {
 } as const;
 
 export class PromptService {
+  private static async favoritePromptIds(userId?: number): Promise<Set<number>> {
+    if (!userId) return new Set();
+    const rows = await prisma.favorite.findMany({
+      where: { userId },
+      select: { promptId: true }
+    });
+    return new Set(rows.map((row) => row.promptId));
+  }
+
+  private static withFavorite<T extends { id: number }>(prompt: T, favoriteIds: Set<number>) {
+    return {
+      ...prompt,
+      isFavorite: favoriteIds.has(prompt.id)
+    };
+  }
+
   private static async attachKeywords(promptId: number, keywordNames: string[]) {
     if (!keywordNames.length) return;
 
@@ -53,6 +68,7 @@ export class PromptService {
     limit?: number;
     offset?: number;
     lite?: boolean;
+    userId?: number;
   }) {
     const where: any = {};
 
@@ -69,13 +85,14 @@ export class PromptService {
       where.category = { slug: params.category };
     }
 
-    if (params.favorite !== undefined) {
-      where.isFavorite = params.favorite === "true";
+    if (params.favorite === "true" && params.userId) {
+      where.favorites = { some: { userId: params.userId } };
     }
 
     const includeExamples = params.lite !== true;
+    const favoriteIds = await PromptService.favoritePromptIds(params.userId);
 
-    return prisma.prompt.findMany({
+    const prompts = await prisma.prompt.findMany({
       where,
       orderBy: { createdAt: "desc" },
       skip: params.offset ?? 0,
@@ -86,16 +103,21 @@ export class PromptService {
         ...(includeExamples ? { examples: true } : {})
       }
     });
+
+    return prompts.map((prompt) => PromptService.withFavorite(prompt, favoriteIds));
   }
 
-  static async getById(id: number) {
-    return prisma.prompt.findUnique({
+  static async getById(id: number, userId?: number) {
+    const favoriteIds = await PromptService.favoritePromptIds(userId);
+    const prompt = await prisma.prompt.findUnique({
       where: { id },
       include: {
         ...promptInclude,
         user: true
       }
     });
+    if (!prompt) return null;
+    return PromptService.withFavorite(prompt, favoriteIds);
   }
 
   static async create(input: PromptCreateInput) {
@@ -124,10 +146,11 @@ export class PromptService {
 
     await PromptService.attachKeywords(prompt.id, keywords);
 
-    return prisma.prompt.findUniqueOrThrow({
+    const created = await prisma.prompt.findUniqueOrThrow({
       where: { id: prompt.id },
       include: promptInclude
     });
+    return { ...created, isFavorite: false };
   }
 
   static async update(id: number, input: PromptUpdateInput) {
@@ -138,7 +161,6 @@ export class PromptService {
     if (input.content !== undefined) data.content = input.content;
     if (input.categoryId !== undefined) data.categoryId = input.categoryId;
     if (input.note !== undefined) data.note = input.note;
-    if (input.isFavorite !== undefined) data.isFavorite = input.isFavorite;
     if (input.coverMediaUrl !== undefined) data.coverMediaUrl = input.coverMediaUrl;
     if (input.coverMediaType !== undefined) data.coverMediaType = input.coverMediaType;
 
@@ -152,39 +174,48 @@ export class PromptService {
       await PromptService.attachKeywords(id, keywords);
     }
 
-    return prisma.prompt.findUniqueOrThrow({
+    const updated = await prisma.prompt.findUniqueOrThrow({
       where: { id },
       include: promptInclude
     });
+    return { ...updated, isFavorite: false };
   }
 
   static async remove(id: number) {
     return prisma.prompt.delete({ where: { id } });
   }
 
-  static async toggleFavorite(id: number) {
-    const prompt = await prisma.prompt.findUnique({ where: { id } });
+  static async toggleFavorite(promptId: number, userId: number) {
+    const prompt = await prisma.prompt.findUnique({ where: { id: promptId } });
     if (!prompt) {
       return null;
     }
-    await prisma.prompt.update({
-      where: { id },
-      data: { isFavorite: !prompt.isFavorite }
+
+    const existing = await prisma.favorite.findUnique({
+      where: {
+        userId_promptId: {
+          userId,
+          promptId
+        }
+      }
     });
-    return prisma.prompt.findUniqueOrThrow({
-      where: { id },
-      include: promptInclude
-    });
+
+    if (existing) {
+      await prisma.favorite.delete({ where: { id: existing.id } });
+    } else {
+      await prisma.favorite.create({
+        data: { userId, promptId }
+      });
+    }
+
+    return PromptService.getById(promptId, userId);
   }
 
-  static async incrementUsage(id: number) {
+  static async incrementUsage(id: number, userId?: number) {
     await prisma.prompt.update({
       where: { id },
       data: { usageCount: { increment: 1 } }
     });
-    return prisma.prompt.findUniqueOrThrow({
-      where: { id },
-      include: promptInclude
-    });
+    return PromptService.getById(id, userId);
   }
 }

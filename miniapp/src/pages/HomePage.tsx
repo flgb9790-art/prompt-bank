@@ -12,6 +12,7 @@ type Props = {
   onCreate?: () => void;
   onViewAll?: () => void;
   showCreateButton?: boolean;
+  isAdmin?: boolean;
 };
 
 export function HomePage({
@@ -23,13 +24,18 @@ export function HomePage({
   onTagClick,
   onCreate,
   onViewAll,
-  showCreateButton = true
+  showCreateButton = true,
+  isAdmin = false
 }: Props) {
+  const welcomeText = isAdmin
+    ? "Здесь хранятся все промпты банка. Легко находите, копируйте и управляйте контентом."
+    : "Готовые промпты для работы. Ищите по категориям и тегам, копируйте и сохраняйте в избранное.";
+
   return (
     <div className="space-y-4 pb-4">
       <section>
         <h1 className="mobile-welcome-title">Добро пожаловать! 👋</h1>
-        <p className="welcome-subtitle">Здесь хранятся все ваши промпты. Легко находите, копируйте и улучшайте.</p>
+        <p className="welcome-subtitle">{welcomeText}</p>
       </section>
 
       <section className="grid grid-cols-2 gap-2.5">

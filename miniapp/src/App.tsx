@@ -332,7 +332,9 @@ function MiniAppApp() {
   function handleSelectTag(tagName: string) {
     closePromptModal();
     setActiveTag(tagName);
+    setSearchQuery("");
     setTab("prompts");
+    setToastMessage(`Промпты с тегом: ${tagName}`);
   }
 
   async function handleCopyPrompt(prompt: Prompt) {
@@ -385,6 +387,7 @@ function MiniAppApp() {
           onTagClick={handleSelectTag}
           onCreate={isAdmin ? () => handleTabChange("add") : undefined}
           showCreateButton={isAdmin}
+          isAdmin={isAdmin}
           onViewAll={() => handleTabChange("prompts")}
         />
       )}

@@ -594,27 +594,51 @@ html.web-mode #root {
 
 .prompt-card-mobile {
   box-sizing: border-box;
-  height: 168px;
-  min-height: 168px;
-  max-height: 168px;
+  min-height: 196px;
+  height: auto;
   border-radius: 17px;
   background: #ffffff;
   border: 1px solid var(--border);
   box-shadow: 0 8px 24px rgba(16, 24, 40, 0.045);
   display: flex;
-  flex-direction: row;
+  flex-direction: column;
   align-items: stretch;
   position: relative;
   overflow: hidden;
-  padding: 11px 10px;
+  padding: 12px;
   gap: 10px;
   transition: transform 0.16s ease, box-shadow 0.16s ease;
-  cursor: pointer;
   text-align: left;
 }
 
-.prompt-card-mobile:active {
-  transform: scale(0.995);
+.prompt-card-mobile-row {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+  min-height: 132px;
+}
+
+.prompt-card-mobile-open {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  gap: 12px;
+  cursor: pointer;
+  text-align: left;
+  border: none;
+  background: transparent;
+  padding: 0;
+}
+
+.prompt-card-mobile-open:active {
+  opacity: 0.92;
+}
+
+.prompt-card-mobile-tags-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-top: 2px;
 }
 
 .prompt-card-body {
@@ -712,8 +736,6 @@ html.web-mode #root {
   display: flex;
   flex-wrap: wrap;
   gap: 5px;
-  max-height: 46px;
-  overflow: hidden;
 }
 
 .prompt-card-footer {

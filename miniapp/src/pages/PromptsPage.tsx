@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Category, Prompt } from "../types";
 import { SearchBar } from "../components/SearchBar";
 import { CategoryTabs } from "../components/CategoryTabs";
@@ -35,6 +35,12 @@ export function PromptsPage({
   const [category, setCategory] = useState<string>();
   const [sort, setSort] = useState<SortMode>("new");
 
+  useEffect(() => {
+    if (!activeTag) return;
+    setQuery("");
+    setCategory(undefined);
+  }, [activeTag]);
+
   const categoriesWithPrompts = useMemo(() => {
     const counts = prompts.reduce<Record<string, number>>((acc, prompt) => {
       acc[prompt.category.slug] = (acc[prompt.category.slug] ?? 0) + 1;
@@ -56,7 +62,10 @@ export function PromptsPage({
       list = list.filter((item) => item.category.slug === category);
     }
     if (activeTag) {
-      list = list.filter((item) => item.keywords.some((itemKeyword) => itemKeyword.keyword.name === activeTag));
+      const tagLow = activeTag.toLowerCase();
+      list = list.filter((item) =>
+        item.keywords.some((itemKeyword) => itemKeyword.keyword.name.toLowerCase() === tagLow)
+      );
     }
     if (sort === "new") list.sort((a, b) => Number(new Date(b.createdAt)) - Number(new Date(a.createdAt)));
     if (sort === "old") list.sort((a, b) => Number(new Date(a.createdAt)) - Number(new Date(b.createdAt)));
@@ -68,12 +77,18 @@ export function PromptsPage({
   return (
     <div className="space-y-3 pb-1">
       {activeTag ? (
-        <button type="button" className="chip active" onClick={onClearTag}>
-          {activeTag} ×
-        </button>
+        <div className="space-y-2">
+          <h2 className="text-base font-semibold text-[var(--text)]">
+            Тег: {activeTag}
+            <span className="ml-2 text-sm font-normal text-[var(--muted)]">({filtered.length})</span>
+          </h2>
+          <button type="button" className="chip active" onClick={onClearTag}>
+            Сбросить фильтр ×
+          </button>
+        </div>
       ) : null}
       <SearchBar value={query} onChange={setQuery} placeholder="Поиск по названию, тексту, тегам..." />
-      <CategoryTabs categories={categoriesWithPrompts} active={category} onSelect={setCategory} />
+      {!activeTag ? <CategoryTabs categories={categoriesWithPrompts} active={category} onSelect={setCategory} /> : null}
 
       <select value={sort} onChange={(event) => setSort(event.target.value as SortMode)} className="form-select">
         <option value="new">Новые</option>
