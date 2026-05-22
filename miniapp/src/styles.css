@@ -1918,7 +1918,7 @@ button.brand-logo {
 
 /* Settings */
 .settings-page {
-  padding: 28px;
+  padding: 20px;
   max-width: 1440px;
 }
 
@@ -1928,12 +1928,12 @@ button.brand-logo {
 }
 
 .settings-page-header {
-  margin-bottom: 24px;
+  margin-bottom: 16px;
 }
 
 .settings-page-title {
-  font-size: 32px;
-  line-height: 40px;
+  font-size: 28px;
+  line-height: 34px;
   font-weight: 800;
   letter-spacing: -0.03em;
   color: var(--text);
@@ -1941,41 +1941,54 @@ button.brand-logo {
 
 .settings-page-title--mini,
 .history-page-title--mini {
-  font-size: 28px;
-  line-height: 34px;
+  font-size: 24px;
+  line-height: 30px;
 }
 
 .settings-page-subtitle {
-  margin-top: 6px;
-  font-size: 15px;
-  line-height: 24px;
+  margin-top: 4px;
+  font-size: 14px;
+  line-height: 22px;
   color: var(--muted);
 }
 
 .settings-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 24px;
+  gap: 16px;
+}
+
+.settings-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.settings-stack--mini {
+  gap: 10px;
 }
 
 .settings-card {
   background: var(--card);
   border: 1px solid var(--border);
-  border-radius: 20px;
+  border-radius: 16px;
   box-shadow: var(--shadow-card);
-  padding: 28px;
-  min-height: 230px;
+  padding: 20px;
+  min-height: auto;
+}
+
+.settings-card--compact {
+  padding: 16px 18px;
 }
 
 .settings-card--full {
   grid-column: 1 / -1;
-  min-height: auto;
 }
 
 .settings-card-title {
-  margin-bottom: 22px;
-  font-size: 18px;
-  line-height: 26px;
+  margin-bottom: 14px;
+  font-size: 16px;
+  line-height: 24px;
   font-weight: 750;
   color: var(--text);
 }
@@ -1983,63 +1996,69 @@ button.brand-logo {
 .settings-profile-content {
   display: flex;
   align-items: flex-start;
-  gap: 24px;
-}
-
-.settings-profile-content--mobile {
   gap: 16px;
 }
 
+.settings-profile-content--mobile {
+  gap: 12px;
+}
+
 .settings-avatar {
-  width: 96px;
-  height: 96px;
+  width: 72px;
+  height: 72px;
   border-radius: 999px;
   background: linear-gradient(135deg, #8b5cf6, #6d5dfc);
   color: #fff;
-  font-size: 42px;
+  font-size: 30px;
   font-weight: 800;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 16px 34px rgba(109, 93, 252, 0.26);
+  box-shadow: 0 12px 24px rgba(109, 93, 252, 0.22);
   flex-shrink: 0;
 }
 
+.settings-avatar-image {
+  object-fit: cover;
+  background: #f3f4f6;
+  box-shadow: 0 12px 24px rgba(16, 24, 40, 0.12);
+}
+
 .settings-avatar--mobile {
-  width: 72px;
-  height: 72px;
-  font-size: 32px;
+  width: 56px;
+  height: 56px;
+  font-size: 24px;
 }
 
 .settings-profile-name {
-  font-size: 22px;
-  line-height: 28px;
+  font-size: 18px;
+  line-height: 24px;
   font-weight: 800;
   color: var(--text);
 }
 
 .settings-profile-name--mobile {
-  font-size: 20px;
+  font-size: 17px;
 }
 
 .settings-profile-meta {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-top: 8px;
-  font-size: 15px;
+  margin-top: 6px;
+  font-size: 14px;
   color: var(--muted);
 }
 
 .settings-logout-btn {
-  margin-top: 28px;
-  height: 44px;
-  padding: 0 20px;
-  border-radius: 12px;
+  margin-top: 16px;
+  height: 38px;
+  padding: 0 16px;
+  border-radius: 10px;
   border: 1px solid var(--border);
   background: #fff;
   color: var(--text-soft);
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 650;
 }
 
@@ -2058,14 +2077,14 @@ button.brand-logo {
 .settings-account-status {
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding-bottom: 22px;
+  gap: 12px;
+  padding-bottom: 14px;
   border-bottom: 1px solid var(--border-soft);
 }
 
 .settings-account-icon {
-  width: 54px;
-  height: 54px;
+  width: 44px;
+  height: 44px;
   border-radius: 999px;
   background: var(--green-soft);
   color: var(--green);
@@ -2100,10 +2119,10 @@ button.brand-logo {
 }
 
 .settings-info-rows {
-  margin-top: 20px;
+  margin-top: 14px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 10px;
 }
 
 .settings-info-row {
@@ -2172,16 +2191,20 @@ button.brand-logo {
 .settings-action-card {
   background: var(--card);
   border: 1px solid var(--border);
-  border-radius: 20px;
+  border-radius: 16px;
   box-shadow: var(--shadow-card);
-  padding: 28px;
-  min-height: 150px;
+  padding: 18px;
+  min-height: auto;
   display: flex;
   align-items: center;
   justify-content: space-between;
   cursor: pointer;
   transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
   text-align: left;
+}
+
+.settings-action-card--compact {
+  padding: 14px 16px;
 }
 
 .settings-action-card:hover {
@@ -2197,13 +2220,13 @@ button.brand-logo {
 .settings-action-card-left {
   display: flex;
   align-items: center;
-  gap: 22px;
+  gap: 14px;
 }
 
 .settings-action-icon {
-  width: 78px;
-  height: 78px;
-  border-radius: 18px;
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
   background: var(--purple-soft);
   color: var(--primary);
   display: flex;
@@ -2212,23 +2235,29 @@ button.brand-logo {
   flex-shrink: 0;
 }
 
+.settings-action-icon--compact {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+}
+
 .settings-action-title {
-  font-size: 18px;
-  line-height: 26px;
+  font-size: 16px;
+  line-height: 22px;
   font-weight: 750;
   color: var(--text);
 }
 
 .settings-action-description {
-  margin-top: 6px;
-  font-size: 14px;
-  line-height: 22px;
+  margin-top: 4px;
+  font-size: 13px;
+  line-height: 20px;
   color: var(--muted);
 }
 
 .settings-action-arrow {
-  width: 54px;
-  height: 54px;
+  width: 40px;
+  height: 40px;
   border-radius: 999px;
   border: 1px solid var(--border);
   background: #fff;
@@ -2244,8 +2273,13 @@ button.brand-logo {
   transform: translateX(3px);
 }
 
+.settings-action-arrow--compact {
+  width: 36px;
+  height: 36px;
+}
+
 .settings-privacy-row {
-  min-height: 64px;
+  min-height: 56px;
   display: flex;
   align-items: center;
   gap: 14px;
@@ -2318,9 +2352,14 @@ button.brand-logo {
   transform: translateX(20px);
 }
 
+.settings-switch:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 .settings-profile-card-mobile {
   min-height: auto;
-  margin-top: 18px;
+  margin-top: 0;
 }
 
 /* History */

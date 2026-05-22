@@ -69,6 +69,7 @@ export type TelegramUser = {
   username?: string;
   first_name?: string;
   last_name?: string;
+  photo_url?: string;
 };
 
 export type PromptCreatePayload = {

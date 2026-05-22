@@ -1,15 +1,9 @@
-import {
-  ArrowRight,
-  Copy,
-  Eye,
-  Heart,
-  Mail,
-  Send,
-  Shield
-} from "lucide-react";
+import { useEffect, useState } from "react";
+import { ArrowRight, Copy, Eye, Mail, Send, Shield } from "lucide-react";
 import type { MeResponse, TelegramUser, UserSettings } from "../../types";
 import { ToggleSwitch } from "../ui/ToggleSwitch";
 import { formatRegistrationDate } from "../../utils/formatRelativeTime";
+import { ProfileAvatar } from "./ProfileAvatar";
 
 type Props = {
   user: TelegramUser | null;
@@ -35,11 +29,6 @@ function displayName(user: TelegramUser | null, me: MeResponse | null) {
   return "Пользователь";
 }
 
-function avatarLetter(user: TelegramUser | null, me: MeResponse | null) {
-  const name = displayName(user, me);
-  return name.replace("@", "").charAt(0).toUpperCase() || "P";
-}
-
 export function SettingsScreen({
   user,
   me,
@@ -56,6 +45,31 @@ export function SettingsScreen({
   const settings = me?.settings;
   const username = user?.username ?? me?.user?.username ?? null;
   const isMini = variant === "mini";
+  const [privacySettings, setPrivacySettings] = useState({
+    saveViewHistory: settings?.saveViewHistory ?? true,
+    saveCopyHistory: settings?.saveCopyHistory ?? true
+  });
+  const [savingKey, setSavingKey] = useState<"saveViewHistory" | "saveCopyHistory" | null>(null);
+
+  useEffect(() => {
+    setPrivacySettings({
+      saveViewHistory: settings?.saveViewHistory ?? true,
+      saveCopyHistory: settings?.saveCopyHistory ?? true
+    });
+  }, [settings?.saveViewHistory, settings?.saveCopyHistory]);
+
+  async function handlePrivacyToggle(key: "saveViewHistory" | "saveCopyHistory", checked: boolean) {
+    const previous = privacySettings;
+    setPrivacySettings((current) => ({ ...current, [key]: checked }));
+    setSavingKey(key);
+    try {
+      await onUpdateSettings({ [key]: checked });
+    } catch {
+      setPrivacySettings(previous);
+    } finally {
+      setSavingKey(null);
+    }
+  }
 
   if (!isAuthenticated) {
     return (
@@ -75,10 +89,10 @@ export function SettingsScreen({
   }
 
   const profileCard = (
-    <section className="settings-card">
+    <section className="settings-card settings-card--compact">
       <h2 className="settings-card-title">Профиль</h2>
       <div className="settings-profile-content">
-        <div className="settings-avatar">{avatarLetter(user, me)}</div>
+        <ProfileAvatar user={user} me={me} />
         <div className="min-w-0">
           <p className="settings-profile-name">{displayName(user, me)}</p>
           {username ? (
@@ -102,11 +116,11 @@ export function SettingsScreen({
   );
 
   const accountCard = (
-    <section className="settings-card">
+    <section className="settings-card settings-card--compact">
       <h2 className="settings-card-title">Аккаунт</h2>
       <div className="settings-account-status">
         <div className="settings-account-icon">
-          <Send size={26} />
+          <Send size={22} />
         </div>
         <div className="min-w-0 flex-1">
           <p className="settings-account-title">Telegram подключен</p>
@@ -128,81 +142,53 @@ export function SettingsScreen({
           <span>Сейчас</span>
         </div>
       </div>
-      <div className="settings-mini-stats">
-        <div className="settings-mini-stat">
-          <div className="settings-mini-stat-icon bg-[var(--pink-soft)] text-[var(--pink)]">
-            <Heart size={18} />
-          </div>
-          <div>
-            <p className="settings-mini-stat-value">{stats?.favoritesCount ?? 0}</p>
-            <p className="settings-mini-stat-label">Избранных</p>
-          </div>
-        </div>
-        <div className="settings-mini-stat">
-          <div className="settings-mini-stat-icon bg-[var(--blue-soft)] text-[var(--blue)]">
-            <Eye size={18} />
-          </div>
-          <div>
-            <p className="settings-mini-stat-value">{stats?.viewedCount ?? 0}</p>
-            <p className="settings-mini-stat-label">Просмотров</p>
-          </div>
-        </div>
-        <div className="settings-mini-stat">
-          <div className="settings-mini-stat-icon bg-[var(--purple-soft)] text-[var(--purple)]">
-            <Copy size={18} />
-          </div>
-          <div>
-            <p className="settings-mini-stat-value">{stats?.copiedCount ?? 0}</p>
-            <p className="settings-mini-stat-label">Скопировано</p>
-          </div>
-        </div>
-      </div>
     </section>
   );
 
   const actionCards = (
     <>
-      <button type="button" className="settings-action-card" onClick={onNavigateCopied}>
+      <button type="button" className="settings-action-card settings-action-card--compact" onClick={onNavigateCopied}>
         <div className="settings-action-card-left">
-          <div className="settings-action-icon">
-            <Copy size={36} strokeWidth={2} />
+          <div className="settings-action-icon settings-action-icon--compact">
+            <Copy size={28} strokeWidth={2} />
           </div>
           <div>
             <p className="settings-action-title">Скопированные промпты</p>
             <p className="settings-action-description">Посмотреть историю скопированных промптов</p>
           </div>
         </div>
-        <div className="settings-action-arrow">
-          <ArrowRight size={24} />
+        <div className="settings-action-arrow settings-action-arrow--compact">
+          <ArrowRight size={20} />
         </div>
       </button>
-      <button type="button" className="settings-action-card" onClick={onNavigateViewed}>
+      <button type="button" className="settings-action-card settings-action-card--compact" onClick={onNavigateViewed}>
         <div className="settings-action-card-left">
-          <div className="settings-action-icon">
-            <Eye size={36} strokeWidth={2} />
+          <div className="settings-action-icon settings-action-icon--compact">
+            <Eye size={28} strokeWidth={2} />
           </div>
           <div>
             <p className="settings-action-title">Просмотренные промпты</p>
             <p className="settings-action-description">Посмотреть историю просмотренных промптов</p>
           </div>
         </div>
-        <div className="settings-action-arrow">
-          <ArrowRight size={24} />
+        <div className="settings-action-arrow settings-action-arrow--compact">
+          <ArrowRight size={20} />
         </div>
       </button>
     </>
   );
 
   const privacyCard = (
-    <section className="settings-card settings-card--full">
+    <section className="settings-card settings-card--full settings-card--compact">
       <h2 className="settings-card-title">Приватность</h2>
       <div className="settings-privacy-row">
         <div className="settings-privacy-icon">
           <Eye size={20} />
         </div>
         <ToggleSwitch
-          checked={settings?.saveViewHistory ?? true}
-          onChange={(checked: boolean) => void onUpdateSettings({ saveViewHistory: checked })}
+          checked={privacySettings.saveViewHistory}
+          disabled={savingKey === "saveViewHistory"}
+          onChange={(checked) => void handlePrivacyToggle("saveViewHistory", checked)}
           label="Сохранять историю просмотров"
           description="Сохранять промпты, которые вы просматриваете"
         />
@@ -212,8 +198,9 @@ export function SettingsScreen({
           <Shield size={20} />
         </div>
         <ToggleSwitch
-          checked={settings?.saveCopyHistory ?? true}
-          onChange={(checked: boolean) => void onUpdateSettings({ saveCopyHistory: checked })}
+          checked={privacySettings.saveCopyHistory}
+          disabled={savingKey === "saveCopyHistory"}
+          onChange={(checked) => void handlePrivacyToggle("saveCopyHistory", checked)}
           label="Сохранять историю копирования"
           description="Сохранять скопированные промпты для быстрого доступа"
         />
@@ -228,36 +215,19 @@ export function SettingsScreen({
           <h1 className="settings-page-title settings-page-title--mini">Профиль</h1>
           <p className="settings-page-subtitle">Ваш аккаунт и личная история промптов</p>
         </header>
-        <section className="settings-card settings-profile-card-mobile">
-          <div className="settings-profile-content settings-profile-content--mobile">
-            <div className="settings-avatar settings-avatar--mobile">{avatarLetter(user, me)}</div>
-            <div className="min-w-0">
-              <p className="settings-profile-name settings-profile-name--mobile">{displayName(user, me)}</p>
-              {username ? <p className="settings-profile-meta">@{username}</p> : null}
-              {showLogout ? (
-                <button type="button" className="settings-logout-btn settings-logout-btn--mobile" onClick={onLogout}>
-                  Выйти
-                </button>
-              ) : null}
+        <div className="settings-stack settings-stack--mini">
+          <section className="settings-card settings-card--compact settings-profile-card-mobile">
+            <div className="settings-profile-content settings-profile-content--mobile">
+              <ProfileAvatar user={user} me={me} size="sm" />
+              <div className="min-w-0">
+                <p className="settings-profile-name settings-profile-name--mobile">{displayName(user, me)}</p>
+                {username ? <p className="settings-profile-meta">@{username}</p> : null}
+              </div>
             </div>
-          </div>
-          <div className="settings-mini-stats settings-mini-stats--mobile">
-            <div className="settings-mini-stat settings-mini-stat--mobile">
-              <p className="settings-mini-stat-value">{stats?.favoritesCount ?? 0}</p>
-              <p className="settings-mini-stat-label">Избранных</p>
-            </div>
-            <div className="settings-mini-stat settings-mini-stat--mobile">
-              <p className="settings-mini-stat-value">{stats?.viewedCount ?? 0}</p>
-              <p className="settings-mini-stat-label">Просмотров</p>
-            </div>
-            <div className="settings-mini-stat settings-mini-stat--mobile">
-              <p className="settings-mini-stat-value">{stats?.copiedCount ?? 0}</p>
-              <p className="settings-mini-stat-label">Скопировано</p>
-            </div>
-          </div>
-        </section>
-        {actionCards}
-        {privacyCard}
+          </section>
+          {actionCards}
+          {privacyCard}
+        </div>
       </div>
     );
   }

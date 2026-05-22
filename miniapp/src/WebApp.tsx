@@ -140,6 +140,12 @@ export function WebApp() {
     setPage(1);
   }, [activeCategory, activeTag, search, sort, path]);
 
+  useEffect(() => {
+    if (path === "/settings" && user) {
+      void refreshMe();
+    }
+  }, [path, user?.id]);
+
   const categoriesWithPrompts = useMemo(
     () => categories.filter((category) => (category.promptCount ?? 0) > 0),
     [categories]
@@ -678,18 +684,8 @@ export function WebApp() {
   }
 
   async function handleUpdateSettings(settings: Partial<{ saveViewHistory: boolean; saveCopyHistory: boolean }>) {
-    const updated = await api.updateSettings(settings);
-    setMe((current) =>
-      current
-        ? {
-            ...current,
-            settings: {
-              ...current.settings,
-              ...updated
-            }
-          }
-        : current
-    );
+    await api.updateSettings(settings);
+    await refreshMe();
   }
 
   function handleSelectTag(tagName: string) {

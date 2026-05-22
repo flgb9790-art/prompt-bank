@@ -474,6 +474,12 @@ function MiniAppApp() {
     void refreshFavoritesList(true);
   }, [tab]);
 
+  useEffect(() => {
+    if (tab === "profile" && !profileScreen) {
+      void refreshMe();
+    }
+  }, [tab, profileScreen]);
+
   function syncFavoritePrompts(next: Prompt) {
     setFavoritePrompts((prev) => {
       let result: Prompt[];
@@ -617,18 +623,8 @@ function MiniAppApp() {
   }
 
   async function handleUpdateSettings(settings: Partial<{ saveViewHistory: boolean; saveCopyHistory: boolean }>) {
-    const updated = await api.updateSettings(settings);
-    setMe((current) =>
-      current
-        ? {
-            ...current,
-            settings: {
-              ...current.settings,
-              ...updated
-            }
-          }
-        : current
-    );
+    await api.updateSettings(settings);
+    await refreshMe();
   }
 
   function handleTabChange(nextTab: TabKey) {
