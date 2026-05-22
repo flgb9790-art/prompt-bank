@@ -18,6 +18,7 @@ import { WebLayout } from "./components/web/WebLayout";
 import { MobileWebShell } from "./components/web/MobileWebShell";
 import { AuthButton } from "./components/web/AuthButton";
 import { clearPromptShareUrl, parsePromptIdFromLocation, setPromptShareUrl } from "./utils/promptShare";
+import { mergePromptUpdate } from "./utils/mergePrompt";
 
 type SortValue = "new" | "old" | "usage";
 type ViewMode = "grid" | "list";
@@ -263,9 +264,12 @@ export function WebApp() {
   function upsertPromptInList(nextPrompt: Prompt) {
     setPrompts((prev) => {
       const index = prev.findIndex((item) => item.id === nextPrompt.id);
-      if (index === -1) return [nextPrompt, ...prev];
+      if (index === -1) {
+        if (!nextPrompt.category) return prev;
+        return [nextPrompt, ...prev];
+      }
       const copy = [...prev];
-      copy[index] = nextPrompt;
+      copy[index] = mergePromptUpdate(prev[index], nextPrompt);
       return copy;
     });
   }
@@ -317,13 +321,26 @@ export function WebApp() {
       askAuth();
       return;
     }
+    const previous = prompts.find((item) => item.id === id);
+    if (!previous) return;
+
+    const optimistic = { ...previous, isFavorite: !previous.isFavorite };
+    setPrompts((prev) => prev.map((item) => (item.id === id ? optimistic : item)));
+    if (selectedPrompt?.id === id) {
+      setSelectedPrompt(optimistic);
+    }
+
     try {
       const updated = await api.toggleFavorite(id);
       upsertPromptInList(updated);
-      if (selectedPrompt?.id === id) setSelectedPrompt(updated);
+      if (selectedPrompt?.id === id) {
+        setSelectedPrompt((current) => (current ? mergePromptUpdate(current, updated) : updated));
+      }
     } catch (err) {
+      setPrompts((prev) => prev.map((item) => (item.id === id ? previous : item)));
+      if (selectedPrompt?.id === id) setSelectedPrompt(previous);
       if (!handleUnauthorized(err)) {
-        setToast("Ошибка загрузки");
+        setToast("Не удалось обновить избранное");
       }
     }
   }
@@ -379,6 +396,10 @@ export function WebApp() {
       askAuth();
       return;
     }
+    if (!isAdmin) {
+      setToast("Добавлять промпты могут только администраторы");
+      return;
+    }
     try {
       const created = await api.createPrompt(payload);
       upsertPromptInList(created);
@@ -395,6 +416,10 @@ export function WebApp() {
   function handleCreateClick() {
     if (!isAuthenticated) {
       askAuth();
+      return;
+    }
+    if (!isAdmin) {
+      setToast("Добавлять промпты могут только администраторы");
       return;
     }
     setIsAddModalOpen(true);
@@ -618,7 +643,7 @@ export function WebApp() {
         onShareLinkCopied={() => setToast("Ссылка скопирована")}
         onTagClick={handleSelectTag}
       />
-      {isAddModalOpen && isAuthenticated ? (
+      {isAddModalOpen && isAuthenticated && isAdmin ? (
         <div className="modal-overlay fixed inset-0 z-[75] grid place-items-center p-4">
           <div className="modal-panel max-h-[90vh] w-full max-w-[720px] overflow-y-auto p-6">
             <h3 className="mb-4 text-lg font-semibold text-[var(--text)]">Новый промпт</h3>
@@ -667,6 +692,7 @@ export function WebApp() {
               search={search}
               onSearchChange={setSearch}
               user={user}
+              canCreate={isAdmin}
               onCreatePrompt={handleCreateClick}
               onLoginTelegram={loginTelegram}
               onOpenSettings={() => navigate("/settings")}
@@ -684,6 +710,7 @@ export function WebApp() {
         search={search}
         onSearchChange={setSearch}
         onNavigate={navigate}
+        canCreate={isAdmin}
         onCreatePrompt={handleCreateClick}
         headerRight={
           <AuthButton

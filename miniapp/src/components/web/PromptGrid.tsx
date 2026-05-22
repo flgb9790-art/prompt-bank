@@ -27,7 +27,7 @@ export function PromptGrid({ prompts, view, onOpenPrompt, onCopyPrompt, onToggle
           <PromptCard
             key={prompt.id}
             prompt={prompt}
-            variant="mobile"
+            variant="list"
             onOpen={onOpenPrompt}
             onCopy={onCopyPrompt}
             onToggleFavorite={onToggleFavorite}

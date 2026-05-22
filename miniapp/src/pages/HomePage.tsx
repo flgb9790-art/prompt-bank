@@ -10,7 +10,7 @@ type Props = {
   onCopyPrompt: (prompt: Prompt) => void;
   onToggleFavorite: (id: number) => void;
   onTagClick?: (tag: string) => void;
-  onCreate: () => void;
+  onCreate?: () => void;
   onViewAll?: () => void;
   showCreateButton?: boolean;
 };
@@ -53,7 +53,7 @@ export function HomePage({ prompts, stats, onOpenPrompt, onCopyPrompt, onToggleF
         )}
       </section>
 
-      {showCreateButton ? (
+      {showCreateButton && onCreate ? (
         <button type="button" onClick={onCreate} className="cta-button">
           ➕ Новый промпт
         </button>

@@ -28,6 +28,9 @@ router.post("/", async (req, res, next) => {
     if (!readTelegramId(req)) {
       return res.status(401).json({ error: "AUTH_REQUIRED" });
     }
+    if (!isAdminRequest(req)) {
+      return res.status(403).json({ message: "Only admin can create prompts" });
+    }
     const requesterTelegramId = readTelegramId(req);
     let userId = Number(req.body.userId);
 
@@ -111,14 +114,10 @@ router.delete("/:id", async (req, res, next) => {
 router.post("/:id/favorite", authRequired, async (req, res, next) => {
   try {
     const id = Number(req.params.id);
-    const prompt = await prisma.prompt.findUnique({ where: { id } });
-    if (!prompt) {
+    const updated = await PromptService.toggleFavorite(id);
+    if (!updated) {
       return res.status(404).json({ message: "Prompt not found" });
     }
-    const updated = await prisma.prompt.update({
-      where: { id },
-      data: { isFavorite: !prompt.isFavorite }
-    });
     res.json(updated);
   } catch (error) {
     next(error);
@@ -128,10 +127,7 @@ router.post("/:id/favorite", authRequired, async (req, res, next) => {
 router.post("/:id/usage", async (req, res, next) => {
   try {
     const id = Number(req.params.id);
-    const updated = await prisma.prompt.update({
-      where: { id },
-      data: { usageCount: { increment: 1 } }
-    });
+    const updated = await PromptService.incrementUsage(id);
     res.json(updated);
   } catch (error) {
     next(error);

@@ -6,6 +6,7 @@ type Props = {
   search: string;
   onSearchChange: (value: string) => void;
   user: TelegramUser | null;
+  canCreate?: boolean;
   onCreatePrompt: () => void;
   onLoginTelegram: () => void;
   onOpenSettings: () => void;
@@ -17,6 +18,7 @@ export function Topbar({
   search,
   onSearchChange,
   user,
+  canCreate = false,
   onCreatePrompt,
   onLoginTelegram,
   onOpenSettings,
@@ -42,11 +44,13 @@ export function Topbar({
         </div>
       </div>
       <div className="flex shrink-0 items-center gap-3">
-        <button type="button" onClick={onCreatePrompt} className="btn-primary hidden md:inline-flex">
-          <Plus size={16} />
-          <span className="hidden lg:inline">Новый промпт</span>
-          <span className="lg:hidden">Новый</span>
-        </button>
+        {canCreate ? (
+          <button type="button" onClick={onCreatePrompt} className="btn-primary hidden md:inline-flex">
+            <Plus size={16} />
+            <span className="hidden lg:inline">Новый промпт</span>
+            <span className="lg:hidden">Новый</span>
+          </button>
+        ) : null}
         <AuthButton user={user} onLoginTelegram={onLoginTelegram} onOpenSettings={onOpenSettings} onLogout={onLogout} />
       </div>
     </div>

@@ -786,6 +786,94 @@ html.web-mode #root {
   place-items: center;
 }
 
+/* List view cards */
+.prompt-card-list {
+  box-sizing: border-box;
+  height: 118px;
+  min-height: 118px;
+  max-height: 118px;
+  border-radius: 16px;
+  background: #ffffff;
+  border: 1px solid var(--border);
+  box-shadow: 0 6px 18px rgba(16, 24, 40, 0.04);
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  overflow: hidden;
+  padding: 10px;
+  gap: 10px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.prompt-card-preview--list {
+  width: 72px;
+  flex: 0 0 72px;
+  aspect-ratio: 4 / 5;
+  height: auto;
+  border-radius: 12px;
+}
+
+.prompt-card-body--list {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+}
+
+.prompt-card-title--list {
+  font-size: 15px;
+  line-height: 20px;
+  padding-right: 0;
+  -webkit-line-clamp: 1;
+}
+
+.prompt-card-body--list .category-badge {
+  margin-top: 4px;
+}
+
+.prompt-card-excerpt--list {
+  margin-top: 4px;
+  font-size: 13px;
+  line-height: 17px;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  flex: 0 1 auto;
+}
+
+.prompt-card-tags--list {
+  margin-top: auto;
+  padding-top: 4px;
+  max-height: 22px;
+}
+
+.prompt-card-actions {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  padding-bottom: 2px;
+}
+
+.prompt-card-action.active {
+  color: var(--yellow);
+}
+
+.sort-select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23667085' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  background-size: 16px;
+  padding-right: 42px !important;
+}
+
 /* Category badges */
 .badge-image {
   background: var(--purple-soft);

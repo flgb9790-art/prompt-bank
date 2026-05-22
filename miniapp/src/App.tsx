@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { clearPromptShareUrl, parsePromptIdFromLocation, setPromptShareUrl } from "./utils/promptShare";
+import { mergePromptUpdate } from "./utils/mergePrompt";
 import { api, setAuthTelegramId } from "./api";
 import type { Category, Prompt, PromptCreatePayload, TelegramUser } from "./types";
 import type { PromptEditPayload } from "./components/PromptDetailsModal";
@@ -170,15 +171,34 @@ function MiniAppApp() {
   }, [user.id]);
 
   async function handleSavePrompt(payload: PromptCreatePayload) {
+    if (!isAdmin) {
+      setToastMessage("Добавлять промпты могут только администраторы");
+      return;
+    }
     const created = await api.createPrompt(payload);
     setCreatedPromptId(created.id);
     setPrompts((prev) => [created, ...prev]);
   }
 
   async function handleToggleFavorite(id: number) {
-    const updated = await api.toggleFavorite(id);
-    setPrompts((prev) => prev.map((item) => (item.id === id ? updated : item)));
-    if (selectedPrompt?.id === id) setSelectedPrompt(updated);
+    const previous = prompts.find((item) => item.id === id);
+    if (!previous) return;
+
+    const optimistic = { ...previous, isFavorite: !previous.isFavorite };
+    setPrompts((prev) => prev.map((item) => (item.id === id ? optimistic : item)));
+    if (selectedPrompt?.id === id) setSelectedPrompt(optimistic);
+
+    try {
+      const updated = await api.toggleFavorite(id);
+      setPrompts((prev) => prev.map((item) => (item.id === id ? mergePromptUpdate(item, updated) : item)));
+      if (selectedPrompt?.id === id) {
+        setSelectedPrompt((current) => (current ? mergePromptUpdate(current, updated) : updated));
+      }
+    } catch {
+      setPrompts((prev) => prev.map((item) => (item.id === id ? previous : item)));
+      if (selectedPrompt?.id === id) setSelectedPrompt(previous);
+      setToastMessage("Не удалось обновить избранное");
+    }
   }
 
   async function openPromptById(promptId: number, replaceUrl = false) {
@@ -292,7 +312,8 @@ function MiniAppApp() {
           onCopyPrompt={handleCopyPrompt}
           onToggleFavorite={handleToggleFavorite}
           onTagClick={handleSelectTag}
-          onCreate={() => setTab("add")}
+          onCreate={isAdmin ? () => setTab("add") : undefined}
+          showCreateButton={isAdmin}
           onViewAll={() => setTab("prompts")}
         />
       )}

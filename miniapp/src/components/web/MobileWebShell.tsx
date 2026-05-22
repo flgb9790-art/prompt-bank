@@ -8,6 +8,7 @@ type Props = {
   search: string;
   onSearchChange: (value: string) => void;
   onNavigate: (path: RouteKey) => void;
+  canCreate?: boolean;
   onCreatePrompt: () => void;
   headerRight: ReactNode;
   children: ReactNode;
@@ -26,6 +27,7 @@ export function MobileWebShell({
   search,
   onSearchChange,
   onNavigate,
+  canCreate = false,
   onCreatePrompt,
   headerRight,
   children
@@ -50,7 +52,7 @@ export function MobileWebShell({
 
       <main className="flex-1 overflow-y-auto px-4 pb-28 pt-4">{children}</main>
 
-      {currentPath !== "/settings" ? (
+      {canCreate && currentPath !== "/settings" ? (
         <button type="button" onClick={onCreatePrompt} className="cta-button mx-0 mb-[88px]">
           <Plus size={20} />
           Новый промпт

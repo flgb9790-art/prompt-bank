@@ -1,0 +1,1 @@
+{"root":["./src/auth.ts","./src/bot.ts","./src/config.ts","./src/db.ts","./src/index.ts","./src/keywordextractor.ts","./src/routes/categories.routes.ts","./src/routes/prompts.routes.ts","./src/routes/tags.routes.ts","./src/routes/upload.routes.ts","./src/services/media.service.ts","./src/services/prompt.service.ts","./src/services/storage.service.ts"],"version":"5.9.3"}

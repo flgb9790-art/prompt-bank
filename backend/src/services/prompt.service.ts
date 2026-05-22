@@ -161,4 +161,30 @@ export class PromptService {
   static async remove(id: number) {
     return prisma.prompt.delete({ where: { id } });
   }
+
+  static async toggleFavorite(id: number) {
+    const prompt = await prisma.prompt.findUnique({ where: { id } });
+    if (!prompt) {
+      return null;
+    }
+    await prisma.prompt.update({
+      where: { id },
+      data: { isFavorite: !prompt.isFavorite }
+    });
+    return prisma.prompt.findUniqueOrThrow({
+      where: { id },
+      include: promptInclude
+    });
+  }
+
+  static async incrementUsage(id: number) {
+    await prisma.prompt.update({
+      where: { id },
+      data: { usageCount: { increment: 1 } }
+    });
+    return prisma.prompt.findUniqueOrThrow({
+      where: { id },
+      include: promptInclude
+    });
+  }
 }
