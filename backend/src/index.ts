@@ -14,6 +14,7 @@ import { extractKeywords } from "./keywordExtractor";
 import { startBot } from "./bot";
 import { authRequired, isAdminRequest, readTelegramId } from "./auth";
 import { PromptService } from "./services/prompt.service";
+import { migrateSupabaseMedia } from "./services/migrate-supabase-media.service";
 
 const app = express();
 
@@ -189,10 +190,12 @@ async function ensureSearchExtensions() {
 }
 
 async function bootstrap() {
-  // Tables are created once via `npx prisma db push` locally (direct URL).
-  // Railway cannot reach Supabase direct :5432; runtime uses DATABASE_URL pooler only.
+  // Schema: `npx prisma db push` against Railway Postgres (DATABASE_PUBLIC_URL from local).
   await seedInitialData();
   await ensureSearchExtensions();
+  if (process.env.MIGRATE_SUPABASE_MEDIA === "true") {
+    await migrateSupabaseMedia();
+  }
   app.listen(config.port, () => {
     console.log(`Backend running on http://localhost:${config.port}`);
   });

@@ -23,12 +23,21 @@ router.get("/", async (req, res, next) => {
       usageTotal: 0
     };
 
-    if (telegramId) {
-      const user = await prisma.user.upsert({
-        where: { telegramId },
-        update: {},
-        create: { telegramId }
-      });
+    const categoriesPromise = prisma.category.findMany({
+      orderBy: { sortOrder: "asc" },
+      include: { _count: { select: { prompts: true } } }
+    });
+    const userPromise = telegramId
+      ? prisma.user.upsert({
+          where: { telegramId },
+          update: {},
+          create: { telegramId }
+        })
+      : Promise.resolve(null);
+
+    const [user, categoriesRaw] = await Promise.all([userPromise, categoriesPromise]);
+
+    if (user) {
       userId = user.id;
       me = {
         authenticated: true,
@@ -38,20 +47,14 @@ router.get("/", async (req, res, next) => {
       };
     }
 
-    const [categoriesRaw, prompts] = await Promise.all([
-      prisma.category.findMany({
-        orderBy: { sortOrder: "asc" },
-        include: { _count: { select: { prompts: true } } }
-      }),
-      PromptService.list({
-        limit: promptLimit,
-        offset: 0,
-        lite: false,
-        sort: "new",
-        userId,
-        includeTotal: false
-      })
-    ]);
+    const prompts = await PromptService.list({
+      limit: promptLimit,
+      offset: 0,
+      lite: false,
+      sort: "new",
+      userId,
+      includeTotal: false
+    });
 
     res.set("Cache-Control", "private, no-store");
     res.json({

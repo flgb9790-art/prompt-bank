@@ -37,7 +37,10 @@ export const config = {
   supabaseUrl: normalizeUrl(process.env.SUPABASE_URL ?? "", ""),
   supabaseServiceKey: process.env.SUPABASE_SERVICE_ROLE_KEY ?? "",
   supabaseStorageBucket: process.env.SUPABASE_STORAGE_BUCKET ?? "uploads",
-  mediaPublicUrl: normalizeUrl(process.env.MEDIA_PUBLIC_URL ?? process.env.VITE_MEDIA_CDN_URL ?? "", "")
+  mediaPublicUrl: normalizeUrl(
+    process.env.MEDIA_PUBLIC_URL ?? process.env.VITE_MEDIA_CDN_URL ?? process.env.BACKEND_URL ?? "",
+    ""
+  )
 };
 
 export const uploadsDir = process.env.UPLOADS_DIR?.trim()
