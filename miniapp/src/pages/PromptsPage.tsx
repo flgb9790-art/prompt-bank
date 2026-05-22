@@ -12,14 +12,23 @@ type Props = {
   onOpenPrompt: (prompt: Prompt) => void;
   onToggleFavorite: (id: number) => void;
   onCopyPrompt: (prompt: Prompt) => void;
+  onTagClick?: (tag: string) => void;
 };
 
 type SortMode = "new" | "old" | "usage" | "favorites";
 
-export function PromptsPage({ prompts, categories, loading, error, onOpenPrompt, onToggleFavorite, onCopyPrompt }: Props) {
+export function PromptsPage({ prompts, categories, loading, error, onOpenPrompt, onToggleFavorite, onCopyPrompt, onTagClick }: Props) {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<string>();
   const [sort, setSort] = useState<SortMode>("new");
+
+  const categoriesWithPrompts = useMemo(() => {
+    const counts = prompts.reduce<Record<string, number>>((acc, prompt) => {
+      acc[prompt.category.slug] = (acc[prompt.category.slug] ?? 0) + 1;
+      return acc;
+    }, {});
+    return categories.filter((item) => (counts[item.slug] ?? 0) > 0);
+  }, [categories, prompts]);
 
   const filtered = useMemo(() => {
     let list = [...prompts];
@@ -43,7 +52,7 @@ export function PromptsPage({ prompts, categories, loading, error, onOpenPrompt,
   return (
     <div className="space-y-3 pb-1">
       <SearchBar value={query} onChange={setQuery} placeholder="Поиск по названию, тексту, тегам..." />
-      <CategoryTabs categories={categories} active={category} onSelect={setCategory} />
+      <CategoryTabs categories={categoriesWithPrompts} active={category} onSelect={setCategory} />
 
       <select value={sort} onChange={(event) => setSort(event.target.value as SortMode)} className="form-select">
         <option value="new">Новые</option>
@@ -68,7 +77,7 @@ export function PromptsPage({ prompts, categories, loading, error, onOpenPrompt,
       ) : (
         <div className="flex flex-col gap-3">
           {filtered.map((prompt) => (
-            <PromptCard key={prompt.id} prompt={prompt} variant="mobile" onOpen={onOpenPrompt} onToggleFavorite={onToggleFavorite} onCopy={onCopyPrompt} />
+            <PromptCard key={prompt.id} prompt={prompt} variant="mobile" onOpen={onOpenPrompt} onToggleFavorite={onToggleFavorite} onCopy={onCopyPrompt} onTagClick={onTagClick} />
           ))}
         </div>
       )}

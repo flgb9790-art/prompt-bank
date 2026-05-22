@@ -1,4 +1,4 @@
-import { FolderTree, Hash, Heart, Home, LayoutGrid, Plus, Settings, Timer } from "lucide-react";
+import { Hash, Heart, Home, LayoutGrid, Plus, Settings, Timer } from "lucide-react";
 import type { Category } from "../../types";
 
 type RouteKey = "/" | "/prompts" | "/favorites" | "/recent" | "/categories" | "/tags" | "/settings";
@@ -32,14 +32,16 @@ export function Sidebar({
   onSelectCategory,
   onLogin
 }: Props) {
+  const visibleCategories = categories.filter((category) => (categoryCounts[category.slug] ?? 0) > 0);
+
   return (
-    <div className="flex h-full flex-col">
-      <button type="button" onClick={() => onNavigate("/")} className="flex h-12 items-center gap-3 text-left">
+    <div className="sidebar-shell flex h-full min-h-0 flex-col">
+      <button type="button" onClick={() => onNavigate("/")} className="flex h-12 shrink-0 items-center gap-3 text-left">
         <div className="brand-logo-icon">P</div>
         <span className="brand-logo-text">Prompt Bank</span>
       </button>
 
-      <nav className="mt-7 space-y-1">
+      <nav className="mt-7 shrink-0 space-y-1">
         {navItems.map((item) => {
           const Icon = item.icon;
           const active = currentPath === item.path;
@@ -52,8 +54,8 @@ export function Sidebar({
         })}
       </nav>
 
-      <div className="mt-7">
-        <div className="mb-3 flex items-center justify-between">
+      <div className="mt-7 flex min-h-0 flex-1 flex-col">
+        <div className="mb-3 flex shrink-0 items-center justify-between">
           <span className="categories-label">Категории</span>
           <button
             type="button"
@@ -64,29 +66,33 @@ export function Sidebar({
             <Plus size={16} />
           </button>
         </div>
-        <div className="no-scrollbar max-h-[280px] space-y-0.5 overflow-y-auto">
-          {categories.map((category) => {
-            const isActive = activeCategory === category.slug;
-            return (
-              <button
-                key={category.id}
-                type="button"
-                onClick={() => {
-                  onSelectCategory(category.slug);
-                  onNavigate("/prompts");
-                }}
-                className={`category-item ${isActive ? "active" : ""}`}
-              >
-                <span className="category-item-icon">{category.icon ?? "•"}</span>
-                <span className="truncate">{category.name}</span>
-                <span className="ml-auto text-[13px] text-[var(--muted)]">{categoryCounts[category.slug] ?? 0}</span>
-              </button>
-            );
-          })}
+        <div className="no-scrollbar min-h-0 flex-1 space-y-0.5 overflow-y-auto">
+          {visibleCategories.length ? (
+            visibleCategories.map((category) => {
+              const isActive = activeCategory === category.slug;
+              return (
+                <button
+                  key={category.id}
+                  type="button"
+                  onClick={() => {
+                    onSelectCategory(category.slug);
+                    onNavigate("/prompts");
+                  }}
+                  className={`category-item ${isActive ? "active" : ""}`}
+                >
+                  <span className="category-item-icon">{category.icon ?? "•"}</span>
+                  <span className="truncate">{category.name}</span>
+                  <span className="ml-auto text-[13px] text-[var(--muted)]">{categoryCounts[category.slug] ?? 0}</span>
+                </button>
+              );
+            })
+          ) : (
+            <p className="px-2 text-xs text-[var(--muted)]">Пока нет опубликованных промптов.</p>
+          )}
         </div>
       </div>
 
-      <div className="mt-8 pb-4">
+      <div className="sidebar-footer mt-auto shrink-0 pt-4">
         {isAuthenticated ? (
           <button type="button" onClick={() => onNavigate("/settings")} className="settings-btn flex h-12 w-full items-center gap-3 rounded-[14px] border border-[var(--border)] bg-white px-4 text-[15px] text-[var(--text-soft)]">
             <Settings size={18} />

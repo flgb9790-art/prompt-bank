@@ -9,12 +9,13 @@ type Props = {
   onOpenPrompt: (prompt: Prompt) => void;
   onCopyPrompt: (prompt: Prompt) => void;
   onToggleFavorite: (id: number) => void;
+  onTagClick?: (tag: string) => void;
   onCreate: () => void;
   onViewAll?: () => void;
   showCreateButton?: boolean;
 };
 
-export function HomePage({ prompts, stats, onOpenPrompt, onCopyPrompt, onToggleFavorite, onCreate, onViewAll, showCreateButton = true }: Props) {
+export function HomePage({ prompts, stats, onOpenPrompt, onCopyPrompt, onToggleFavorite, onTagClick, onCreate, onViewAll, showCreateButton = true }: Props) {
   return (
     <div className="space-y-4 pb-4">
       <section>
@@ -41,7 +42,7 @@ export function HomePage({ prompts, stats, onOpenPrompt, onCopyPrompt, onToggleF
         {prompts.length ? (
           <div className="mt-4 flex flex-col gap-3">
             {prompts.slice(0, 8).map((prompt) => (
-              <PromptCard key={prompt.id} prompt={prompt} variant="mobile" onOpen={onOpenPrompt} onCopy={onCopyPrompt} onToggleFavorite={onToggleFavorite} />
+              <PromptCard key={prompt.id} prompt={prompt} variant="mobile" onOpen={onOpenPrompt} onCopy={onCopyPrompt} onToggleFavorite={onToggleFavorite} onTagClick={onTagClick} />
             ))}
           </div>
         ) : (

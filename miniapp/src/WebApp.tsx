@@ -17,6 +17,7 @@ import { ViewToggle } from "./components/web/ViewToggle";
 import { WebLayout } from "./components/web/WebLayout";
 import { MobileWebShell } from "./components/web/MobileWebShell";
 import { AuthButton } from "./components/web/AuthButton";
+import { clearPromptShareUrl, parsePromptIdFromLocation, setPromptShareUrl } from "./utils/promptShare";
 
 type SortValue = "new" | "old" | "usage";
 type ViewMode = "grid" | "list";
@@ -70,17 +71,12 @@ export function WebApp() {
   const [page, setPage] = useState(1);
   const isAuthenticated = Boolean(user);
   const bootstrappedRef = useRef(false);
+  const deepLinkHandledRef = useRef(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     document.documentElement.classList.add("web-mode");
     return () => document.documentElement.classList.remove("web-mode");
-  }, []);
-
-  useEffect(() => {
-    const onPopState = () => setPath(getRoutePath(window.location.pathname));
-    window.addEventListener("popstate", onPopState);
-    return () => window.removeEventListener("popstate", onPopState);
   }, []);
 
   useEffect(() => {
@@ -129,6 +125,13 @@ export function WebApp() {
       return acc;
     }, {});
   }, [prompts]);
+
+  const categoriesWithPrompts = useMemo(
+    () => categories.filter((category) => (categoryCounts[category.slug] ?? 0) > 0),
+    [categories, categoryCounts]
+  );
+
+  const tagsWithPrompts = useMemo(() => tags.filter((tag) => tag.count > 0), [tags]);
 
   const stats = useMemo(
     () => ({
@@ -204,8 +207,32 @@ export function WebApp() {
     return () => clearTimeout(timer);
   }, [search]);
 
-  async function openPrompt(prompt: Prompt) {
+  useEffect(() => {
+    if (loading || deepLinkHandledRef.current) return;
+    const promptId = parsePromptIdFromLocation();
+    if (!promptId) return;
+    deepLinkHandledRef.current = true;
+    void openPromptById(promptId, true);
+  }, [loading, prompts]);
+
+  async function openPromptById(promptId: number, replaceUrl = false) {
+    const cached = prompts.find((item) => item.id === promptId);
+    if (cached) {
+      await openPrompt(cached, replaceUrl);
+      return;
+    }
+    try {
+      const full = await api.getPrompt(promptId);
+      await openPrompt(full, replaceUrl);
+    } catch (err) {
+      console.error(err);
+      clearPromptShareUrl();
+    }
+  }
+
+  async function openPrompt(prompt: Prompt, replaceUrl = false) {
     setSelectedPrompt({ ...prompt, examples: prompt.examples ?? [] });
+    setPromptShareUrl(prompt.id, replaceUrl);
     try {
       const full = await api.getPrompt(prompt.id);
       setSelectedPrompt(full);
@@ -213,6 +240,25 @@ export function WebApp() {
       console.error(err);
     }
   }
+
+  function closePromptModal() {
+    setSelectedPrompt(undefined);
+    clearPromptShareUrl();
+  }
+
+  useEffect(() => {
+    const onPopState = () => {
+      setPath(getRoutePath(window.location.pathname));
+      const promptId = parsePromptIdFromLocation();
+      if (!promptId) {
+        setSelectedPrompt(undefined);
+        return;
+      }
+      void openPromptById(promptId, true);
+    };
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, [prompts]);
 
   function upsertPromptInList(nextPrompt: Prompt) {
     setPrompts((prev) => {
@@ -226,7 +272,11 @@ export function WebApp() {
 
   function navigate(nextPath: RoutePath) {
     if (window.location.pathname !== nextPath) {
-      window.history.pushState({}, "", nextPath);
+      const url = new URL(window.location.href);
+      url.pathname = nextPath;
+      url.searchParams.delete("prompt");
+      window.history.pushState({}, "", `${url.pathname}${url.search}`);
+      setSelectedPrompt(undefined);
     }
     setPath(nextPath);
   }
@@ -285,7 +335,7 @@ export function WebApp() {
     }
     try {
       await api.deletePrompt(id);
-      setSelectedPrompt(undefined);
+      closePromptModal();
       setPrompts((prev) => prev.filter((item) => item.id !== id));
       setToast("Промпт удален");
     } catch (err) {
@@ -363,6 +413,16 @@ export function WebApp() {
     void loadPrompts();
   }
 
+  function handleSelectTag(tagName: string) {
+    setSelectedPrompt(undefined);
+    clearPromptShareUrl();
+    setActiveTag(tagName);
+    setActiveCategory(undefined);
+    setPromptSearch("");
+    setPage(1);
+    navigate("/prompts");
+  }
+
   function renderPromptList(list: Prompt[]) {
     const listTotalPages = Math.max(1, Math.ceil(list.length / PROMPTS_PER_PAGE));
     const listPage = Math.min(page, listTotalPages);
@@ -377,6 +437,7 @@ export function WebApp() {
           onOpenPrompt={openPrompt}
           onCopyPrompt={handleCopy}
           onToggleFavorite={handleToggleFavorite}
+          onTagClick={handleSelectTag}
         />
         <Pagination
           page={listPage}
@@ -412,7 +473,7 @@ export function WebApp() {
                 <button className={`chip ${!activeCategory ? "active" : ""}`} onClick={() => setActiveCategory(undefined)} type="button">
                   Все
                 </button>
-                {categories.slice(0, 8).map((category) => (
+                {categoriesWithPrompts.map((category) => (
                   <button
                     key={category.id}
                     className={`chip ${activeCategory === category.slug ? "active" : ""}`}
@@ -447,7 +508,7 @@ export function WebApp() {
             <button className={`chip ${!activeCategory ? "active" : ""}`} onClick={() => setActiveCategory(undefined)} type="button">
               Все
             </button>
-            {categories.map((category) => (
+            {categoriesWithPrompts.map((category) => (
               <button
                 key={category.id}
                 className={`chip ${activeCategory === category.slug ? "active" : ""}`}
@@ -459,7 +520,7 @@ export function WebApp() {
             ))}
             {activeTag ? (
               <button className="chip active" onClick={() => setActiveTag(undefined)} type="button">
-                #{activeTag} ×
+                {activeTag} ×
               </button>
             ) : null}
           </div>
@@ -479,7 +540,7 @@ export function WebApp() {
 
       {path === "/categories" ? (
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {categories.map((category) => (
+          {categoriesWithPrompts.map((category) => (
             <div key={category.id} className="surface-card p-4">
               <p className="text-sm text-[var(--text-soft)]">{category.icon ?? "📂"} {category.name}</p>
               <p className="mt-2 text-2xl font-semibold text-[var(--text)]">{categoryCounts[category.slug] ?? 0}</p>
@@ -490,20 +551,20 @@ export function WebApp() {
 
       {path === "/tags" ? (
         <div className="flex flex-wrap gap-2">
-          {tags.map((tag) => (
-            <button
-              key={tag.id}
-              type="button"
-              className={`chip ${activeTag === tag.name ? "active" : ""}`}
-              onClick={() => {
-                setActiveTag(tag.name);
-                setPromptSearch(tag.name);
-                navigate("/prompts");
-              }}
-            >
-              #{tag.name} ({tag.count})
-            </button>
-          ))}
+          {tagsWithPrompts.length ? (
+            tagsWithPrompts.map((tag) => (
+              <button
+                key={tag.id}
+                type="button"
+                className={`chip ${activeTag === tag.name ? "active" : ""}`}
+                onClick={() => handleSelectTag(tag.name)}
+              >
+                {tag.name} ({tag.count})
+              </button>
+            ))
+          ) : (
+            <p className="text-sm text-[var(--muted)]">Пока нет тегов с опубликованными промптами.</p>
+          )}
         </div>
       ) : null}
 
@@ -549,11 +610,13 @@ export function WebApp() {
         categories={categories}
         canManage={isAdmin}
         desktopMode
-        onClose={() => setSelectedPrompt(undefined)}
+        onClose={closePromptModal}
         onCopy={handleCopy}
         onToggleFavorite={handleToggleFavorite}
         onDelete={handleDeletePrompt}
         onEdit={handleEditPrompt}
+        onShareLinkCopied={() => setToast("Ссылка скопирована")}
+        onTagClick={handleSelectTag}
       />
       {isAddModalOpen && isAuthenticated ? (
         <div className="modal-overlay fixed inset-0 z-[75] grid place-items-center p-4">

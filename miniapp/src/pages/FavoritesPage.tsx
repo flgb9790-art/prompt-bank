@@ -6,9 +6,10 @@ type Props = {
   onOpenPrompt: (prompt: Prompt) => void;
   onCopyPrompt: (prompt: Prompt) => void;
   onToggleFavorite: (id: number) => void;
+  onTagClick?: (tag: string) => void;
 };
 
-export function FavoritesPage({ prompts, onOpenPrompt, onCopyPrompt, onToggleFavorite }: Props) {
+export function FavoritesPage({ prompts, onOpenPrompt, onCopyPrompt, onToggleFavorite, onTagClick }: Props) {
   if (!prompts.length) {
     return (
       <div className="surface-card empty-state mt-8">
@@ -21,7 +22,7 @@ export function FavoritesPage({ prompts, onOpenPrompt, onCopyPrompt, onToggleFav
   return (
     <div className="flex flex-col gap-3">
       {prompts.map((prompt) => (
-        <PromptCard key={prompt.id} prompt={prompt} variant="mobile" onOpen={onOpenPrompt} onCopy={onCopyPrompt} onToggleFavorite={onToggleFavorite} />
+        <PromptCard key={prompt.id} prompt={prompt} variant="mobile" onOpen={onOpenPrompt} onCopy={onCopyPrompt} onToggleFavorite={onToggleFavorite} onTagClick={onTagClick} />
       ))}
     </div>
   );

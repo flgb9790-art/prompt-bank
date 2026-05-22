@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { clearPromptShareUrl, parsePromptIdFromLocation, setPromptShareUrl } from "./utils/promptShare";
 import { api, setAuthTelegramId } from "./api";
 import type { Category, Prompt, PromptCreatePayload, TelegramUser } from "./types";
 import type { PromptEditPayload } from "./components/PromptDetailsModal";
@@ -38,6 +39,7 @@ function MiniAppApp() {
   const [user, setUser] = useState<TelegramUser>(() => resolveTelegramUser() ?? mockTelegramUser);
   const [toastMessage, setToastMessage] = useState("");
   const [isMiniAppExpanded, setIsMiniAppExpanded] = useState(true);
+  const deepLinkHandledRef = useRef(false);
 
   const favorites = useMemo(() => prompts.filter((item) => item.isFavorite), [prompts]);
   const stats = useMemo(
@@ -179,8 +181,23 @@ function MiniAppApp() {
     if (selectedPrompt?.id === id) setSelectedPrompt(updated);
   }
 
-  async function openPrompt(prompt: Prompt) {
+  async function openPromptById(promptId: number, replaceUrl = false) {
+    const cached = prompts.find((item) => item.id === promptId);
+    if (cached) {
+      await openPrompt(cached, replaceUrl);
+      return;
+    }
+    try {
+      const full = await api.getPrompt(promptId);
+      await openPrompt(full, replaceUrl);
+    } catch {
+      clearPromptShareUrl();
+    }
+  }
+
+  async function openPrompt(prompt: Prompt, replaceUrl = false) {
     setSelectedPrompt({ ...prompt, examples: prompt.examples ?? [] });
+    setPromptShareUrl(prompt.id, replaceUrl);
     try {
       const full = await api.getPrompt(prompt.id);
       setSelectedPrompt(full);
@@ -189,10 +206,42 @@ function MiniAppApp() {
     }
   }
 
+  function closePromptModal() {
+    setSelectedPrompt(undefined);
+    clearPromptShareUrl();
+  }
+
+  useEffect(() => {
+    const onPopState = () => {
+      const promptId = parsePromptIdFromLocation();
+      if (!promptId) {
+        setSelectedPrompt(undefined);
+        return;
+      }
+      void openPromptById(promptId, true);
+    };
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, [prompts]);
+
+  useEffect(() => {
+    if (loading || deepLinkHandledRef.current) return;
+    const promptId = parsePromptIdFromLocation();
+    if (!promptId) return;
+    deepLinkHandledRef.current = true;
+    void openPromptById(promptId, true);
+  }, [loading, prompts]);
+
   async function handleDeletePrompt(id: number) {
     await api.deletePrompt(id);
-    setSelectedPrompt(undefined);
+    closePromptModal();
     setPrompts((prev) => prev.filter((item) => item.id !== id));
+  }
+
+  function handleSelectTag(tagName: string) {
+    closePromptModal();
+    setSearchQuery(tagName);
+    setTab("search");
   }
 
   async function handleCopyPrompt(prompt: Prompt) {
@@ -242,6 +291,7 @@ function MiniAppApp() {
           onOpenPrompt={openPrompt}
           onCopyPrompt={handleCopyPrompt}
           onToggleFavorite={handleToggleFavorite}
+          onTagClick={handleSelectTag}
           onCreate={() => setTab("add")}
           onViewAll={() => setTab("prompts")}
         />
@@ -255,6 +305,7 @@ function MiniAppApp() {
           onOpenPrompt={openPrompt}
           onToggleFavorite={handleToggleFavorite}
           onCopyPrompt={handleCopyPrompt}
+          onTagClick={handleSelectTag}
         />
       )}
       {tab === "search" && (
@@ -276,6 +327,7 @@ function MiniAppApp() {
                 onOpen={openPrompt}
                 onCopy={handleCopyPrompt}
                 onToggleFavorite={handleToggleFavorite}
+                onTagClick={handleSelectTag}
               />
             ))}
           </div>
@@ -287,6 +339,7 @@ function MiniAppApp() {
           onOpenPrompt={openPrompt}
           onCopyPrompt={handleCopyPrompt}
           onToggleFavorite={handleToggleFavorite}
+          onTagClick={handleSelectTag}
         />
       )}
       {tab === "profile" && (
@@ -317,11 +370,13 @@ function MiniAppApp() {
         prompt={selectedPrompt}
         categories={categories}
         canManage={isAdmin}
-        onClose={() => setSelectedPrompt(undefined)}
+        onClose={closePromptModal}
         onCopy={handleCopyPrompt}
         onToggleFavorite={handleToggleFavorite}
         onDelete={handleDeletePrompt}
         onEdit={handleEditPrompt}
+        onShareLinkCopied={() => setToastMessage("Ссылка скопирована")}
+        onTagClick={handleSelectTag}
       />
       {toastMessage ? (
         <div className="toast fixed bottom-24 left-1/2 z-[60] -translate-x-1/2">{toastMessage}</div>

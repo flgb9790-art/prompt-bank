@@ -1,7 +1,8 @@
 import { Copy, Star } from "lucide-react";
 import { resolveMediaUrl } from "../api";
 import type { Prompt } from "../types";
-import { formatPromptDate, getCategoryBadgeClass } from "../utils/categoryStyle";
+import { TagPill } from "./TagPill";
+import { getCategoryBadgeClass } from "../utils/categoryStyle";
 
 type Props = {
   prompt: Prompt;
@@ -9,6 +10,7 @@ type Props = {
   onOpen: (prompt: Prompt) => void;
   onToggleFavorite: (id: number) => void;
   onCopy: (prompt: Prompt) => void;
+  onTagClick?: (tag: string) => void;
 };
 
 function CardPreview({ prompt, variant }: { prompt: Prompt; variant: "desktop" | "mobile" }) {
@@ -27,7 +29,7 @@ function CardPreview({ prompt, variant }: { prompt: Prompt; variant: "desktop" |
   );
 }
 
-export function PromptCard({ prompt, variant = "mobile", onOpen, onToggleFavorite, onCopy }: Props) {
+export function PromptCard({ prompt, variant = "mobile", onOpen, onToggleFavorite, onCopy, onTagClick }: Props) {
   const badgeClass = getCategoryBadgeClass(prompt.category.slug, prompt.category.name);
   const isDesktop = variant === "desktop";
 
@@ -60,13 +62,10 @@ export function PromptCard({ prompt, variant = "mobile", onOpen, onToggleFavorit
           <p className="prompt-card-excerpt prompt-card-excerpt--desktop">{prompt.content}</p>
           <div className="prompt-card-tags">
             {prompt.keywords.slice(0, 3).map((item) => (
-              <span key={item.keyword.id} className="tag-pill">
-                #{item.keyword.name}
-              </span>
+              <TagPill key={item.keyword.id} name={item.keyword.name} onClick={onTagClick} />
             ))}
           </div>
           <div className="prompt-card-footer">
-            <span className="prompt-card-date">{formatPromptDate(prompt.createdAt)}</span>
             <button
               type="button"
               className="prompt-card-action"
@@ -76,7 +75,7 @@ export function PromptCard({ prompt, variant = "mobile", onOpen, onToggleFavorit
               }}
               aria-label="Копировать"
             >
-              <Copy size={18} />
+              <Copy size={16} />
             </button>
           </div>
         </div>
@@ -112,9 +111,7 @@ export function PromptCard({ prompt, variant = "mobile", onOpen, onToggleFavorit
         <p className="prompt-card-excerpt prompt-card-excerpt--mobile">{prompt.content}</p>
         <div className="prompt-card-tags prompt-card-tags--mobile">
           {prompt.keywords.slice(0, 2).map((item) => (
-            <span key={item.keyword.id} className="tag-pill">
-              #{item.keyword.name}
-            </span>
+            <TagPill key={item.keyword.id} name={item.keyword.name} onClick={onTagClick} />
           ))}
         </div>
       </div>
@@ -127,7 +124,7 @@ export function PromptCard({ prompt, variant = "mobile", onOpen, onToggleFavorit
         }}
         aria-label="Копировать"
       >
-        <Copy size={20} />
+        <Copy size={16} />
       </button>
     </article>
   );

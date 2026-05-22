@@ -7,10 +7,11 @@ type UploadedMedia = { url: string; type: MediaType; originalName?: string };
 type Props = {
   label: string;
   multiple?: boolean;
+  compact?: boolean;
   onUploaded: (files: UploadedMedia[]) => void;
 };
 
-export function MediaUploader({ label, multiple, onUploaded }: Props) {
+export function MediaUploader({ label, multiple, compact = false, onUploaded }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -30,14 +31,33 @@ export function MediaUploader({ label, multiple, onUploaded }: Props) {
     }
   }
 
+  if (compact) {
+    return (
+      <div className="media-uploader-compact">
+        <label className="media-uploader-compact-label">
+          <span className="sr-only">{label}</span>
+          <input
+            type="file"
+            multiple={multiple}
+            accept="image/jpeg,image/png,image/webp,video/mp4,video/webm"
+            className="media-uploader-compact-input"
+            onChange={handleChange}
+          />
+          <span className="media-uploader-compact-text">{loading ? "Загрузка..." : label}</span>
+        </label>
+        {error ? <p className="media-uploader-error">{error}</p> : null}
+      </div>
+    );
+  }
+
   return (
-    <div>
+    <div className="media-uploader-block">
       <label className="mb-2 block text-sm text-[var(--muted)]">{label}</label>
       <input
         type="file"
         multiple={multiple}
         accept="image/jpeg,image/png,image/webp,video/mp4,video/webm"
-        className="form-input cursor-pointer file:mr-3 file:rounded-lg file:border-0 file:bg-[var(--primary-soft)] file:px-3 file:py-2 file:text-sm file:text-[var(--primary)]"
+        className="form-input cursor-pointer file:mr-3 file:rounded-lg file:border-0 file:bg-[var(--primary-soft)] file:px-3 file:py-1.5 file:text-sm file:text-[var(--primary)]"
         onChange={handleChange}
       />
       {loading && <p className="mt-2 text-xs text-[var(--muted)]">Загрузка...</p>}
