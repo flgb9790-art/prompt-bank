@@ -11,18 +11,18 @@ type Props = {
   onCopy: (prompt: Prompt) => void;
 };
 
-function Preview({ prompt, className }: { prompt: Prompt; className: string }) {
-  if (!prompt.coverMediaUrl) {
-    return <div className={`prompt-preview ${className} bg-[#f2f4f7]`} />;
-  }
+function CardPreview({ prompt, variant }: { prompt: Prompt; variant: "desktop" | "mobile" }) {
+  const sizeClass = variant === "desktop" ? "prompt-card-preview--desktop" : "prompt-card-preview--mobile";
 
   return (
-    <div className={`prompt-preview preview-4x5 ${className}`}>
-      {prompt.coverMediaType === "video" ? (
-        <video src={resolveMediaUrl(prompt.coverMediaUrl)} muted playsInline />
-      ) : (
-        <img src={resolveMediaUrl(prompt.coverMediaUrl)} alt={prompt.title} draggable={false} />
-      )}
+    <div className={`preview-4x5 ${sizeClass}`} aria-hidden>
+      {prompt.coverMediaUrl ? (
+        prompt.coverMediaType === "video" ? (
+          <video src={resolveMediaUrl(prompt.coverMediaUrl)} muted playsInline preload="metadata" />
+        ) : (
+          <img src={resolveMediaUrl(prompt.coverMediaUrl)} alt="" draggable={false} loading="lazy" />
+        )
+      ) : null}
     </div>
   );
 }
@@ -42,8 +42,8 @@ export function PromptCard({ prompt, variant = "mobile", onOpen, onToggleFavorit
         }}
         className="prompt-card-desktop fade-up"
       >
-        <Preview prompt={prompt} className="preview-desktop" />
-        <div className="prompt-card-content">
+        <CardPreview prompt={prompt} variant="desktop" />
+        <div className="prompt-card-body prompt-card-body--desktop">
           <button
             type="button"
             className={`prompt-card-star ${prompt.isFavorite ? "active" : ""}`}
@@ -55,31 +55,29 @@ export function PromptCard({ prompt, variant = "mobile", onOpen, onToggleFavorit
           >
             <Star size={20} fill={prompt.isFavorite ? "currentColor" : "none"} />
           </button>
-          <h3 className="line-clamp-2 pr-8 text-[16px] font-[750] leading-[22px] text-[var(--text)]">{prompt.title}</h3>
-          <span className={`category-badge mt-2 ${badgeClass}`}>{prompt.category.name}</span>
-          <p className="line-clamp-3 mt-2.5 text-[14px] leading-5 text-[#475467]">{prompt.content}</p>
-          <div className="mt-auto flex max-h-6 flex-wrap gap-1.5 overflow-hidden pt-2">
+          <h3 className="prompt-card-title">{prompt.title}</h3>
+          <span className={`category-badge ${badgeClass}`}>{prompt.category.name}</span>
+          <p className="prompt-card-excerpt prompt-card-excerpt--desktop">{prompt.content}</p>
+          <div className="prompt-card-tags">
             {prompt.keywords.slice(0, 3).map((item) => (
               <span key={item.keyword.id} className="tag-pill">
                 #{item.keyword.name}
               </span>
             ))}
           </div>
-          <div className="mt-3 flex items-center justify-between">
-            <span className="text-[13px] text-[var(--muted)]">{formatPromptDate(prompt.createdAt)}</span>
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                className="text-[var(--muted)] hover:text-[var(--primary)]"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onCopy(prompt);
-                }}
-                aria-label="Копировать"
-              >
-                <Copy size={18} />
-              </button>
-            </div>
+          <div className="prompt-card-footer">
+            <span className="prompt-card-date">{formatPromptDate(prompt.createdAt)}</span>
+            <button
+              type="button"
+              className="prompt-card-action"
+              onClick={(event) => {
+                event.stopPropagation();
+                onCopy(prompt);
+              }}
+              aria-label="Копировать"
+            >
+              <Copy size={18} />
+            </button>
           </div>
         </div>
       </article>
@@ -96,8 +94,8 @@ export function PromptCard({ prompt, variant = "mobile", onOpen, onToggleFavorit
       }}
       className="prompt-card-mobile fade-up"
     >
-      <Preview prompt={prompt} className="preview-mobile" />
-      <div className="prompt-card-content-mobile">
+      <CardPreview prompt={prompt} variant="mobile" />
+      <div className="prompt-card-body prompt-card-body--mobile">
         <button
           type="button"
           className={`prompt-card-star-mobile ${prompt.isFavorite ? "active" : ""}`}
@@ -109,10 +107,10 @@ export function PromptCard({ prompt, variant = "mobile", onOpen, onToggleFavorit
         >
           <Star size={18} fill={prompt.isFavorite ? "currentColor" : "none"} />
         </button>
-        <h3 className="line-clamp-2 text-[15.5px] font-[760] leading-5 text-[var(--text)]">{prompt.title}</h3>
-        <span className={`category-badge category-badge-mobile mt-1.5 ${badgeClass}`}>{prompt.category.name}</span>
-        <p className="line-clamp-2 mt-1.5 text-[13.5px] leading-[18px] text-[#475467]">{prompt.content}</p>
-        <div className="mt-auto flex max-h-[22px] gap-1 overflow-hidden pt-1">
+        <h3 className="prompt-card-title">{prompt.title}</h3>
+        <span className={`category-badge category-badge-mobile ${badgeClass}`}>{prompt.category.name}</span>
+        <p className="prompt-card-excerpt prompt-card-excerpt--mobile">{prompt.content}</p>
+        <div className="prompt-card-tags prompt-card-tags--mobile">
           {prompt.keywords.slice(0, 2).map((item) => (
             <span key={item.keyword.id} className="tag-pill">
               #{item.keyword.name}
