@@ -91,7 +91,7 @@ export function PromptCard({ prompt, variant = "mobile", onOpen, onToggleFavorit
           <span className={`category-badge category-badge-mobile ${badgeClass}`}>{prompt.category.name}</span>
           <p className="prompt-card-excerpt prompt-card-excerpt--list">{prompt.content}</p>
           <div className="prompt-card-tags prompt-card-tags--list">
-            {prompt.keywords.slice(0, 3).map((item) => (
+            {prompt.keywords.slice(0, 4).map((item) => (
               <TagPill key={item.keyword.id} name={item.keyword.name} onClick={onTagClick} />
             ))}
           </div>

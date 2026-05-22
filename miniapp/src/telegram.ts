@@ -48,6 +48,27 @@ function parseUserFromInitData(rawInitData?: string): TelegramUser | null {
   return null;
 }
 
+export function isTelegramMiniAppContext(): boolean {
+  const webApp = window.Telegram?.WebApp;
+  if (!webApp) {
+    const params = new URLSearchParams(window.location.search);
+    const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+    return (
+      params.has("tgWebAppData") ||
+      params.has("tgWebAppVersion") ||
+      hashParams.has("tgWebAppData") ||
+      hashParams.has("tgWebAppVersion")
+    );
+  }
+
+  if (webApp.initData?.trim()) return true;
+  if (webApp.initDataUnsafe?.user?.id) return true;
+
+  const params = new URLSearchParams(window.location.search);
+  const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+  return params.has("tgWebAppData") || params.has("tgWebAppVersion") || hashParams.has("tgWebAppData");
+}
+
 export function resolveTelegramUser(): TelegramUser | null {
   const direct = window.Telegram?.WebApp?.initDataUnsafe?.user;
   if (direct?.id) {

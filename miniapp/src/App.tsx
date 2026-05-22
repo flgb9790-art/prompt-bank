@@ -14,17 +14,80 @@ import { ProfilePage } from "./pages/ProfilePage";
 import { PromptCard } from "./components/PromptCard";
 import { PromptDetailsModal } from "./components/PromptDetailsModal";
 import { SearchBar } from "./components/SearchBar";
-import { mockTelegramUser, resolveTelegramUser } from "./telegram";
+import { isTelegramMiniAppContext, mockTelegramUser, resolveTelegramUser } from "./telegram";
 import { WebApp } from "./WebApp";
 
 const quickTags = ["beauty", "video", "logo", "telegram", "cursor", "ads", "react", "realistic"];
 
-export default function App() {
-  const isTelegramMiniApp = Boolean(window.Telegram?.WebApp?.initData);
-  if (!isTelegramMiniApp) {
-    return <WebApp />;
+type AppRuntime = "loading" | "telegram" | "web";
+
+function loadTelegramSdk(): Promise<void> {
+  if (window.Telegram?.WebApp) {
+    return Promise.resolve();
   }
-  return <MiniAppApp />;
+
+  const existing = document.querySelector<HTMLScriptElement>('script[data-telegram-webapp="1"]');
+  if (existing) {
+    return new Promise((resolve) => {
+      if (window.Telegram?.WebApp) {
+        resolve();
+        return;
+      }
+      existing.addEventListener("load", () => resolve(), { once: true });
+      window.setTimeout(resolve, 500);
+    });
+  }
+
+  return new Promise((resolve) => {
+    const script = document.createElement("script");
+    script.src = "https://telegram.org/js/telegram-web-app.js";
+    script.async = true;
+    script.dataset.telegramWebapp = "1";
+    script.onload = () => resolve();
+    script.onerror = () => resolve();
+    document.head.appendChild(script);
+  });
+}
+
+export default function App() {
+  const [runtime, setRuntime] = useState<AppRuntime>(() => (isTelegramMiniAppContext() ? "telegram" : "loading"));
+
+  useEffect(() => {
+    if (runtime !== "loading") return;
+
+    let cancelled = false;
+
+    void (async () => {
+      await loadTelegramSdk();
+      if (cancelled) return;
+      setRuntime(isTelegramMiniAppContext() ? "telegram" : "web");
+    })();
+
+    const fallback = window.setTimeout(() => {
+      if (!cancelled) {
+        setRuntime(isTelegramMiniAppContext() ? "telegram" : "web");
+      }
+    }, 700);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(fallback);
+    };
+  }, [runtime]);
+
+  if (runtime === "loading") {
+    return (
+      <div className="flex min-h-dvh items-center justify-center bg-[var(--bg)] text-sm text-[var(--muted)]">
+        Загрузка...
+      </div>
+    );
+  }
+
+  if (runtime === "telegram") {
+    return <MiniAppApp />;
+  }
+
+  return <WebApp />;
 }
 
 function MiniAppApp() {
@@ -82,14 +145,6 @@ function MiniAppApp() {
   }
 
   useEffect(() => {
-    if (!document.querySelector('script[data-telegram-webapp="1"]')) {
-      const script = document.createElement("script");
-      script.src = "https://telegram.org/js/telegram-web-app.js";
-      script.async = true;
-      script.dataset.telegramWebapp = "1";
-      document.head.appendChild(script);
-    }
-
     const getWebApp = () => window.Telegram?.WebApp;
     setIsMiniAppExpanded(getWebApp() ? Boolean(getWebApp()?.isExpanded) : true);
 
@@ -113,7 +168,6 @@ function MiniAppApp() {
         enforceExpandedSheet();
         return;
       }
-      // Lock accidental collapsing only after mini app is fully expanded.
       webApp?.disableVerticalSwipes?.();
       webApp?.enableClosingConfirmation?.();
     };
@@ -163,8 +217,16 @@ function MiniAppApp() {
   }, []);
 
   useEffect(() => {
-    setAuthTelegramId(String(user.id));
-    loadData();
+    if (!document.querySelector('script[data-telegram-webapp="1"]')) {
+      void loadTelegramSdk();
+    }
+  }, []);
+
+  useEffect(() => {
+    if (user?.id) {
+      setAuthTelegramId(String(user.id));
+    }
+    void loadData();
     return () => {
       setAuthTelegramId(null);
     };
@@ -335,7 +397,7 @@ function MiniAppApp() {
           <div className="flex flex-wrap gap-2">
             {quickTags.map((tag) => (
               <button key={tag} className="chip" onClick={() => setSearchQuery(tag)}>
-                #{tag}
+                {tag}
               </button>
             ))}
           </div>

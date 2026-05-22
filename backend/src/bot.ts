@@ -85,9 +85,17 @@ async function ensureUser(telegramUser: { id: number; username?: string; first_n
   });
 }
 
+function buildMiniAppUrl(promptId?: number) {
+  const url = new URL(config.webAppUrl);
+  if (promptId) {
+    url.searchParams.set("prompt", String(promptId));
+  }
+  return url.toString();
+}
+
 function promptResultKeyboard(id: number) {
   return Markup.inlineKeyboard([
-    [Markup.button.callback("📋 Скопировать", `copy_${id}`), Markup.button.callback("👁 Открыть", `open_${id}`)]
+    [Markup.button.callback("📋 Скопировать", `copy_${id}`), Markup.button.webApp("👁 Открыть", buildMiniAppUrl(id))]
   ]);
 }
 
@@ -179,6 +187,18 @@ export async function startBot() {
   await bot.telegram.setMyCommands([
     { command: "start", description: "Открыть главное меню Prompt Bank" }
   ]);
+
+  try {
+    await bot.telegram.setChatMenuButton({
+      menuButton: {
+        type: "web_app",
+        text: "Prompt Bank",
+        web_app: { url: buildMiniAppUrl() }
+      }
+    });
+  } catch (error) {
+    console.warn("Failed to set chat menu button:", error);
+  }
 
   bot.start(async (ctx) => {
     const from = ctx.from;
@@ -280,26 +300,6 @@ export async function startBot() {
     await ctx.reply(`📋 ${prompt.title}\n\n${prompt.content}`);
   });
 
-  bot.action(/^open_(\d+)$/, async (ctx) => {
-    await ctx.answerCbQuery();
-    const id = Number(ctx.match[1]);
-    const prompt = await prisma.prompt.findUnique({
-      where: { id },
-      include: {
-        category: true,
-        keywords: { include: { keyword: true } },
-        examples: true
-      }
-    });
-    if (!prompt) {
-      await ctx.reply("Промпт не найден.");
-      return;
-    }
-    const tags = prompt.keywords.map((k: any) => `#${k.keyword.name}`).join(" ");
-    await ctx.reply(
-      `👁 ${prompt.title}\nКатегория: ${prompt.category.name}\nКлючевые слова: ${tags || "—"}\n\n${prompt.content}`
-    );
-  });
 
   bot.action("add_skip_cover", async (ctx) => {
     const from = ctx.from;
@@ -535,7 +535,7 @@ async function finalizePrompt(ctx: any, telegramUserId: number) {
     await ctx.reply(
       `✅ Промпт сохранен!\nНазвание: ${prompt.title}\nКатегория: ${add.categoryName ?? prompt.category.name}\nКлючевые слова: ${keywords || "—"}\nМедиа: ${add.coverMediaUrl ? "1 заставка" : "0 заставок"}, ${add.examples.length} примера`,
       Markup.inlineKeyboard([
-        [Markup.button.webApp("🌐 Открыть в Mini App", config.webAppUrl)],
+        [Markup.button.webApp("🌐 Открыть в Mini App", buildMiniAppUrl(prompt.id))],
         [Markup.button.callback("➕ Добавить еще", "after_add_more")],
         [Markup.button.callback("🏠 Главное меню", "after_add_menu")]
       ])
