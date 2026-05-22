@@ -467,7 +467,7 @@ export async function startBot() {
         }
 
         const search = ctx.message.text.trim();
-        const prompts = await PromptService.list({ search, limit: 5 });
+        const { items: prompts } = await PromptService.list({ search, limit: 5 });
         await showPromptList(ctx, prompts, "Ничего не найдено. Попробуйте другой запрос.");
         state.mode = "idle";
         return;

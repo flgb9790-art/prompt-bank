@@ -21,10 +21,14 @@ import { clearPromptShareUrl, parsePromptIdFromLocation, setPromptShareUrl } fro
 import { mergePromptUpdate } from "./utils/mergePrompt";
 import { normalizeTagName, promptHasTag } from "./utils/tagFilter";
 import { countCategoriesWithPrompts } from "./utils/stats";
+import type { GetPromptsParams } from "./api";
+import { useLoadMoreOnScroll } from "./hooks/useLoadMoreOnScroll";
+import { prefetchPromptsPage, takePrefetchedPromptsPage } from "./utils/promptsPrefetch";
 import {
   ensurePromptWithContent,
   getPromptSearchText,
-  hasFullPromptContent
+  hasFullPromptContent,
+  mapPromptsFromApi
 } from "./utils/promptContent";
 
 type SortValue = "new" | "old" | "usage";
@@ -33,7 +37,7 @@ type RoutePath = "/" | "/prompts" | "/favorites" | "/categories" | "/tags" | "/r
 
 const storageKey = "prompt-bank-web-auth";
 const PROMPTS_PER_PAGE = 12;
-const PROMPTS_FETCH_LIMIT = 100;
+const PROMPTS_FETCH_LIMIT = 40;
 const SEARCH_DEBOUNCE_MS = 350;
 const telegramAuthUrl = (import.meta.env.VITE_TELEGRAM_AUTH_URL as string | undefined)?.trim();
 const telegramBotUsernameFromEnv = (import.meta.env.VITE_TELEGRAM_BOT_USERNAME as string | undefined)?.trim();
@@ -63,10 +67,12 @@ export function WebApp() {
   const [sort, setSort] = useState<SortValue>("new");
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
   const [prompts, setPrompts] = useState<Prompt[]>([]);
+  const [promptsTotal, setPromptsTotal] = useState(0);
   const [categories, setCategories] = useState<Category[]>([]);
   const [tags, setTags] = useState<TagStat[]>([]);
   const [loading, setLoading] = useState(true);
   const [promptsLoading, setPromptsLoading] = useState(false);
+  const [loadingMoreRemote, setLoadingMoreRemote] = useState(false);
   const [error, setError] = useState("");
   const [toast, setToast] = useState("");
   const [selectedPrompt, setSelectedPrompt] = useState<Prompt>();
@@ -112,11 +118,8 @@ export function WebApp() {
       : [...prompts];
     const byTag = activeTag ? byCategory.filter((prompt) => promptHasTag(prompt, activeTag)) : byCategory;
     const bySearch = low ? byTag.filter((prompt) => getPromptSearchText(prompt).includes(low)) : byTag;
-    if (sort === "new") bySearch.sort((a, b) => Number(new Date(b.createdAt)) - Number(new Date(a.createdAt)));
-    if (sort === "old") bySearch.sort((a, b) => Number(new Date(a.createdAt)) - Number(new Date(b.createdAt)));
-    if (sort === "usage") bySearch.sort((a, b) => b.usageCount - a.usageCount);
     return bySearch;
-  }, [activeCategory, activeTag, promptSearch, prompts, sort]);
+  }, [activeCategory, activeTag, promptSearch, prompts]);
 
   useEffect(() => {
     setPage(1);
@@ -138,12 +141,12 @@ export function WebApp() {
 
   const stats = useMemo(
     () => ({
-      total: prompts.length,
+      total: promptsTotal || prompts.length,
       favorites: prompts.filter((prompt) => prompt.isFavorite).length,
       categories: countCategoriesWithPrompts(prompts),
       usage: isAuthenticated ? userUsageTotal : 0
     }),
-    [isAuthenticated, prompts, userUsageTotal]
+    [isAuthenticated, prompts, promptsTotal, userUsageTotal]
   );
 
   const userPromptsCount = useMemo(() => {
@@ -173,20 +176,56 @@ export function WebApp() {
     }
   }
 
-  async function loadPrompts(searchValue = search) {
+  const hasMoreRemote = prompts.length < promptsTotal;
+
+  function buildPromptsQuery(offset: number): GetPromptsParams {
+    const query = search.trim() || promptSearch.trim();
+    return {
+      limit: PROMPTS_FETCH_LIMIT,
+      offset,
+      search: query || undefined,
+      category: activeCategory,
+      tag: activeTag ? normalizeTagName(activeTag) : undefined,
+      sort,
+      lite: true
+    };
+  }
+
+  function scheduleWebPrefetch(loadedCount: number, total: number) {
+    if (loadedCount >= total) return;
+    prefetchPromptsPage(buildPromptsQuery(loadedCount));
+  }
+
+  const loadMoreRef = useLoadMoreOnScroll({
+    enabled: !loading && prompts.length > 0,
+    loading: loadingMoreRemote || promptsLoading,
+    hasMore: hasMoreRemote,
+    onLoadMore: () => void loadMoreRemotePrompts()
+  });
+
+  async function loadMoreRemotePrompts() {
+    if (loadingMoreRemote || !hasMoreRemote) return;
+    setLoadingMoreRemote(true);
+    try {
+      const promptsData = await api.getPrompts(buildPromptsQuery(prompts.length));
+      setPrompts((prev) => [...prev, ...mapPromptsFromApi(promptsData.items)]);
+      setPromptsTotal(promptsData.total);
+    } catch (err) {
+      console.error(err);
+      setToast("Не удалось загрузить ещё промпты");
+    } finally {
+      setLoadingMoreRemote(false);
+    }
+  }
+
+  async function loadPrompts() {
     setPromptsLoading(true);
     try {
-      const promptsData = await api.getPrompts({
-        limit: PROMPTS_FETCH_LIMIT,
-        search: searchValue.trim() || undefined,
-        lite: true
-      });
-      setPrompts(
-        promptsData.map((prompt) => ({
-          ...prompt,
-          examples: prompt.examples ?? []
-        }))
-      );
+      const promptsData = await api.getPrompts(buildPromptsQuery(0));
+      const mapped = mapPromptsFromApi(promptsData.items);
+      setPrompts(mapped);
+      setPromptsTotal(promptsData.total);
+      scheduleWebPrefetch(mapped.length, promptsData.total);
     } catch (err) {
       setError("Не удалось загрузить промпты.");
       console.error(err);
@@ -208,6 +247,7 @@ export function WebApp() {
           api.getMe(),
           api.getPrompts({
             limit: PROMPTS_FETCH_LIMIT,
+            offset: 0,
             search: search.trim() || undefined,
             lite: true
           })
@@ -218,12 +258,10 @@ export function WebApp() {
         setIsAdmin(Boolean(me.isAdmin));
         setDbUserId(me.user?.id ?? null);
         setUserUsageTotal(me.usageTotal ?? 0);
-        setPrompts(
-          promptsData.map((prompt) => ({
-            ...prompt,
-            examples: prompt.examples ?? []
-          }))
-        );
+        const mapped = mapPromptsFromApi(promptsData.items);
+        setPrompts(mapped);
+        setPromptsTotal(promptsData.total);
+        scheduleWebPrefetch(mapped.length, promptsData.total);
         bootstrappedRef.current = true;
       } catch (err) {
         if (!cancelled) {
@@ -245,10 +283,10 @@ export function WebApp() {
   useEffect(() => {
     if (!bootstrappedRef.current) return;
     const timer = setTimeout(() => {
-      void loadPrompts(search);
+      void loadPrompts();
     }, SEARCH_DEBOUNCE_MS);
     return () => clearTimeout(timer);
-  }, [search]);
+  }, [search, promptSearch, activeCategory, activeTag, sort]);
 
   useEffect(() => {
     if (loading || deepLinkHandledRef.current) return;
@@ -538,6 +576,17 @@ export function WebApp() {
           pageSize={PROMPTS_PER_PAGE}
           onPageChange={setPage}
         />
+        {hasMoreRemote ? (
+          <div ref={loadMoreRef} className="mt-4 flex min-h-10 items-center justify-center">
+            {loadingMoreRemote ? (
+              <span className="text-sm text-[var(--muted)]">Загрузка...</span>
+            ) : (
+              <span className="text-xs text-[var(--muted)]">
+                {prompts.length} из {promptsTotal}
+              </span>
+            )}
+          </div>
+        ) : null}
       </>
     );
   }

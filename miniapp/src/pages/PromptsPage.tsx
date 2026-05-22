@@ -1,14 +1,19 @@
 import { useEffect, useMemo, useState } from "react";
+import { useLoadMoreOnScroll } from "../hooks/useLoadMoreOnScroll";
 import type { Category, Prompt } from "../types";
 import { SearchBar } from "../components/SearchBar";
 import { CategoryTabs } from "../components/CategoryTabs";
 import { PromptCard } from "../components/PromptCard";
 import { promptHasTag } from "../utils/tagFilter";
+import { getPromptSearchText } from "../utils/promptContent";
 
 type Props = {
   prompts: Prompt[];
   categories: Category[];
   loading: boolean;
+  loadingMore?: boolean;
+  hasMore?: boolean;
+  onLoadMore?: () => void;
   error: string;
   onOpenPrompt: (prompt: Prompt) => void;
   onToggleFavorite: (id: number) => void;
@@ -24,6 +29,9 @@ export function PromptsPage({
   prompts,
   categories,
   loading,
+  loadingMore = false,
+  hasMore = false,
+  onLoadMore,
   error,
   onOpenPrompt,
   onToggleFavorite,
@@ -54,10 +62,7 @@ export function PromptsPage({
     let list = [...prompts];
     if (query) {
       const low = query.toLowerCase();
-      list = list.filter((item) => {
-        const keywords = item.keywords.map((k) => k.keyword.name).join(" ");
-        return `${item.title} ${item.content} ${item.category.name} ${keywords}`.toLowerCase().includes(low);
-      });
+      list = list.filter((item) => getPromptSearchText(item).includes(low));
     }
     if (category) {
       list = list.filter((item) => item.category.slug === category);
@@ -71,6 +76,13 @@ export function PromptsPage({
     if (sort === "favorites") list = list.filter((item) => item.isFavorite);
     return list;
   }, [prompts, query, category, sort, activeTag]);
+
+  const loadMoreRef = useLoadMoreOnScroll({
+    enabled: !loading && !error && filtered.length > 0,
+    loading: Boolean(loadingMore),
+    hasMore: Boolean(hasMore && onLoadMore),
+    onLoadMore: () => onLoadMore?.()
+  });
 
   return (
     <div className="space-y-3 pb-1">
@@ -113,6 +125,9 @@ export function PromptsPage({
           {filtered.map((prompt) => (
             <PromptCard key={prompt.id} prompt={prompt} variant="mobile" onOpen={onOpenPrompt} onToggleFavorite={onToggleFavorite} onCopy={onCopyPrompt} onTagClick={onTagClick} />
           ))}
+          <div ref={loadMoreRef} className="flex min-h-8 items-center justify-center py-2">
+            {loadingMore ? <span className="text-xs text-[var(--muted)]">Загрузка...</span> : null}
+          </div>
         </div>
       )}
     </div>

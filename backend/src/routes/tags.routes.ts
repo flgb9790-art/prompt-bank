@@ -12,6 +12,7 @@ router.get("/", async (_req, res, next) => {
       orderBy: { name: "asc" }
     });
 
+    res.set("Cache-Control", "public, max-age=120");
     res.json(
       tags.map((tag: any) => ({
         id: tag.id,

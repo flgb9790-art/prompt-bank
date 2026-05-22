@@ -17,16 +17,18 @@ async function optionalUserId(req: { header: (name: string) => string | undefine
 router.get("/", async (req, res, next) => {
   try {
     const userId = await optionalUserId(req);
-    const prompts = await PromptService.list({
+    const result = await PromptService.list({
       search: req.query.search as string | undefined,
       category: req.query.category as string | undefined,
+      tag: req.query.tag as string | undefined,
+      sort: req.query.sort as string | undefined,
       favorite: req.query.favorite as string | undefined,
       limit: req.query.limit ? Number(req.query.limit) : undefined,
       offset: req.query.offset ? Number(req.query.offset) : undefined,
       lite: req.query.lite === "1" || req.query.lite === "true",
       userId
     });
-    res.json(prompts);
+    res.json(result);
   } catch (error) {
     next(error);
   }

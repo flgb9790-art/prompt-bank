@@ -21,6 +21,7 @@ app.use(cors());
 app.use(express.json({ limit: "3mb" }));
 
 fs.mkdirSync(path.join(uploadsDir, "images"), { recursive: true });
+fs.mkdirSync(path.join(uploadsDir, "images", "thumbs"), { recursive: true });
 fs.mkdirSync(path.join(uploadsDir, "videos"), { recursive: true });
 
 app.use(
@@ -170,10 +171,25 @@ async function seedInitialData() {
   }
 }
 
+async function ensureSearchExtensions() {
+  try {
+    await prisma.$executeRawUnsafe(`CREATE EXTENSION IF NOT EXISTS pg_trgm`);
+    await prisma.$executeRawUnsafe(
+      `CREATE INDEX IF NOT EXISTS "Prompt_title_trgm_idx" ON "Prompt" USING gin (title gin_trgm_ops)`
+    );
+    await prisma.$executeRawUnsafe(
+      `CREATE INDEX IF NOT EXISTS "Prompt_content_trgm_idx" ON "Prompt" USING gin (content gin_trgm_ops)`
+    );
+  } catch (error) {
+    console.warn("Search extensions setup skipped:", error);
+  }
+}
+
 async function bootstrap() {
   // Tables are created once via `npx prisma db push` locally (direct URL).
   // Railway cannot reach Supabase direct :5432; runtime uses DATABASE_URL pooler only.
   await seedInitialData();
+  await ensureSearchExtensions();
   app.listen(config.port, () => {
     console.log(`Backend running on http://localhost:${config.port}`);
   });

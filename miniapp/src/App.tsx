@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { clearPromptShareUrl, parsePromptIdFromLocation, setPromptShareUrl } from "./utils/promptShare";
 import { mergePromptUpdate } from "./utils/mergePrompt";
 import { normalizeTagName } from "./utils/tagFilter";
@@ -20,11 +20,32 @@ import { isTelegramMiniAppContext, mockTelegramUser, resolveTelegramUser } from 
 import {
   ensurePromptWithContent,
   getPromptSearchText,
-  hasFullPromptContent
+  hasFullPromptContent,
+  mapPromptsFromApi
 } from "./utils/promptContent";
-import { WebApp } from "./WebApp";
+import { prefetchPromptsPage, takePrefetchedPromptsPage } from "./utils/promptsPrefetch";
+
+const WebApp = lazy(() => import("./WebApp").then((module) => ({ default: module.WebApp })));
 
 const quickTags = ["beauty", "video", "logo", "telegram", "cursor", "ads", "react", "realistic"];
+const MINI_PROMPTS_PAGE = 30;
+
+function miniPromptsQuery(offset: number) {
+  return { limit: MINI_PROMPTS_PAGE, offset, lite: true as const };
+}
+
+function scheduleMiniPrefetch(loadedCount: number, total: number) {
+  if (loadedCount >= total) return;
+  prefetchPromptsPage(miniPromptsQuery(loadedCount));
+}
+
+function AppLoadingScreen() {
+  return (
+    <div className="flex min-h-dvh items-center justify-center bg-[var(--bg)] text-sm text-[var(--muted)]">
+      Загрузка...
+    </div>
+  );
+}
 
 type AppRuntime = "loading" | "telegram" | "web";
 
@@ -83,23 +104,25 @@ export default function App() {
   }, [runtime]);
 
   if (runtime === "loading") {
-    return (
-      <div className="flex min-h-dvh items-center justify-center bg-[var(--bg)] text-sm text-[var(--muted)]">
-        Загрузка...
-      </div>
-    );
+    return <AppLoadingScreen />;
   }
 
   if (runtime === "telegram") {
     return <MiniAppApp />;
   }
 
-  return <WebApp />;
+  return (
+    <Suspense fallback={<AppLoadingScreen />}>
+      <WebApp />
+    </Suspense>
+  );
 }
 
 function MiniAppApp() {
   const [tab, setTab] = useState<TabKey>("home");
   const [prompts, setPrompts] = useState<Prompt[]>([]);
+  const [promptsTotal, setPromptsTotal] = useState(0);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -116,14 +139,16 @@ function MiniAppApp() {
   const openPromptRequestRef = useRef(0);
 
   const favorites = useMemo(() => prompts.filter((item) => item.isFavorite), [prompts]);
+  const hasMorePrompts = prompts.length < promptsTotal;
+
   const stats = useMemo(
     () => ({
-      total: prompts.length,
+      total: promptsTotal || prompts.length,
       favorites: favorites.length,
       categories: countCategoriesWithPrompts(prompts),
       usage: userUsageTotal
     }),
-    [prompts, favorites.length, userUsageTotal]
+    [prompts, promptsTotal, favorites.length, userUsageTotal]
   );
 
   const searchResults = useMemo(() => {
@@ -137,11 +162,14 @@ function MiniAppApp() {
     setError("");
     try {
       const [promptsData, categoriesData, me] = await Promise.all([
-        api.getPrompts({ limit: 100, lite: true }),
+        api.getPrompts({ limit: MINI_PROMPTS_PAGE, offset: 0, lite: true }),
         api.getCategories(),
         api.getMe()
       ]);
-      setPrompts(promptsData.map((prompt) => ({ ...prompt, examples: prompt.examples ?? [] })));
+      const mapped = mapPromptsFromApi(promptsData.items);
+      setPrompts(mapped);
+      setPromptsTotal(promptsData.total);
+      scheduleMiniPrefetch(mapped.length, promptsData.total);
       setCategories(categoriesData);
       setIsAdmin(me.isAdmin);
       setUserUsageTotal(me.usageTotal ?? 0);
@@ -149,6 +177,26 @@ function MiniAppApp() {
       setError("Не удалось загрузить данные.");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function loadMorePrompts() {
+    if (loadingMore || !hasMorePrompts) return;
+    setLoadingMore(true);
+    const query = miniPromptsQuery(prompts.length);
+    try {
+      const cached = await takePrefetchedPromptsPage(query);
+      const promptsData = cached ?? (await api.getPrompts(query));
+      setPrompts((prev) => {
+        const merged = [...prev, ...mapPromptsFromApi(promptsData.items)];
+        scheduleMiniPrefetch(merged.length, promptsData.total);
+        return merged;
+      });
+      setPromptsTotal(promptsData.total);
+    } catch {
+      setToastMessage("Не удалось загрузить ещё промпты");
+    } finally {
+      setLoadingMore(false);
     }
   }
 
@@ -412,6 +460,9 @@ function MiniAppApp() {
           prompts={prompts}
           categories={categories}
           loading={loading}
+          loadingMore={loadingMore}
+          hasMore={hasMorePrompts}
+          onLoadMore={loadMorePrompts}
           error={error}
           onOpenPrompt={openPrompt}
           onToggleFavorite={handleToggleFavorite}

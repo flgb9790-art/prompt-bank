@@ -2,6 +2,7 @@ import fs from "fs";
 import path from "path";
 import { config, isSupabaseStorageEnabled, uploadsDir } from "../config";
 import type { MediaKind } from "./media.service";
+import { generateImageThumbnail, thumbFilenameFor } from "./thumbnail.service";
 
 function buildObjectPath(kind: MediaKind, filename: string) {
   const folder = kind === "image" ? "images" : "videos";
@@ -65,6 +66,22 @@ export function guessContentType(kind: MediaKind, filename: string) {
   return kind === "image" ? "image/jpeg" : "video/mp4";
 }
 
+async function persistImageThumbnail(buffer: Buffer, filename: string) {
+  const thumbBuffer = await generateImageThumbnail(buffer);
+  if (!thumbBuffer) return;
+
+  const thumbName = thumbFilenameFor(filename);
+
+  if (isSupabaseStorageEnabled()) {
+    await uploadBufferToSupabase(thumbBuffer, `images/thumbs/${thumbName}`, "image/webp");
+    return;
+  }
+
+  const thumbDir = path.join(uploadsDir, "images", "thumbs");
+  fs.mkdirSync(thumbDir, { recursive: true });
+  fs.writeFileSync(path.join(thumbDir, thumbName), thumbBuffer);
+}
+
 export async function persistMediaBuffer(
   kind: MediaKind,
   buffer: Buffer,
@@ -77,10 +94,16 @@ export async function persistMediaBuffer(
   if (isSupabaseStorageEnabled()) {
     const objectPath = buildObjectPath(kind, filename);
     const url = await uploadBufferToSupabase(buffer, objectPath, mime);
+    if (kind === "image") {
+      await persistImageThumbnail(buffer, filename);
+    }
     return { url, type: kind, originalName };
   }
 
   const { diskPath, publicUrl } = resolveLocalUploadPath(kind, filename);
   fs.writeFileSync(diskPath, buffer);
+  if (kind === "image") {
+    await persistImageThumbnail(buffer, filename);
+  }
   return { url: publicUrl, type: kind, originalName };
 }

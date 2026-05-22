@@ -51,6 +51,9 @@ model Prompt {
   usages         PromptUsage[]
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
+
+  @@index([createdAt(sort: Desc)])
+  @@index([categoryId])
 }
 
 model PromptUsage {

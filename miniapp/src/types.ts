@@ -47,6 +47,11 @@ export type Prompt = {
   updatedAt: string;
 };
 
+export type PromptListResponse = {
+  items: Prompt[];
+  total: number;
+};
+
 export type TelegramUser = {
   id: number;
   username?: string;

@@ -83,23 +83,22 @@ export class PromptService {
     });
   }
 
-  static async list(params: {
+  private static buildListWhere(params: {
     search?: string;
     category?: string;
+    tag?: string;
     favorite?: string;
-    limit?: number;
-    offset?: number;
-    lite?: boolean;
     userId?: number;
   }) {
-    const where: any = {};
+    const where: Record<string, unknown> = {};
 
     if (params.search) {
+      const term = { contains: params.search, mode: "insensitive" as const };
       where.OR = [
-        { title: { contains: params.search } },
-        { content: { contains: params.search } },
-        { keywords: { some: { keyword: { name: { contains: params.search } } } } },
-        { category: { name: { contains: params.search } } }
+        { title: term },
+        { content: term },
+        { keywords: { some: { keyword: { name: term } } } },
+        { category: { name: term } }
       ];
     }
 
@@ -107,27 +106,68 @@ export class PromptService {
       where.category = { slug: params.category };
     }
 
+    if (params.tag) {
+      where.keywords = { some: { keyword: { name: { equals: params.tag, mode: "insensitive" as const } } } };
+    }
+
     if (params.favorite === "true" && params.userId) {
       where.favorites = { some: { userId: params.userId } };
     }
 
-    const includeExamples = params.lite !== true;
-    const favoriteIds = await PromptService.favoritePromptIds(params.userId);
+    return where;
+  }
 
-    const prompts = await prisma.prompt.findMany({
-      where,
-      orderBy: { createdAt: "desc" },
-      skip: params.offset ?? 0,
-      take: params.limit ?? 30,
-      include: {
-        category: true,
-        keywords: { include: { keyword: true } },
-        ...(includeExamples ? { examples: true } : {})
-      }
+  private static listOrderBy(sort?: string) {
+    if (sort === "usage") return { usageCount: "desc" as const };
+    if (sort === "old") return { createdAt: "asc" as const };
+    return { createdAt: "desc" as const };
+  }
+
+  static async list(params: {
+    search?: string;
+    category?: string;
+    tag?: string;
+    favorite?: string;
+    sort?: string;
+    limit?: number;
+    offset?: number;
+    lite?: boolean;
+    userId?: number;
+  }) {
+    const where = PromptService.buildListWhere(params);
+    const includeExamples = params.lite !== true;
+    const lite = params.lite === true;
+    const useFavoriteJoin = Boolean(params.userId);
+    const orderBy = PromptService.listOrderBy(params.sort);
+
+    const [prompts, total, favoriteIds] = await Promise.all([
+      prisma.prompt.findMany({
+        where,
+        orderBy,
+        skip: params.offset ?? 0,
+        take: params.limit ?? 30,
+        include: {
+          category: true,
+          keywords: { include: { keyword: true } },
+          ...(useFavoriteJoin
+            ? { favorites: { where: { userId: params.userId! }, select: { id: true }, take: 1 } }
+            : {}),
+          ...(includeExamples ? { examples: true } : {})
+        }
+      }),
+      prisma.prompt.count({ where }),
+      useFavoriteJoin ? Promise.resolve(new Set<number>()) : PromptService.favoritePromptIds(params.userId)
+    ]);
+
+    const items = prompts.map((row) => {
+      const { favorites, ...prompt } = row as typeof row & { favorites?: Array<{ id: number }> };
+      const withFavorite = useFavoriteJoin
+        ? { ...prompt, isFavorite: (favorites?.length ?? 0) > 0 }
+        : PromptService.withFavorite(prompt, favoriteIds);
+      return PromptService.toListResponse(withFavorite, new Set(), lite);
     });
 
-    const lite = params.lite === true;
-    return prompts.map((prompt) => PromptService.toListResponse(prompt, favoriteIds, lite));
+    return { items, total };
   }
 
   static async getById(id: number, userId?: number) {

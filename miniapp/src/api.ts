@@ -1,8 +1,29 @@
-import type { Category, MeResponse, Prompt, PromptCreatePayload, PromptUpdatePayload, TagStat } from "./types";
+import type {
+  Category,
+  MeResponse,
+  Prompt,
+  PromptCreatePayload,
+  PromptListResponse,
+  PromptUpdatePayload,
+  TagStat
+} from "./types";
 
 const configuredBaseUrl = (import.meta.env.VITE_BACKEND_URL as string | undefined)?.trim();
+const configuredMediaCdn = (import.meta.env.VITE_MEDIA_CDN_URL as string | undefined)?.trim();
 const baseUrl = configuredBaseUrl || "";
+const mediaCdnBase = configuredMediaCdn?.replace(/\/$/, "") ?? "";
 let authTelegramId: string | null = null;
+
+export type GetPromptsParams = {
+  search?: string;
+  category?: string;
+  tag?: string;
+  favorite?: boolean;
+  limit?: number;
+  offset?: number;
+  lite?: boolean;
+  sort?: "new" | "old" | "usage";
+};
 
 export class ApiError extends Error {
   status: number;
@@ -56,23 +77,9 @@ export const api = {
   getMe() {
     return request<MeResponse>("/api/me");
   },
-  getPrompts(params?: {
-    search?: string;
-    category?: string;
-    favorite?: boolean;
-    limit?: number;
-    offset?: number;
-    lite?: boolean;
-  }) {
-    const searchParams = new URLSearchParams();
-    if (params?.search) searchParams.set("search", params.search);
-    if (params?.category) searchParams.set("category", params.category);
-    if (params?.favorite !== undefined) searchParams.set("favorite", String(params.favorite));
-    if (params?.limit !== undefined) searchParams.set("limit", String(params.limit));
-    if (params?.offset !== undefined) searchParams.set("offset", String(params.offset));
-    if (params?.lite) searchParams.set("lite", "1");
-    const query = searchParams.toString();
-    return request<Prompt[]>(`/api/prompts${query ? `?${query}` : ""}`);
+  getPrompts(params?: GetPromptsParams) {
+    const query = buildPromptsQueryString(params);
+    return request<PromptListResponse>(`/api/prompts${query ? `?${query}` : ""}`);
   },
   getPrompt(id: number) {
     return request<Prompt>(`/api/prompts/${id}`);
@@ -92,11 +99,45 @@ export const api = {
   increaseUsage(id: number) {
     return request<Prompt>(`/api/prompts/${id}/usage`, { method: "POST" });
   },
-  getCategories() {
-    return request<Category[]>("/api/categories");
+  async getCategories() {
+    const cacheKey = "prompt-bank-categories";
+    const cached = sessionStorage.getItem(cacheKey);
+    if (cached) {
+      try {
+        const parsed = JSON.parse(cached) as Category[];
+        if (Array.isArray(parsed) && parsed.length) {
+          void request<Category[]>("/api/categories")
+            .then((fresh) => sessionStorage.setItem(cacheKey, JSON.stringify(fresh)))
+            .catch(() => undefined);
+          return parsed;
+        }
+      } catch {
+        sessionStorage.removeItem(cacheKey);
+      }
+    }
+    const fresh = await request<Category[]>("/api/categories");
+    sessionStorage.setItem(cacheKey, JSON.stringify(fresh));
+    return fresh;
   },
-  getTags() {
-    return request<TagStat[]>("/api/tags");
+  async getTags() {
+    const cacheKey = "prompt-bank-tags";
+    const cached = sessionStorage.getItem(cacheKey);
+    if (cached) {
+      try {
+        const parsed = JSON.parse(cached) as TagStat[];
+        if (Array.isArray(parsed)) {
+          void request<TagStat[]>("/api/tags")
+            .then((fresh) => sessionStorage.setItem(cacheKey, JSON.stringify(fresh)))
+            .catch(() => undefined);
+          return parsed;
+        }
+      } catch {
+        sessionStorage.removeItem(cacheKey);
+      }
+    }
+    const fresh = await request<TagStat[]>("/api/tags");
+    sessionStorage.setItem(cacheKey, JSON.stringify(fresh));
+    return fresh;
   },
   addExample(promptId: number, payload: { url: string; type: "image" | "video"; originalName?: string }) {
     return request(`/api/prompts/${promptId}/examples`, {
@@ -131,12 +172,50 @@ export const api = {
   }
 };
 
-export function resolveMediaUrl(url: string) {
-  if (url.startsWith("http")) {
-    return url;
+export function buildPromptsQueryString(params?: GetPromptsParams) {
+  if (!params) return "";
+  const searchParams = new URLSearchParams();
+  if (params.search) searchParams.set("search", params.search);
+  if (params.category) searchParams.set("category", params.category);
+  if (params.tag) searchParams.set("tag", params.tag);
+  if (params.favorite !== undefined) searchParams.set("favorite", String(params.favorite));
+  if (params.limit !== undefined) searchParams.set("limit", String(params.limit));
+  if (params.offset !== undefined) searchParams.set("offset", String(params.offset));
+  if (params.sort) searchParams.set("sort", params.sort);
+  if (params.lite) searchParams.set("lite", "1");
+  return searchParams.toString();
+}
+
+function withMediaOrigin(pathOrUrl: string) {
+  if (pathOrUrl.startsWith("http")) {
+    return pathOrUrl;
+  }
+  const path = pathOrUrl.startsWith("/") ? pathOrUrl : `/${pathOrUrl}`;
+  if (mediaCdnBase) {
+    return `${mediaCdnBase}${path}`;
   }
   if (baseUrl) {
-    return `${baseUrl}${url}`;
+    return `${baseUrl}${path}`;
   }
-  return `${window.location.origin}${url}`;
+  return `${window.location.origin}${path}`;
+}
+
+export function resolveMediaUrl(url: string) {
+  return withMediaOrigin(url);
+}
+
+/** Превью для карточек списка (WebP ~420px). При отсутствии thumb — полный URL. */
+export function resolveCardMediaUrl(url: string, type: "image" | "video") {
+  if (type !== "image") {
+    return resolveMediaUrl(url);
+  }
+
+  const full = resolveMediaUrl(url);
+  const match = full.match(/\/images\/([^/?#]+)$/i);
+  if (!match) {
+    return full;
+  }
+
+  const thumbName = `${match[1].replace(/\.[^.]+$/i, "")}.webp`;
+  return full.replace(/\/images\/[^/?#]+$/i, `/images/thumbs/${thumbName}`);
 }

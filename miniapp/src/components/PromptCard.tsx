@@ -1,5 +1,6 @@
+import { memo, useState } from "react";
 import { Copy, Star } from "lucide-react";
-import { resolveMediaUrl } from "../api";
+import { resolveCardMediaUrl, resolveMediaUrl } from "../api";
 import type { Prompt } from "../types";
 import { getPromptExcerpt } from "../utils/promptContent";
 import { TagPill } from "./TagPill";
@@ -17,6 +18,13 @@ type Props = {
 type CardVariant = "desktop" | "mobile" | "list";
 
 function CardPreview({ prompt, variant }: { prompt: Prompt; variant: CardVariant }) {
+  const coverUrl = prompt.coverMediaUrl ?? "";
+  const [imageSrc, setImageSrc] = useState(() =>
+    coverUrl && prompt.coverMediaType === "image"
+      ? resolveCardMediaUrl(coverUrl, "image")
+      : resolveMediaUrl(coverUrl)
+  );
+
   const sizeClass =
     variant === "desktop"
       ? "prompt-card-preview--desktop"
@@ -30,7 +38,19 @@ function CardPreview({ prompt, variant }: { prompt: Prompt; variant: CardVariant
         prompt.coverMediaType === "video" ? (
           <video src={resolveMediaUrl(prompt.coverMediaUrl)} muted playsInline preload="metadata" />
         ) : (
-          <img src={resolveMediaUrl(prompt.coverMediaUrl)} alt="" draggable={false} loading="lazy" />
+          <img
+            src={imageSrc}
+            alt=""
+            draggable={false}
+            loading="lazy"
+            decoding="async"
+            onError={() => {
+              const fallback = resolveMediaUrl(coverUrl);
+              if (imageSrc !== fallback) {
+                setImageSrc(fallback);
+              }
+            }}
+          />
         )
       ) : null}
     </div>
@@ -61,7 +81,14 @@ function CardTagsRow({
   );
 }
 
-export function PromptCard({ prompt, variant = "mobile", onOpen, onToggleFavorite, onCopy, onTagClick }: Props) {
+export const PromptCard = memo(function PromptCard({
+  prompt,
+  variant = "mobile",
+  onOpen,
+  onToggleFavorite,
+  onCopy,
+  onTagClick
+}: Props) {
   const badgeClass = getCategoryBadgeClass(prompt.category.slug, prompt.category.name);
 
   if (variant === "list") {
@@ -205,4 +232,4 @@ export function PromptCard({ prompt, variant = "mobile", onOpen, onToggleFavorit
       </div>
     </article>
   );
-}
+});

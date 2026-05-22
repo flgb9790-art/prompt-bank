@@ -6,9 +6,19 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
-        manualChunks: {
-          "react-vendor": ["react", "react-dom"],
-          icons: ["lucide-react"]
+        manualChunks(id) {
+          if (!id.includes("node_modules")) {
+            if (id.includes("/WebApp") || id.includes("\\WebApp")) {
+              return "web-app";
+            }
+            return;
+          }
+          if (id.includes("react-dom") || id.includes("/react/")) {
+            return "react-vendor";
+          }
+          if (id.includes("lucide-react")) {
+            return "icons";
+          }
         }
       }
     }
