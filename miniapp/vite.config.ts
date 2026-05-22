@@ -18,6 +18,7 @@ export default defineConfig({
         icons: []
       },
       workbox: {
+        mode: "development",
         globPatterns: ["**/*.{js,css,svg,woff2,webmanifest}"],
         navigateFallback: "index.html",
         navigateFallbackDenylist: [/^\/api/, /^\/uploads/],
