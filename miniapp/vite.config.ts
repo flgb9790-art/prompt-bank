@@ -24,15 +24,34 @@ export default defineConfig(({ mode }) => {
     },
     VitePWA({
       registerType: "autoUpdate",
-      includeAssets: [],
+      includeAssets: ["favicon.svg", "favicon-32x32.png", "apple-touch-icon.png", "icon-192.png", "icon-512.png", "brand-logo.svg"],
       manifest: {
         name: "Prompt Bank",
         short_name: "Prompt Bank",
-        theme_color: "#ffffff",
-        background_color: "#ffffff",
+        theme_color: "#f8f9fd",
+        background_color: "#f8f9fd",
         display: "standalone",
         start_url: "/",
-        icons: []
+        icons: [
+          {
+            src: "icon-192.png",
+            sizes: "192x192",
+            type: "image/png",
+            purpose: "any"
+          },
+          {
+            src: "icon-512.png",
+            sizes: "512x512",
+            type: "image/png",
+            purpose: "any"
+          },
+          {
+            src: "icon-512.png",
+            sizes: "512x512",
+            type: "image/png",
+            purpose: "maskable"
+          }
+        ]
       },
       workbox: {
         mode: "development",

@@ -1,5 +1,6 @@
 import { Hash, Heart, Home, LayoutGrid, Plus, Settings, Timer } from "lucide-react";
 import type { Category } from "../../types";
+import { BrandLogo } from "../BrandLogo";
 
 type RouteKey = "/" | "/prompts" | "/favorites" | "/recent" | "/categories" | "/tags" | "/settings";
 
@@ -34,10 +35,7 @@ export function Sidebar({
 
   return (
     <div className="sidebar-shell flex h-full min-h-0 flex-col">
-      <button type="button" onClick={() => onNavigate("/")} className="flex h-12 shrink-0 items-center gap-3 text-left">
-        <div className="brand-logo-icon">P</div>
-        <span className="brand-logo-text">Prompt Bank</span>
-      </button>
+      <BrandLogo size={40} onClick={() => onNavigate("/")} className="shrink-0 text-left" />
 
       <nav className="mt-7 shrink-0 space-y-1">
         {navItems.map((item) => {

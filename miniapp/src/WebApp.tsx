@@ -35,6 +35,10 @@ import type { GetPromptsParams } from "./api";
 import { useLoadMoreOnScroll } from "./hooks/useLoadMoreOnScroll";
 import { prefetchPromptsPage, takePrefetchedPromptsPage } from "./utils/promptsPrefetch";
 import {
+  useDocumentTitle,
+  webRouteDocumentTitle
+} from "./utils/documentTitle";
+import {
   ensurePromptWithContent,
   hasFullPromptContent,
   hasFullPromptDetails,
@@ -148,6 +152,21 @@ export function WebApp() {
     }),
     [categories, favoritePrompts.length, isAuthenticated, prompts, promptsTotal, userUsageTotal]
   );
+
+  const documentTitleSuffix = useMemo(
+    () =>
+      webRouteDocumentTitle({
+        path,
+        activeTag,
+        activeCategory,
+        categories,
+        selectedPromptTitle: selectedPrompt?.title,
+        isAddModalOpen
+      }),
+    [path, activeTag, activeCategory, categories, selectedPrompt?.title, isAddModalOpen]
+  );
+
+  useDocumentTitle(documentTitleSuffix);
 
   const userPromptsCount = useMemo(() => {
     if (!dbUserId) return 0;

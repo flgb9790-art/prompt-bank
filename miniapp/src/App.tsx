@@ -32,6 +32,7 @@ import {
   writeFavoritesCache
 } from "./utils/favoritesCache";
 import { hideAppSplash } from "./utils/appSplash";
+import { miniRouteDocumentTitle, useDocumentTitle } from "./utils/documentTitle";
 import { writeReferenceCache } from "./utils/referenceCache";
 import { createPromptLoadingShell } from "./utils/promptShell";
 
@@ -212,6 +213,19 @@ function MiniAppApp() {
     }),
     [categories, prompts, promptsTotal, favorites.length, favoritesForView.length, userUsageTotal]
   );
+
+  const documentTitleSuffix = useMemo(
+    () =>
+      miniRouteDocumentTitle({
+        tab,
+        activeTag,
+        searchQuery,
+        selectedPromptTitle: selectedPrompt?.title
+      }),
+    [tab, activeTag, searchQuery, selectedPrompt?.title]
+  );
+
+  useDocumentTitle(documentTitleSuffix);
 
   useEffect(() => {
     if (tab !== "search") return;

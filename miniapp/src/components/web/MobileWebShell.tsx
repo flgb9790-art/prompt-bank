@@ -1,5 +1,6 @@
 import { Home, LayoutGrid, Plus, Search, Star, User } from "lucide-react";
 import type { ReactNode } from "react";
+import { BrandLogo } from "../BrandLogo";
 
 type RouteKey = "/" | "/prompts" | "/favorites" | "/recent" | "/tags" | "/categories" | "/settings";
 
@@ -36,10 +37,7 @@ export function MobileWebShell({
     <div className="flex min-h-dvh flex-col bg-white lg:hidden">
       <header className="px-4 pt-[18px]">
         <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="brand-logo-icon">P</div>
-            <span className="text-[22px] font-[760] text-[var(--text)]">Prompt Bank</span>
-          </div>
+          <BrandLogo size={36} textClassName="text-[22px] font-[760] text-[var(--text)]" />
           {headerRight}
         </div>
         <input

@@ -14,7 +14,8 @@
     "thumbs:backfill": "tsx scripts/backfill-thumbs.ts",
     "db:migrate-railway": "tsx scripts/migrate-supabase-to-railway.ts",
     "media:migrate-railway": "tsx scripts/migrate-supabase-media.ts",
-    "backup:full": "tsx scripts/full-backup.ts"
+    "backup:full": "tsx scripts/full-backup.ts",
+    "icons:generate": "tsx scripts/generate-brand-icons.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.8.2",

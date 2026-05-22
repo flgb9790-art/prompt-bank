@@ -226,6 +226,28 @@ html.web-mode #root {
 }
 
 /* Logo */
+.brand-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: default;
+}
+
+button.brand-logo {
+  cursor: pointer;
+}
+
+.brand-logo-image {
+  display: block;
+  width: 40px;
+  height: auto;
+  flex-shrink: 0;
+}
+
 .brand-logo-icon {
   width: 40px;
   height: 40px;
