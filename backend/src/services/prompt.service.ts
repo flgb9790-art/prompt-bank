@@ -20,13 +20,39 @@ type PromptUpdateInput = Partial<Omit<PromptCreateInput, "userId" | "examples">>
   coverMediaType?: MediaType | null;
 };
 
+const promptInclude = {
+  category: true,
+  keywords: { include: { keyword: true } },
+  examples: true
+} as const;
+
 export class PromptService {
+  private static async attachKeywords(promptId: number, keywordNames: string[]) {
+    if (!keywordNames.length) return;
+
+    const keywords = await Promise.all(
+      keywordNames.map((name) =>
+        prisma.keyword.upsert({
+          where: { name },
+          update: {},
+          create: { name }
+        })
+      )
+    );
+
+    await prisma.promptKeyword.createMany({
+      data: keywords.map((keyword) => ({ promptId, keywordId: keyword.id })),
+      skipDuplicates: true
+    });
+  }
+
   static async list(params: {
     search?: string;
     category?: string;
     favorite?: string;
     limit?: number;
     offset?: number;
+    lite?: boolean;
   }) {
     const where: any = {};
 
@@ -47,6 +73,8 @@ export class PromptService {
       where.isFavorite = params.favorite === "true";
     }
 
+    const includeExamples = params.lite !== true;
+
     return prisma.prompt.findMany({
       where,
       orderBy: { createdAt: "desc" },
@@ -55,7 +83,7 @@ export class PromptService {
       include: {
         category: true,
         keywords: { include: { keyword: true } },
-        examples: true
+        ...(includeExamples ? { examples: true } : {})
       }
     });
   }
@@ -64,9 +92,7 @@ export class PromptService {
     return prisma.prompt.findUnique({
       where: { id },
       include: {
-        category: true,
-        keywords: { include: { keyword: true } },
-        examples: true,
+        ...promptInclude,
         user: true
       }
     });
@@ -96,26 +122,11 @@ export class PromptService {
       }
     });
 
-    for (const kw of keywords) {
-      const keyword = await prisma.keyword.upsert({
-        where: { name: kw },
-        update: {},
-        create: { name: kw }
-      });
-      await prisma.promptKeyword.upsert({
-        where: { promptId_keywordId: { promptId: prompt.id, keywordId: keyword.id } },
-        update: {},
-        create: { promptId: prompt.id, keywordId: keyword.id }
-      });
-    }
+    await PromptService.attachKeywords(prompt.id, keywords);
 
     return prisma.prompt.findUniqueOrThrow({
       where: { id: prompt.id },
-      include: {
-        category: true,
-        keywords: { include: { keyword: true } },
-        examples: true
-      }
+      include: promptInclude
     });
   }
 
@@ -138,25 +149,12 @@ export class PromptService {
 
     if (keywords) {
       await prisma.promptKeyword.deleteMany({ where: { promptId: id } });
-      for (const kw of keywords) {
-        const keyword = await prisma.keyword.upsert({
-          where: { name: kw },
-          update: {},
-          create: { name: kw }
-        });
-        await prisma.promptKeyword.create({
-          data: { promptId: id, keywordId: keyword.id }
-        });
-      }
+      await PromptService.attachKeywords(id, keywords);
     }
 
     return prisma.prompt.findUniqueOrThrow({
       where: { id },
-      include: {
-        category: true,
-        keywords: { include: { keyword: true } },
-        examples: true
-      }
+      include: promptInclude
     });
   }
 

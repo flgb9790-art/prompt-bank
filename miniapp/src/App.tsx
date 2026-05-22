@@ -63,11 +63,11 @@ function MiniAppApp() {
     setError("");
     try {
       const [promptsData, categoriesData, me] = await Promise.all([
-        api.getPrompts({ limit: 200 }),
+        api.getPrompts({ limit: 100, lite: true }),
         api.getCategories(),
         api.getMe()
       ]);
-      setPrompts(promptsData);
+      setPrompts(promptsData.map((prompt) => ({ ...prompt, examples: prompt.examples ?? [] })));
       setCategories(categoriesData);
       setIsAdmin(me.isAdmin);
     } catch {
@@ -78,6 +78,14 @@ function MiniAppApp() {
   }
 
   useEffect(() => {
+    if (!document.querySelector('script[data-telegram-webapp="1"]')) {
+      const script = document.createElement("script");
+      script.src = "https://telegram.org/js/telegram-web-app.js";
+      script.async = true;
+      script.dataset.telegramWebapp = "1";
+      document.head.appendChild(script);
+    }
+
     const getWebApp = () => window.Telegram?.WebApp;
     setIsMiniAppExpanded(getWebApp() ? Boolean(getWebApp()?.isExpanded) : true);
 
@@ -161,26 +169,41 @@ function MiniAppApp() {
   async function handleSavePrompt(payload: PromptCreatePayload) {
     const created = await api.createPrompt(payload);
     setCreatedPromptId(created.id);
-    await loadData();
+    setPrompts((prev) => [created, ...prev]);
   }
 
   async function handleToggleFavorite(id: number) {
-    await api.toggleFavorite(id);
-    await loadData();
+    const updated = await api.toggleFavorite(id);
+    setPrompts((prev) => prev.map((item) => (item.id === id ? updated : item)));
+    if (selectedPrompt?.id === id) setSelectedPrompt(updated);
+  }
+
+  async function openPrompt(prompt: Prompt) {
+    setSelectedPrompt({ ...prompt, examples: prompt.examples ?? [] });
+    try {
+      const full = await api.getPrompt(prompt.id);
+      setSelectedPrompt(full);
+    } catch {
+      // keep partial prompt in modal
+    }
   }
 
   async function handleDeletePrompt(id: number) {
     await api.deletePrompt(id);
     setSelectedPrompt(undefined);
-    await loadData();
+    setPrompts((prev) => prev.filter((item) => item.id !== id));
   }
 
   async function handleCopyPrompt(prompt: Prompt) {
     try {
       await navigator.clipboard.writeText(prompt.content);
       setToastMessage("Промпт скопирован");
-      await api.increaseUsage(prompt.id);
-      await loadData();
+      setPrompts((prev) =>
+        prev.map((item) =>
+          item.id === prompt.id ? { ...item, usageCount: item.usageCount + 1 } : item
+        )
+      );
+      void api.increaseUsage(prompt.id).catch(() => undefined);
     } catch {
       setToastMessage("Не удалось скопировать промпт");
     }
@@ -200,15 +223,13 @@ function MiniAppApp() {
       ...(data.coverMediaUrl !== undefined ? { coverMediaUrl: data.coverMediaUrl } : {}),
       ...(data.coverMediaType !== undefined ? { coverMediaType: data.coverMediaType } : {})
     });
-    for (const exampleId of data.removedExampleIds) {
-      await api.removeExample(exampleId);
-    }
-    for (const example of data.newExamples) {
-      await api.addExample(promptId, example);
-    }
+    await Promise.all([
+      ...data.removedExampleIds.map((exampleId) => api.removeExample(exampleId)),
+      ...data.newExamples.map((example) => api.addExample(promptId, example))
+    ]);
     const fresh = await api.getPrompt(promptId);
+    setPrompts((prev) => prev.map((item) => (item.id === promptId ? fresh : item)));
     setSelectedPrompt(fresh);
-    await loadData();
   }
 
   return (
@@ -217,7 +238,7 @@ function MiniAppApp() {
         <HomePage
           prompts={prompts}
           stats={stats}
-          onOpenPrompt={setSelectedPrompt}
+          onOpenPrompt={openPrompt}
           onCopyPrompt={handleCopyPrompt}
           onToggleFavorite={handleToggleFavorite}
           onCreate={() => setTab("add")}
@@ -229,7 +250,7 @@ function MiniAppApp() {
           categories={categories}
           loading={loading}
           error={error}
-          onOpenPrompt={setSelectedPrompt}
+          onOpenPrompt={openPrompt}
           onToggleFavorite={handleToggleFavorite}
           onCopyPrompt={handleCopyPrompt}
         />
@@ -249,7 +270,7 @@ function MiniAppApp() {
               <div key={prompt.id} className="glass-card p-3.5">
                 <p className="font-medium">{prompt.title}</p>
                 <p className="mt-1 text-xs text-slate-300">{prompt.category.name}</p>
-                <button className="mt-2 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-xs" onClick={() => setSelectedPrompt(prompt)}>
+                <button className="mt-2 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-xs" onClick={() => openPrompt(prompt)}>
                   Открыть
                 </button>
               </div>
@@ -260,7 +281,7 @@ function MiniAppApp() {
       {tab === "favorites" && (
         <FavoritesPage
           prompts={favorites}
-          onOpenPrompt={setSelectedPrompt}
+          onOpenPrompt={openPrompt}
           onCopyPrompt={handleCopyPrompt}
           onToggleFavorite={handleToggleFavorite}
         />

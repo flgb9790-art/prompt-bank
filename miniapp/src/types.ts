@@ -39,7 +39,7 @@ export type Prompt = {
   isFavorite: boolean;
   usageCount: number;
   keywords: PromptKeyword[];
-  examples: MediaExample[];
+  examples?: MediaExample[];
   createdAt: string;
   updatedAt: string;
 };

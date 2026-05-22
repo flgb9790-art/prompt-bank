@@ -20,10 +20,7 @@ export function MediaUploader({ label, multiple, onUploaded }: Props) {
     setLoading(true);
     setError("");
     try {
-      const uploaded: UploadedMedia[] = [];
-      for (const file of Array.from(files)) {
-        uploaded.push(await api.upload(file));
-      }
+      const uploaded = await Promise.all(Array.from(files).map((file) => api.upload(file)));
       onUploaded(uploaded);
     } catch {
       setError("Не удалось загрузить файл.");

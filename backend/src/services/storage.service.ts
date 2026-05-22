@@ -36,7 +36,7 @@ export async function uploadBufferToSupabase(buffer: Buffer, objectPath: string,
       "Content-Type": contentType,
       "x-upsert": "true"
     },
-    body: buffer
+    body: new Uint8Array(buffer)
   });
 
   if (!response.ok) {

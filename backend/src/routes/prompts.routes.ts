@@ -14,7 +14,8 @@ router.get("/", async (req, res, next) => {
       category: req.query.category as string | undefined,
       favorite: req.query.favorite as string | undefined,
       limit: req.query.limit ? Number(req.query.limit) : undefined,
-      offset: req.query.offset ? Number(req.query.offset) : undefined
+      offset: req.query.offset ? Number(req.query.offset) : undefined,
+      lite: req.query.lite === "1" || req.query.lite === "true"
     });
     res.json(prompts);
   } catch (error) {

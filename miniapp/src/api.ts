@@ -56,13 +56,21 @@ export const api = {
   getMe() {
     return request<MeResponse>("/api/me");
   },
-  getPrompts(params?: { search?: string; category?: string; favorite?: boolean; limit?: number; offset?: number }) {
+  getPrompts(params?: {
+    search?: string;
+    category?: string;
+    favorite?: boolean;
+    limit?: number;
+    offset?: number;
+    lite?: boolean;
+  }) {
     const searchParams = new URLSearchParams();
     if (params?.search) searchParams.set("search", params.search);
     if (params?.category) searchParams.set("category", params.category);
     if (params?.favorite !== undefined) searchParams.set("favorite", String(params.favorite));
     if (params?.limit !== undefined) searchParams.set("limit", String(params.limit));
     if (params?.offset !== undefined) searchParams.set("offset", String(params.offset));
+    if (params?.lite) searchParams.set("lite", "1");
     const query = searchParams.toString();
     return request<Prompt[]>(`/api/prompts${query ? `?${query}` : ""}`);
   },

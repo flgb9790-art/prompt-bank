@@ -56,7 +56,7 @@ export function PromptDetailsModal({
         ? { url: current.coverMediaUrl, type: current.coverMediaType }
         : null
     );
-    setKeptExampleIds(current.examples.map((example) => example.id));
+    setKeptExampleIds((current.examples ?? []).map((example) => example.id));
     setNewExamples([]);
     setSaveError("");
   }
@@ -70,7 +70,7 @@ export function PromptDetailsModal({
   if (!prompt) return null;
 
   const visibleExamples = [
-    ...prompt.examples.filter((example) => keptExampleIds.includes(example.id)),
+    ...(prompt.examples ?? []).filter((example) => keptExampleIds.includes(example.id)),
     ...newExamples.map((example, index) => ({ ...example, id: -(index + 1) }))
   ];
 
@@ -194,7 +194,7 @@ export function PromptDetailsModal({
                   setIsSaving(true);
                   setSaveError("");
                   try {
-                    const removedExampleIds = prompt.examples
+                    const removedExampleIds = (prompt.examples ?? [])
                       .map((example) => example.id)
                       .filter((id) => !keptExampleIds.includes(id));
 
@@ -252,8 +252,8 @@ export function PromptDetailsModal({
               <div className="mt-4">
                 <h4 className="mb-2 text-sm font-semibold">Примеры</h4>
                 <div className={`${desktopMode ? "grid grid-cols-2 gap-2" : "grid grid-cols-2 gap-2"}`}>
-                  {prompt.examples.length ? (
-                    prompt.examples.map((example) =>
+                  {(prompt.examples ?? []).length ? (
+                    (prompt.examples ?? []).map((example) =>
                       example.type === "video" ? (
                         <div key={example.id} className="overflow-hidden rounded-xl border border-white/10 bg-black/25 p-1">
                           <video src={resolveMediaUrl(example.url)} controls className="block max-h-64 w-full rounded-lg object-contain" />

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { BarChart3, Heart, Layers, Sparkles } from "lucide-react";
 import { api, ApiError, setAuthTelegramId } from "./api";
 import type { Category, Prompt, PromptCreatePayload, TagStat, TelegramUser } from "./types";
@@ -22,6 +22,8 @@ type RoutePath = "/" | "/prompts" | "/favorites" | "/categories" | "/tags" | "/r
 
 const storageKey = "prompt-bank-web-auth";
 const PROMPTS_PER_PAGE = 12;
+const PROMPTS_FETCH_LIMIT = 100;
+const SEARCH_DEBOUNCE_MS = 350;
 const telegramAuthUrl = (import.meta.env.VITE_TELEGRAM_AUTH_URL as string | undefined)?.trim();
 const telegramBotUsernameFromEnv = (import.meta.env.VITE_TELEGRAM_BOT_USERNAME as string | undefined)?.trim();
 
@@ -53,6 +55,7 @@ export function WebApp() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [tags, setTags] = useState<TagStat[]>([]);
   const [loading, setLoading] = useState(true);
+  const [promptsLoading, setPromptsLoading] = useState(false);
   const [error, setError] = useState("");
   const [toast, setToast] = useState("");
   const [selectedPrompt, setSelectedPrompt] = useState<Prompt>();
@@ -64,6 +67,7 @@ export function WebApp() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [page, setPage] = useState(1);
   const isAuthenticated = Boolean(user);
+  const bootstrappedRef = useRef(false);
 
   useEffect(() => {
     document.documentElement.classList.add("web-mode");
@@ -138,17 +142,15 @@ export function WebApp() {
     return prompts.filter((prompt) => prompt.userId === dbUserId).length;
   }, [dbUserId, prompts]);
 
-  async function loadData() {
+  async function loadBootstrap() {
     setLoading(true);
     setError("");
     try {
-      const [promptsData, categoriesData, tagsData, me] = await Promise.all([
-        api.getPrompts({ limit: 300, search }),
+      const [categoriesData, tagsData, me] = await Promise.all([
         api.getCategories(),
         api.getTags(),
         api.getMe()
       ]);
-      setPrompts(promptsData);
       setCategories(categoriesData);
       setTags(tagsData);
       setIsAdmin(Boolean(me.isAdmin));
@@ -161,9 +163,63 @@ export function WebApp() {
     }
   }
 
+  async function loadPrompts(searchValue = search) {
+    setPromptsLoading(true);
+    try {
+      const promptsData = await api.getPrompts({
+        limit: PROMPTS_FETCH_LIMIT,
+        search: searchValue.trim() || undefined,
+        lite: true
+      });
+      setPrompts(
+        promptsData.map((prompt) => ({
+          ...prompt,
+          examples: prompt.examples ?? []
+        }))
+      );
+    } catch (err) {
+      setError("Не удалось загрузить промпты.");
+      console.error(err);
+    } finally {
+      setPromptsLoading(false);
+    }
+  }
+
   useEffect(() => {
-    loadData();
+    void (async () => {
+      await loadBootstrap();
+      bootstrappedRef.current = true;
+      await loadPrompts();
+    })();
+  }, []);
+
+  useEffect(() => {
+    if (!bootstrappedRef.current) return;
+    const timer = setTimeout(() => {
+      void loadPrompts(search);
+    }, SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
   }, [search]);
+
+  async function openPrompt(prompt: Prompt) {
+    setSelectedPrompt({ ...prompt, examples: prompt.examples ?? [] });
+    try {
+      const full = await api.getPrompt(prompt.id);
+      setSelectedPrompt(full);
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  function upsertPromptInList(nextPrompt: Prompt) {
+    setPrompts((prev) => {
+      const index = prev.findIndex((item) => item.id === nextPrompt.id);
+      if (index === -1) return [nextPrompt, ...prev];
+      const copy = [...prev];
+      copy[index] = nextPrompt;
+      return copy;
+    });
+  }
 
   function navigate(nextPath: RoutePath) {
     if (window.location.pathname !== nextPath) {
@@ -195,8 +251,12 @@ export function WebApp() {
   async function handleCopy(prompt: Prompt) {
     await navigator.clipboard.writeText(prompt.content);
     setToast("Промпт скопирован");
-    await api.increaseUsage(prompt.id);
-    await loadData();
+    setPrompts((prev) =>
+      prev.map((item) =>
+        item.id === prompt.id ? { ...item, usageCount: item.usageCount + 1 } : item
+      )
+    );
+    void api.increaseUsage(prompt.id).catch(console.error);
   }
 
   async function handleToggleFavorite(id: number) {
@@ -205,8 +265,9 @@ export function WebApp() {
       return;
     }
     try {
-      await api.toggleFavorite(id);
-      await loadData();
+      const updated = await api.toggleFavorite(id);
+      upsertPromptInList(updated);
+      if (selectedPrompt?.id === id) setSelectedPrompt(updated);
     } catch (err) {
       if (!handleUnauthorized(err)) {
         setToast("Ошибка загрузки");
@@ -222,8 +283,8 @@ export function WebApp() {
     try {
       await api.deletePrompt(id);
       setSelectedPrompt(undefined);
+      setPrompts((prev) => prev.filter((item) => item.id !== id));
       setToast("Промпт удален");
-      await loadData();
     } catch (err) {
       if (!handleUnauthorized(err)) {
         setToast("Ошибка загрузки");
@@ -244,16 +305,14 @@ export function WebApp() {
         ...(data.coverMediaUrl !== undefined ? { coverMediaUrl: data.coverMediaUrl } : {}),
         ...(data.coverMediaType !== undefined ? { coverMediaType: data.coverMediaType } : {})
       });
-      for (const exampleId of data.removedExampleIds) {
-        await api.removeExample(exampleId);
-      }
-      for (const example of data.newExamples) {
-        await api.addExample(promptId, example);
-      }
+      await Promise.all([
+        ...data.removedExampleIds.map((exampleId) => api.removeExample(exampleId)),
+        ...data.newExamples.map((example) => api.addExample(promptId, example))
+      ]);
       const fresh = await api.getPrompt(promptId);
+      upsertPromptInList(fresh);
       setSelectedPrompt(fresh);
       setToast("Промпт сохранен");
-      await loadData();
     } catch (err) {
       if (!handleUnauthorized(err)) {
         setToast("Ошибка сохранения");
@@ -268,10 +327,11 @@ export function WebApp() {
       return;
     }
     try {
-      await api.createPrompt(payload);
+      const created = await api.createPrompt(payload);
+      upsertPromptInList(created);
       setToast("Промпт сохранен");
       setIsAddModalOpen(false);
-      await loadData();
+      void api.getTags().then(setTags).catch(console.error);
     } catch (err) {
       if (!handleUnauthorized(err)) {
         setToast("Ошибка загрузки");
@@ -297,7 +357,7 @@ export function WebApp() {
     setDbUserId(null);
     setIsAdmin(false);
     setToast("Вы вышли");
-    loadData();
+    void loadPrompts();
   }
 
   function renderPromptList(list: Prompt[]) {
@@ -311,7 +371,7 @@ export function WebApp() {
         <PromptGrid
           prompts={pageItems}
           view={viewMode}
-          onOpenPrompt={setSelectedPrompt}
+          onOpenPrompt={openPrompt}
           onCopyPrompt={handleCopy}
           onToggleFavorite={handleToggleFavorite}
         />
@@ -498,7 +558,9 @@ export function WebApp() {
       ) : error ? (
         <div className="glass-card p-4 text-red-300">{error}</div>
       ) : (
-        content
+        <div className={promptsLoading ? "pointer-events-none opacity-70 transition-opacity" : "transition-opacity"}>
+          {content}
+        </div>
       )}
 
       <PromptDetailsModal
@@ -530,7 +592,7 @@ export function WebApp() {
         onAuthSuccess={(telegramUser) => {
           setUser(telegramUser);
           setToast("Успешный вход через Telegram");
-          loadData();
+          void loadBootstrap().then(() => loadPrompts());
         }}
       />
 

@@ -1,3 +1,4 @@
+import compression from "compression";
 import cors from "cors";
 import express from "express";
 import fs from "fs";
@@ -14,6 +15,7 @@ import { authRequired, isAdminRequest, readTelegramId } from "./auth";
 
 const app = express();
 
+app.use(compression());
 app.use(cors());
 app.use(express.json({ limit: "3mb" }));
 
