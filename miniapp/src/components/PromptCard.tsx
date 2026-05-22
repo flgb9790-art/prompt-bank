@@ -9,6 +9,7 @@ import { getCategoryBadgeClass } from "../utils/categoryStyle";
 type Props = {
   prompt: Prompt;
   variant?: "desktop" | "mobile" | "list";
+  imagePriority?: boolean;
   onOpen: (prompt: Prompt) => void;
   onToggleFavorite: (id: number) => void;
   onCopy: (prompt: Prompt) => void;
@@ -17,7 +18,15 @@ type Props = {
 
 type CardVariant = "desktop" | "mobile" | "list";
 
-function CardPreview({ prompt, variant }: { prompt: Prompt; variant: CardVariant }) {
+function CardPreview({
+  prompt,
+  variant,
+  imagePriority = false
+}: {
+  prompt: Prompt;
+  variant: CardVariant;
+  imagePriority?: boolean;
+}) {
   const coverUrl = prompt.coverMediaUrl ?? "";
   const [imageSrc, setImageSrc] = useState(() =>
     coverUrl && prompt.coverMediaType === "image"
@@ -84,6 +93,7 @@ function CardTagsRow({
 export const PromptCard = memo(function PromptCard({
   prompt,
   variant = "mobile",
+  imagePriority = false,
   onOpen,
   onToggleFavorite,
   onCopy,
@@ -105,7 +115,7 @@ export const PromptCard = memo(function PromptCard({
         className="prompt-card-list fade-up"
       >
         <div className="prompt-card-list-layout prompt-card-web-layout">
-          <CardPreview prompt={prompt} variant="list" />
+          <CardPreview prompt={prompt} variant="list" imagePriority={imagePriority} />
           <div className="prompt-card-body prompt-card-body--list">
             <h3 className="prompt-card-title prompt-card-title--list">{prompt.title}</h3>
             <span className={`category-badge category-badge-mobile ${badgeClass}`}>{prompt.category.name}</span>
@@ -153,7 +163,7 @@ export const PromptCard = memo(function PromptCard({
         className="prompt-card-desktop fade-up"
       >
         <div className="prompt-card-desktop-layout prompt-card-web-layout">
-          <CardPreview prompt={prompt} variant="desktop" />
+          <CardPreview prompt={prompt} variant="desktop" imagePriority={imagePriority} />
           <div className="prompt-card-body prompt-card-body--desktop">
             <h3 className="prompt-card-title">{prompt.title}</h3>
             <span className={`category-badge ${badgeClass}`}>{prompt.category.name}</span>
@@ -200,7 +210,7 @@ export const PromptCard = memo(function PromptCard({
       className="prompt-card-mobile fade-up"
     >
       <div className="prompt-card-mobile-layout prompt-card-web-layout">
-        <CardPreview prompt={prompt} variant="mobile" />
+        <CardPreview prompt={prompt} variant="mobile" imagePriority={imagePriority} />
         <div className="prompt-card-body prompt-card-body--mobile">
           <h3 className="prompt-card-title prompt-card-title--mobile">{prompt.title}</h3>
           <span className={`category-badge category-badge-mobile ${badgeClass}`}>{prompt.category.name}</span>

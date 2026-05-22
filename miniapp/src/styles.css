@@ -1714,3 +1714,98 @@ html.web-mode #root {
   object-fit: contain;
   background: #101828;
 }
+
+.brand-splash {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  background: linear-gradient(165deg, #f8f9fd 0%, #eef2ff 45%, #f5f3ff 100%);
+  padding: 24px;
+}
+
+.brand-splash-logo-wrap {
+  position: relative;
+  width: 132px;
+  height: 138px;
+  display: grid;
+  place-items: center;
+}
+
+.brand-splash-logo {
+  position: relative;
+  z-index: 1;
+  width: 120px;
+  height: auto;
+  animation: brand-splash-float 2.2s ease-in-out infinite;
+}
+
+.brand-splash-glow {
+  position: absolute;
+  inset: 8%;
+  border-radius: 28px;
+  background: radial-gradient(circle, rgba(109, 93, 252, 0.35) 0%, rgba(109, 93, 252, 0) 70%);
+  animation: brand-splash-pulse 2.2s ease-in-out infinite;
+}
+
+.brand-splash-text {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--muted);
+  letter-spacing: 0.02em;
+}
+
+.brand-splash-progress-track {
+  width: min(220px, 70vw);
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(109, 93, 252, 0.15);
+  overflow: hidden;
+}
+
+.brand-splash-progress-bar {
+  width: 42%;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #6d5dfc, #2f80ed, #6d5dfc);
+  background-size: 200% 100%;
+  animation: brand-splash-progress 1.4s ease-in-out infinite;
+}
+
+@keyframes brand-splash-float {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-8px) scale(1.03);
+  }
+}
+
+@keyframes brand-splash-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(0.96);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.06);
+  }
+}
+
+@keyframes brand-splash-progress {
+  0% {
+    transform: translateX(-120%);
+    background-position: 0% 50%;
+  }
+  100% {
+    transform: translateX(280%);
+    background-position: 100% 50%;
+  }
+}

@@ -148,7 +148,7 @@ export class PromptService {
         take: params.limit ?? 30,
         include: {
           category: true,
-          keywords: { include: { keyword: true } },
+          ...(!lite ? { keywords: { include: { keyword: true } } } : {}),
           ...(useFavoriteJoin
             ? { favorites: { where: { userId: params.userId! }, select: { id: true }, take: 1 } }
             : {}),
@@ -162,8 +162,8 @@ export class PromptService {
     const items = prompts.map((row) => {
       const { favorites, ...prompt } = row as typeof row & { favorites?: Array<{ id: number }> };
       const withFavorite = useFavoriteJoin
-        ? { ...prompt, isFavorite: (favorites?.length ?? 0) > 0 }
-        : PromptService.withFavorite(prompt, favoriteIds);
+        ? { ...prompt, isFavorite: (favorites?.length ?? 0) > 0, keywords: prompt.keywords ?? [] }
+        : PromptService.withFavorite({ ...prompt, keywords: prompt.keywords ?? [] }, favoriteIds);
       return PromptService.toListResponse(withFavorite, new Set(), lite);
     });
 

@@ -76,11 +76,12 @@ export function HomePage({
           </div>
         ) : recentPrompts.length ? (
           <div className="mt-4 flex flex-col gap-3">
-            {recentPrompts.map((prompt) => (
+            {recentPrompts.map((prompt, index) => (
               <PromptCard
                 key={prompt.id}
                 prompt={prompt}
                 variant="mobile"
+                imagePriority={index < 3}
                 onOpen={onOpenPrompt}
                 onCopy={onCopyPrompt}
                 onToggleFavorite={onToggleFavorite}

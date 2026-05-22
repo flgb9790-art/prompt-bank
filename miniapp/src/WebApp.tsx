@@ -2,9 +2,16 @@ import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { BarChart3, Heart, Layers, Sparkles, X } from "lucide-react";
 import { api, ApiError, invalidateReferenceCaches, setAuthTelegramId } from "./api";
 import type { Category, Prompt, PromptCreatePayload, TagStat, TelegramUser } from "./types";
+import { BrandSplash } from "./components/BrandSplash";
 import { PromptDetailsModal, type PromptEditPayload } from "./components/PromptDetailsModal";
 const PromptForm = lazy(() => import("./components/PromptForm").then((module) => ({ default: module.PromptForm })));
 import { runDeferred } from "./utils/deferredPrefetch";
+import {
+  invalidateFavoritesCache,
+  readFavoritesCache,
+  writeFavoritesCache
+} from "./utils/favoritesCache";
+import { preloadPromptCovers } from "./utils/preloadCovers";
 import { AuthRequiredModal } from "./components/web/AuthRequiredModal";
 import { PromptGrid } from "./components/web/PromptGrid";
 import { Sidebar } from "./components/web/Sidebar";
@@ -39,6 +46,8 @@ type RoutePath = "/" | "/prompts" | "/favorites" | "/categories" | "/tags" | "/r
 const storageKey = "prompt-bank-web-auth";
 const PROMPTS_PER_PAGE = 12;
 const PROMPTS_FETCH_LIMIT = 40;
+const WEB_HOME_BOOTSTRAP = 12;
+const FAVORITES_FETCH_LIMIT = 40;
 const SEARCH_DEBOUNCE_MS = 350;
 const telegramAuthUrl = (import.meta.env.VITE_TELEGRAM_AUTH_URL as string | undefined)?.trim();
 const telegramBotUsernameFromEnv = (import.meta.env.VITE_TELEGRAM_BOT_USERNAME as string | undefined)?.trim();
@@ -234,7 +243,7 @@ export function WebApp() {
       setError("");
       try {
         const promptsData = await api.getPrompts({
-          limit: PROMPTS_FETCH_LIMIT,
+          limit: WEB_HOME_BOOTSTRAP,
           offset: 0,
           search: search.trim() || undefined,
           lite: true,
@@ -244,9 +253,26 @@ export function WebApp() {
         const mapped = mapPromptsFromApi(promptsData.items);
         setPrompts(mapped);
         setPromptsTotal(promptsData.total);
-        scheduleWebPrefetch(mapped.length, promptsData.total);
+        preloadPromptCovers(mapped, 4);
         bootstrappedRef.current = true;
         setLoading(false);
+
+        void api
+          .getPrompts({
+            limit: PROMPTS_FETCH_LIMIT,
+            offset: 0,
+            search: search.trim() || undefined,
+            lite: true,
+            sort: "new"
+          })
+          .then((fullData) => {
+            if (cancelled) return;
+            const fullMapped = mapPromptsFromApi(fullData.items);
+            setPrompts(fullMapped);
+            setPromptsTotal(fullData.total);
+            scheduleWebPrefetch(fullMapped.length, fullData.total);
+          })
+          .catch(console.error);
 
         const [categoriesData, tagsData, me] = await Promise.all([
           api.getCategories(),
@@ -300,47 +326,62 @@ export function WebApp() {
     setSort("new");
   }, [path]);
 
+  async function refreshWebFavorites(showSpinner: boolean) {
+    if (!isAuthenticated) return;
+    if (showSpinner) setFavoritesLoading(true);
+    try {
+      const data = await api.getPrompts({ favorite: true, limit: FAVORITES_FETCH_LIMIT, lite: true, sort });
+      const mapped = mapPromptsFromApi(data.items);
+      setFavoritePrompts(mapped);
+      writeFavoritesCache(mapped);
+    } catch (err) {
+      console.error(err);
+      if (showSpinner) setToast("Не удалось загрузить избранное");
+    } finally {
+      if (showSpinner) setFavoritesLoading(false);
+    }
+  }
+
   useEffect(() => {
     if (path !== "/favorites" || !isAuthenticated) return;
 
-    let cancelled = false;
-    setFavoritesLoading(true);
-    void api
-      .getPrompts({ favorite: true, limit: 100, lite: true, sort })
-      .then((data) => {
-        if (!cancelled) {
-          setFavoritePrompts(mapPromptsFromApi(data.items));
-        }
-      })
-      .catch((err) => {
-        console.error(err);
-        if (!cancelled) {
-          setToast("Не удалось загрузить избранное");
-        }
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setFavoritesLoading(false);
-        }
-      });
+    const cached = readFavoritesCache();
+    if (cached) {
+      setFavoritePrompts(cached);
+      void refreshWebFavorites(false);
+      return;
+    }
 
-    return () => {
-      cancelled = true;
-    };
+    void refreshWebFavorites(true);
   }, [path, isAuthenticated, sort]);
+
+  useEffect(() => {
+    if (!bootstrappedRef.current || !isAuthenticated) return;
+    const cached = readFavoritesCache();
+    if (cached) {
+      setFavoritePrompts(cached);
+      return;
+    }
+    void refreshWebFavorites(false);
+  }, [isAuthenticated]);
 
   function syncFavoritePrompts(next: Prompt) {
     setFavoritePrompts((prev) => {
+      let result: Prompt[];
       if (!next.isFavorite) {
-        return prev.filter((item) => item.id !== next.id);
+        result = prev.filter((item) => item.id !== next.id);
+      } else {
+        const index = prev.findIndex((item) => item.id === next.id);
+        if (index === -1) {
+          result = [next, ...prev];
+        } else {
+          const copy = [...prev];
+          copy[index] = mergePromptUpdate(prev[index], next);
+          result = copy;
+        }
       }
-      const index = prev.findIndex((item) => item.id === next.id);
-      if (index === -1) {
-        return [next, ...prev];
-      }
-      const copy = [...prev];
-      copy[index] = mergePromptUpdate(prev[index], next);
-      return copy;
+      writeFavoritesCache(result);
+      return result;
     });
   }
 
@@ -517,6 +558,7 @@ export function WebApp() {
       closePromptModal();
       setPrompts((prev) => prev.filter((item) => item.id !== id));
       setFavoritePrompts((prev) => prev.filter((item) => item.id !== id));
+      invalidateFavoritesCache();
       setPromptsTotal((prev) => Math.max(0, prev - 1));
       setToast("Промпт удален");
       void Promise.all([api.getTags().then(setTags), api.getCategories().then(setCategories)]).catch(console.error);
@@ -748,7 +790,7 @@ export function WebApp() {
 
       {path === "/favorites" ? (
         isAuthenticated ? (
-          favoritesLoading ? (
+          favoritesLoading && !favoritePrompts.length ? (
             <div className="mt-4 space-y-3">
               {Array.from({ length: 4 }).map((_, idx) => (
                 <div key={idx} className="skeleton h-36" />
@@ -815,13 +857,7 @@ export function WebApp() {
     </>
   );
 
-  const body = loading ? (
-    <div className="space-y-3">
-      {Array.from({ length: 5 }).map((_, idx) => (
-        <div key={idx} className="skeleton h-28" />
-      ))}
-    </div>
-  ) : error ? (
+  const body = error ? (
     <div className="surface-card p-4 text-[var(--red)]">{error}</div>
   ) : (
     <div className={promptsLoading ? "pointer-events-none opacity-70 transition-opacity" : "transition-opacity"}>{content}</div>
@@ -881,6 +917,10 @@ export function WebApp() {
       {toast ? <div className="toast fixed bottom-24 right-4 z-[80] lg:bottom-8">{toast}</div> : null}
     </>
   );
+
+  if (loading) {
+    return <BrandSplash />;
+  }
 
   return (
     <>

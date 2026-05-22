@@ -1,7 +1,11 @@
 import type { Prompt } from "../types";
 
 export function mapPromptsFromApi(items: Prompt[]): Prompt[] {
-  return items.map((prompt) => ({ ...prompt, examples: prompt.examples ?? [] }));
+  return items.map((prompt) => ({
+    ...prompt,
+    keywords: prompt.keywords ?? [],
+    examples: prompt.examples ?? []
+  }));
 }
 
 export function getPromptExcerpt(prompt: Pick<Prompt, "content" | "contentExcerpt">): string {
