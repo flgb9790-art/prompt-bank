@@ -7,6 +7,7 @@ import type {
   PromptUpdatePayload,
   TagStat
 } from "./types";
+import { readReferenceCache, removeReferenceCache, writeReferenceCache } from "./utils/referenceCache";
 
 const configuredBaseUrl = (import.meta.env.VITE_BACKEND_URL as string | undefined)?.trim();
 const configuredMediaCdn = (import.meta.env.VITE_MEDIA_CDN_URL as string | undefined)?.trim();
@@ -38,6 +39,16 @@ export class ApiError extends Error {
 
 export function setAuthTelegramId(telegramId: string | null) {
   authTelegramId = telegramId;
+}
+
+const CATEGORIES_CACHE_KEY = "prompt-bank-categories";
+const TAGS_CACHE_KEY = "prompt-bank-tags";
+
+const promptRequests = new Map<number, Promise<Prompt>>();
+
+export function invalidateReferenceCaches() {
+  removeReferenceCache(CATEGORIES_CACHE_KEY);
+  removeReferenceCache(TAGS_CACHE_KEY);
 }
 
 function buildAuthHeader() {
@@ -82,7 +93,14 @@ export const api = {
     return request<PromptListResponse>(`/api/prompts${query ? `?${query}` : ""}`);
   },
   getPrompt(id: number) {
-    return request<Prompt>(`/api/prompts/${id}`);
+    const existing = promptRequests.get(id);
+    if (existing) return existing;
+
+    const pending = request<Prompt>(`/api/prompts/${id}`).finally(() => {
+      promptRequests.delete(id);
+    });
+    promptRequests.set(id, pending);
+    return pending;
   },
   createPrompt(payload: PromptCreatePayload) {
     return request<Prompt>("/api/prompts", { method: "POST", body: JSON.stringify(payload) });
@@ -100,43 +118,27 @@ export const api = {
     return request<Prompt>(`/api/prompts/${id}/usage`, { method: "POST" });
   },
   async getCategories() {
-    const cacheKey = "prompt-bank-categories";
-    const cached = sessionStorage.getItem(cacheKey);
-    if (cached) {
-      try {
-        const parsed = JSON.parse(cached) as Category[];
-        if (Array.isArray(parsed) && parsed.length) {
-          void request<Category[]>("/api/categories")
-            .then((fresh) => sessionStorage.setItem(cacheKey, JSON.stringify(fresh)))
-            .catch(() => undefined);
-          return parsed;
-        }
-      } catch {
-        sessionStorage.removeItem(cacheKey);
-      }
+    const cached = readReferenceCache<Category[]>(CATEGORIES_CACHE_KEY);
+    if (cached?.length) {
+      void request<Category[]>("/api/categories")
+        .then((fresh) => writeReferenceCache(CATEGORIES_CACHE_KEY, fresh))
+        .catch(() => undefined);
+      return cached;
     }
     const fresh = await request<Category[]>("/api/categories");
-    sessionStorage.setItem(cacheKey, JSON.stringify(fresh));
+    writeReferenceCache(CATEGORIES_CACHE_KEY, fresh);
     return fresh;
   },
   async getTags() {
-    const cacheKey = "prompt-bank-tags";
-    const cached = sessionStorage.getItem(cacheKey);
+    const cached = readReferenceCache<TagStat[]>(TAGS_CACHE_KEY);
     if (cached) {
-      try {
-        const parsed = JSON.parse(cached) as TagStat[];
-        if (Array.isArray(parsed)) {
-          void request<TagStat[]>("/api/tags")
-            .then((fresh) => sessionStorage.setItem(cacheKey, JSON.stringify(fresh)))
-            .catch(() => undefined);
-          return parsed;
-        }
-      } catch {
-        sessionStorage.removeItem(cacheKey);
-      }
+      void request<TagStat[]>("/api/tags")
+        .then((fresh) => writeReferenceCache(TAGS_CACHE_KEY, fresh))
+        .catch(() => undefined);
+      return cached;
     }
     const fresh = await request<TagStat[]>("/api/tags");
-    sessionStorage.setItem(cacheKey, JSON.stringify(fresh));
+    writeReferenceCache(TAGS_CACHE_KEY, fresh);
     return fresh;
   },
   addExample(promptId: number, payload: { url: string; type: "image" | "video"; originalName?: string }) {

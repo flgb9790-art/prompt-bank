@@ -105,5 +105,14 @@ export async function persistMediaBuffer(
   if (kind === "image") {
     await persistImageThumbnail(buffer, filename);
   }
-  return { url: publicUrl, type: kind, originalName };
+  return { url: withPublicMediaUrl(publicUrl), type: kind, originalName };
+}
+
+function withPublicMediaUrl(pathOrUrl: string) {
+  const base = config.mediaPublicUrl?.replace(/\/$/, "");
+  if (!base || pathOrUrl.startsWith("http")) {
+    return pathOrUrl;
+  }
+  const mediaPath = pathOrUrl.startsWith("/") ? pathOrUrl : `/${pathOrUrl}`;
+  return `${base}${mediaPath}`;
 }

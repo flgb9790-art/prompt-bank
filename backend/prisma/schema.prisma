@@ -103,6 +103,7 @@ model Favorite {
   createdAt DateTime @default(now())
 
   @@unique([userId, promptId])
+  @@index([userId])
 }
 
 enum MediaType {

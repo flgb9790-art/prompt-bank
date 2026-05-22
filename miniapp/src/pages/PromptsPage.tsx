@@ -3,7 +3,7 @@ import { useLoadMoreOnScroll } from "../hooks/useLoadMoreOnScroll";
 import type { Category, Prompt } from "../types";
 import { SearchBar } from "../components/SearchBar";
 import { CategoryTabs } from "../components/CategoryTabs";
-import { PromptCard } from "../components/PromptCard";
+import { VirtualPromptList } from "../components/VirtualPromptList";
 import { promptHasTag } from "../utils/tagFilter";
 import { getPromptSearchText } from "../utils/promptContent";
 
@@ -121,14 +121,20 @@ export function PromptsPage({
           <p className="mt-1 text-sm text-[var(--muted)]">Попробуйте другой запрос или категорию.</p>
         </div>
       ) : (
-        <div className="flex flex-col gap-3">
-          {filtered.map((prompt) => (
-            <PromptCard key={prompt.id} prompt={prompt} variant="mobile" onOpen={onOpenPrompt} onToggleFavorite={onToggleFavorite} onCopy={onCopyPrompt} onTagClick={onTagClick} />
-          ))}
-          <div ref={loadMoreRef} className="flex min-h-8 items-center justify-center py-2">
-            {loadingMore ? <span className="text-xs text-[var(--muted)]">Загрузка...</span> : null}
-          </div>
-        </div>
+        <VirtualPromptList
+          prompts={filtered}
+          variant="mobile"
+          scrollSelector=".mobile-frame"
+          onOpenPrompt={onOpenPrompt}
+          onToggleFavorite={onToggleFavorite}
+          onCopyPrompt={onCopyPrompt}
+          onTagClick={onTagClick}
+          footer={
+            <div ref={loadMoreRef} className="flex min-h-8 items-center justify-center py-2">
+              {loadingMore ? <span className="text-xs text-[var(--muted)]">Загрузка...</span> : null}
+            </div>
+          }
+        />
       )}
     </div>
   );

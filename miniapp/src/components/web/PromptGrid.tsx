@@ -1,4 +1,5 @@
 import { PromptCard } from "../PromptCard";
+import { VirtualPromptList } from "../VirtualPromptList";
 import type { Prompt } from "../../types";
 
 type Props = {
@@ -53,18 +54,16 @@ export function PromptGrid({ prompts, view, onOpenPrompt, onCopyPrompt, onToggle
           />
         ))}
       </div>
-      <div className="mt-4 flex flex-col gap-3 md:hidden">
-        {prompts.map((prompt) => (
-          <PromptCard
-            key={prompt.id}
-            prompt={prompt}
-            variant="mobile"
-            onOpen={onOpenPrompt}
-            onCopy={onCopyPrompt}
-            onToggleFavorite={onToggleFavorite}
-            onTagClick={onTagClick}
-          />
-        ))}
+      <div className="mt-4 md:hidden">
+        <VirtualPromptList
+          prompts={prompts}
+          variant="mobile"
+          scrollSelector=".web-app-main"
+          onOpenPrompt={onOpenPrompt}
+          onToggleFavorite={onToggleFavorite}
+          onCopyPrompt={onCopyPrompt}
+          onTagClick={onTagClick}
+        />
       </div>
     </>
   );

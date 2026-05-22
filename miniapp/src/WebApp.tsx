@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { BarChart3, Heart, Layers, Sparkles, X } from "lucide-react";
-import { api, ApiError, setAuthTelegramId } from "./api";
+import { api, ApiError, invalidateReferenceCaches, setAuthTelegramId } from "./api";
 import type { Category, Prompt, PromptCreatePayload, TagStat, TelegramUser } from "./types";
 import type { PromptEditPayload } from "./components/PromptDetailsModal";
 import { PromptDetailsModal } from "./components/PromptDetailsModal";
@@ -73,6 +73,8 @@ export function WebApp() {
   const [loading, setLoading] = useState(true);
   const [promptsLoading, setPromptsLoading] = useState(false);
   const [loadingMoreRemote, setLoadingMoreRemote] = useState(false);
+  const [favoritePrompts, setFavoritePrompts] = useState<Prompt[]>([]);
+  const [favoritesLoading, setFavoritesLoading] = useState(false);
   const [error, setError] = useState("");
   const [toast, setToast] = useState("");
   const [selectedPrompt, setSelectedPrompt] = useState<Prompt>();
@@ -142,11 +144,11 @@ export function WebApp() {
   const stats = useMemo(
     () => ({
       total: promptsTotal || prompts.length,
-      favorites: prompts.filter((prompt) => prompt.isFavorite).length,
+      favorites: favoritePrompts.length || prompts.filter((prompt) => prompt.isFavorite).length,
       categories: countCategoriesWithPrompts(prompts),
       usage: isAuthenticated ? userUsageTotal : 0
     }),
-    [isAuthenticated, prompts, promptsTotal, userUsageTotal]
+    [favoritePrompts.length, isAuthenticated, prompts, promptsTotal, userUsageTotal]
   );
 
   const userPromptsCount = useMemo(() => {
@@ -289,6 +291,50 @@ export function WebApp() {
   }, [search, promptSearch, activeCategory, activeTag, sort]);
 
   useEffect(() => {
+    if (path !== "/favorites" || !isAuthenticated) return;
+
+    let cancelled = false;
+    setFavoritesLoading(true);
+    void api
+      .getPrompts({ favorite: true, limit: 100, lite: true, sort })
+      .then((data) => {
+        if (!cancelled) {
+          setFavoritePrompts(mapPromptsFromApi(data.items));
+        }
+      })
+      .catch((err) => {
+        console.error(err);
+        if (!cancelled) {
+          setToast("Не удалось загрузить избранное");
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setFavoritesLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [path, isAuthenticated, sort]);
+
+  function syncFavoritePrompts(next: Prompt) {
+    setFavoritePrompts((prev) => {
+      if (!next.isFavorite) {
+        return prev.filter((item) => item.id !== next.id);
+      }
+      const index = prev.findIndex((item) => item.id === next.id);
+      if (index === -1) {
+        return [next, ...prev];
+      }
+      const copy = [...prev];
+      copy[index] = mergePromptUpdate(prev[index], next);
+      return copy;
+    });
+  }
+
+  useEffect(() => {
     if (loading || deepLinkHandledRef.current) return;
     const promptId = parsePromptIdFromLocation();
     if (!promptId) return;
@@ -423,11 +469,12 @@ export function WebApp() {
       askAuth();
       return;
     }
-    const previous = prompts.find((item) => item.id === id);
+    const previous = prompts.find((item) => item.id === id) ?? favoritePrompts.find((item) => item.id === id);
     if (!previous) return;
 
     const optimistic = { ...previous, isFavorite: !previous.isFavorite };
     setPrompts((prev) => prev.map((item) => (item.id === id ? optimistic : item)));
+    syncFavoritePrompts(optimistic);
     if (selectedPrompt?.id === id) {
       setSelectedPrompt(optimistic);
     }
@@ -435,10 +482,12 @@ export function WebApp() {
     try {
       const updated = await api.toggleFavorite(id);
       upsertPromptInList(updated);
+      syncFavoritePrompts(updated);
       if (selectedPrompt?.id === id) {
         setSelectedPrompt((current) => (current ? mergePromptUpdate(current, updated) : updated));
       }
     } catch (err) {
+      syncFavoritePrompts(previous);
       setPrompts((prev) => prev.map((item) => (item.id === id ? previous : item)));
       if (selectedPrompt?.id === id) setSelectedPrompt(previous);
       if (!handleUnauthorized(err)) {
@@ -454,8 +503,11 @@ export function WebApp() {
     }
     try {
       await api.deletePrompt(id);
+      invalidateReferenceCaches();
       closePromptModal();
       setPrompts((prev) => prev.filter((item) => item.id !== id));
+      setFavoritePrompts((prev) => prev.filter((item) => item.id !== id));
+      setPromptsTotal((prev) => Math.max(0, prev - 1));
       setToast("Промпт удален");
     } catch (err) {
       if (!handleUnauthorized(err)) {
@@ -504,7 +556,9 @@ export function WebApp() {
     }
     try {
       const created = await api.createPrompt(payload);
+      invalidateReferenceCaches();
       upsertPromptInList(created);
+      setPromptsTotal((prev) => prev + 1);
       setToast("Промпт сохранен");
       setIsAddModalOpen(false);
       void api.getTags().then(setTags).catch(console.error);
@@ -683,7 +737,15 @@ export function WebApp() {
 
       {path === "/favorites" ? (
         isAuthenticated ? (
-          renderPromptList(filteredPrompts.filter((prompt) => prompt.isFavorite))
+          favoritesLoading ? (
+            <div className="mt-4 space-y-3">
+              {Array.from({ length: 4 }).map((_, idx) => (
+                <div key={idx} className="skeleton h-36" />
+              ))}
+            </div>
+          ) : (
+            renderPromptList(favoritePrompts)
+          )
         ) : (
           <div className="surface-card empty-state mt-5">
             <p className="text-base font-medium text-[var(--text)]">Войдите через Telegram, чтобы сохранять промпты в избранное.</p>

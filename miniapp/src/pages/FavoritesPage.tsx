@@ -1,15 +1,33 @@
 import type { Prompt } from "../types";
-import { PromptCard } from "../components/PromptCard";
+import { VirtualPromptList } from "../components/VirtualPromptList";
 
 type Props = {
   prompts: Prompt[];
+  loading?: boolean;
   onOpenPrompt: (prompt: Prompt) => void;
   onCopyPrompt: (prompt: Prompt) => void;
   onToggleFavorite: (id: number) => void;
   onTagClick?: (tag: string) => void;
 };
 
-export function FavoritesPage({ prompts, onOpenPrompt, onCopyPrompt, onToggleFavorite, onTagClick }: Props) {
+export function FavoritesPage({
+  prompts,
+  loading = false,
+  onOpenPrompt,
+  onCopyPrompt,
+  onToggleFavorite,
+  onTagClick
+}: Props) {
+  if (loading) {
+    return (
+      <div className="space-y-3">
+        {Array.from({ length: 3 }).map((_, idx) => (
+          <div key={idx} className="skeleton h-36" />
+        ))}
+      </div>
+    );
+  }
+
   if (!prompts.length) {
     return (
       <div className="surface-card empty-state mt-8">
@@ -20,10 +38,14 @@ export function FavoritesPage({ prompts, onOpenPrompt, onCopyPrompt, onToggleFav
   }
 
   return (
-    <div className="flex flex-col gap-3">
-      {prompts.map((prompt) => (
-        <PromptCard key={prompt.id} prompt={prompt} variant="mobile" onOpen={onOpenPrompt} onCopy={onCopyPrompt} onToggleFavorite={onToggleFavorite} onTagClick={onTagClick} />
-      ))}
-    </div>
+    <VirtualPromptList
+      prompts={prompts}
+      variant="mobile"
+      scrollSelector=".mobile-frame"
+      onOpenPrompt={onOpenPrompt}
+      onToggleFavorite={onToggleFavorite}
+      onCopyPrompt={onCopyPrompt}
+      onTagClick={onTagClick}
+    />
   );
 }

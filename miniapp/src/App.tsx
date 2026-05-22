@@ -3,7 +3,7 @@ import { clearPromptShareUrl, parsePromptIdFromLocation, setPromptShareUrl } fro
 import { mergePromptUpdate } from "./utils/mergePrompt";
 import { normalizeTagName } from "./utils/tagFilter";
 import { countCategoriesWithPrompts } from "./utils/stats";
-import { api, setAuthTelegramId } from "./api";
+import { api, invalidateReferenceCaches, setAuthTelegramId } from "./api";
 import type { Category, Prompt, PromptCreatePayload, TelegramUser } from "./types";
 import type { PromptEditPayload } from "./components/PromptDetailsModal";
 import { Layout } from "./components/Layout";
@@ -123,6 +123,8 @@ function MiniAppApp() {
   const [prompts, setPrompts] = useState<Prompt[]>([]);
   const [promptsTotal, setPromptsTotal] = useState(0);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [favoritePrompts, setFavoritePrompts] = useState<Prompt[]>([]);
+  const [favoritesLoading, setFavoritesLoading] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -139,16 +141,17 @@ function MiniAppApp() {
   const openPromptRequestRef = useRef(0);
 
   const favorites = useMemo(() => prompts.filter((item) => item.isFavorite), [prompts]);
+  const favoritesForView = tab === "favorites" ? favoritePrompts : favorites;
   const hasMorePrompts = prompts.length < promptsTotal;
 
   const stats = useMemo(
     () => ({
       total: promptsTotal || prompts.length,
-      favorites: favorites.length,
+      favorites: favoritesForView.length || favorites.length,
       categories: countCategoriesWithPrompts(prompts),
       usage: userUsageTotal
     }),
-    [prompts, promptsTotal, favorites.length, userUsageTotal]
+    [prompts, promptsTotal, favorites.length, favoritesForView.length, userUsageTotal]
   );
 
   const searchResults = useMemo(() => {
@@ -282,22 +285,68 @@ function MiniAppApp() {
     };
   }, [user.id]);
 
+  useEffect(() => {
+    if (tab !== "favorites") return;
+
+    let cancelled = false;
+    setFavoritesLoading(true);
+    void api
+      .getPrompts({ favorite: true, limit: 100, lite: true })
+      .then((data) => {
+        if (!cancelled) {
+          setFavoritePrompts(mapPromptsFromApi(data.items));
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setToastMessage("Не удалось загрузить избранное");
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setFavoritesLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [tab]);
+
+  function syncFavoritePrompts(next: Prompt) {
+    setFavoritePrompts((prev) => {
+      if (!next.isFavorite) {
+        return prev.filter((item) => item.id !== next.id);
+      }
+      const index = prev.findIndex((item) => item.id === next.id);
+      if (index === -1) {
+        return [next, ...prev];
+      }
+      const copy = [...prev];
+      copy[index] = mergePromptUpdate(prev[index], next);
+      return copy;
+    });
+  }
+
   async function handleSavePrompt(payload: PromptCreatePayload) {
     if (!isAdmin) {
       setToastMessage("Добавлять промпты могут только администраторы");
       return;
     }
     const created = await api.createPrompt(payload);
+    invalidateReferenceCaches();
     setCreatedPromptId(created.id);
     setPrompts((prev) => [created, ...prev]);
+    setPromptsTotal((prev) => prev + 1);
   }
 
   async function handleToggleFavorite(id: number) {
-    const previous = prompts.find((item) => item.id === id);
+    const previous = prompts.find((item) => item.id === id) ?? favoritePrompts.find((item) => item.id === id);
     if (!previous) return;
 
     const optimistic = { ...previous, isFavorite: !previous.isFavorite };
     setPrompts((prev) => prev.map((item) => (item.id === id ? optimistic : item)));
+    syncFavoritePrompts(optimistic);
     if (selectedPrompt?.id === id) setSelectedPrompt(optimistic);
 
     try {
@@ -306,7 +355,9 @@ function MiniAppApp() {
       if (selectedPrompt?.id === id) {
         setSelectedPrompt((current) => (current ? mergePromptUpdate(current, updated) : updated));
       }
+      syncFavoritePrompts(updated);
     } catch {
+      syncFavoritePrompts(previous);
       setPrompts((prev) => prev.map((item) => (item.id === id ? previous : item)));
       if (selectedPrompt?.id === id) setSelectedPrompt(previous);
       setToastMessage("Не удалось обновить избранное");
@@ -374,8 +425,11 @@ function MiniAppApp() {
 
   async function handleDeletePrompt(id: number) {
     await api.deletePrompt(id);
+    invalidateReferenceCaches();
     closePromptModal();
     setPrompts((prev) => prev.filter((item) => item.id !== id));
+    setFavoritePrompts((prev) => prev.filter((item) => item.id !== id));
+    setPromptsTotal((prev) => Math.max(0, prev - 1));
   }
 
   function handleTabChange(nextTab: TabKey) {
@@ -499,7 +553,8 @@ function MiniAppApp() {
       )}
       {tab === "favorites" && (
         <FavoritesPage
-          prompts={favorites}
+          prompts={favoritesForView}
+          loading={favoritesLoading}
           onOpenPrompt={openPrompt}
           onCopyPrompt={handleCopyPrompt}
           onToggleFavorite={handleToggleFavorite}
