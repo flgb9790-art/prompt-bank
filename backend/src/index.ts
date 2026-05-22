@@ -9,6 +9,7 @@ import promptsRouter from "./routes/prompts.routes";
 import categoriesRouter from "./routes/categories.routes";
 import uploadRouter from "./routes/upload.routes";
 import tagsRouter from "./routes/tags.routes";
+import bootstrapRouter from "./routes/bootstrap.routes";
 import { extractKeywords } from "./keywordExtractor";
 import { startBot } from "./bot";
 import { authRequired, isAdminRequest, readTelegramId } from "./auth";
@@ -36,6 +37,8 @@ app.use(
 app.get("/api/health", (_req, res) => {
   res.json({ ok: true });
 });
+
+app.use("/api/bootstrap", bootstrapRouter);
 
 app.get("/api/me", async (req, res, next) => {
   try {

@@ -1,21 +1,31 @@
-const MIN_VISIBLE_MS = 450;
+declare global {
+  interface Window {
+    __APP_SPLASH_AT?: number;
+    __hideAppSplash?: () => void;
+  }
+}
 
-let shownAt = 0;
+const MIN_VISIBLE_MS = 800;
 
-export function noteAppSplashShown() {
-  if (!shownAt) {
-    shownAt = Date.now();
+export function markAppSplashVisible() {
+  if (!window.__APP_SPLASH_AT) {
+    window.__APP_SPLASH_AT = Date.now();
   }
 }
 
 export function hideAppSplash() {
-  const remove = () => {
-    document.getElementById("app-splash")?.remove();
+  if (typeof window.__hideAppSplash === "function") {
+    window.__hideAppSplash();
+    return;
+  }
+
+  const splash = document.getElementById("app-splash");
+  if (!splash) return;
+
+  const shownAt = window.__APP_SPLASH_AT ?? Date.now();
+  const delay = Math.max(0, MIN_VISIBLE_MS - (Date.now() - shownAt));
+  window.setTimeout(() => {
+    splash.remove();
     document.documentElement.classList.remove("app-booting");
-  };
-
-  const elapsed = shownAt ? Date.now() - shownAt : MIN_VISIBLE_MS;
-  const delay = Math.max(0, MIN_VISIBLE_MS - elapsed);
-
-  window.setTimeout(remove, delay);
+  }, delay);
 }

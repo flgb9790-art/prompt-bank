@@ -23,7 +23,7 @@
       #app-splash {
         position: fixed;
         inset: 0;
-        z-index: 99999;
+        z-index: 2147483646;
         display: flex;
         flex-direction: column;
         align-items: center;
@@ -114,6 +114,18 @@
         }
       }
     </style>
+    <script>
+      window.__APP_SPLASH_AT = Date.now();
+      window.__hideAppSplash = function () {
+        var splash = document.getElementById("app-splash");
+        if (!splash) return;
+        var delay = Math.max(0, 800 - (Date.now() - (window.__APP_SPLASH_AT || Date.now())));
+        window.setTimeout(function () {
+          splash.remove();
+          document.documentElement.classList.remove("app-booting");
+        }, delay);
+      };
+    </script>
   </head>
   <body>
     <div id="app-splash" role="status" aria-live="polite" aria-busy="true">

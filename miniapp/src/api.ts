@@ -5,6 +5,7 @@ import type {
   PromptCreatePayload,
   PromptListResponse,
   PromptUpdatePayload,
+  BootstrapResponse,
   TagStat
 } from "./types";
 import { readReferenceCache, removeReferenceCache, writeReferenceCache } from "./utils/referenceCache";
@@ -87,6 +88,10 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const api = {
+  bootstrap(promptLimit = 25) {
+    const query = promptLimit ? `?promptLimit=${promptLimit}` : "";
+    return request<BootstrapResponse>(`/api/bootstrap${query}`);
+  },
   getMe() {
     return request<MeResponse>("/api/me");
   },
@@ -122,11 +127,6 @@ export const api = {
   async getCategories() {
     const cached = readReferenceCache<Category[]>(CATEGORIES_CACHE_KEY);
     if (cached?.length) {
-      window.setTimeout(() => {
-        void request<Category[]>("/api/categories")
-          .then((fresh) => writeReferenceCache(CATEGORIES_CACHE_KEY, fresh))
-          .catch(() => undefined);
-      }, 4000);
       return cached;
     }
     const fresh = await request<Category[]>("/api/categories");
@@ -136,11 +136,6 @@ export const api = {
   async getTags() {
     const cached = readReferenceCache<TagStat[]>(TAGS_CACHE_KEY);
     if (cached) {
-      window.setTimeout(() => {
-        void request<TagStat[]>("/api/tags")
-          .then((fresh) => writeReferenceCache(TAGS_CACHE_KEY, fresh))
-          .catch(() => undefined);
-      }, 4000);
       return cached;
     }
     const fresh = await request<TagStat[]>("/api/tags");

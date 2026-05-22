@@ -18,8 +18,19 @@ export default defineConfig({
         icons: []
       },
       workbox: {
-        globPatterns: ["**/*.{js,css,html,svg,woff2}"],
-        navigateFallbackDenylist: [/^\/api/, /^\/uploads/]
+        globPatterns: ["**/*.{js,css,svg,woff2,webmanifest}"],
+        navigateFallback: "index.html",
+        navigateFallbackDenylist: [/^\/api/, /^\/uploads/],
+        runtimeCaching: [
+          {
+            urlPattern: ({ request }) => request.mode === "navigate",
+            handler: "NetworkFirst",
+            options: {
+              cacheName: "html-pages",
+              networkTimeoutSeconds: 3
+            }
+          }
+        ]
       },
       devOptions: {
         enabled: false

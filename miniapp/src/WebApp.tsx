@@ -7,12 +7,13 @@ import { PromptDetailsModal, type PromptEditPayload } from "./components/PromptD
 const PromptForm = lazy(() => import("./components/PromptForm").then((module) => ({ default: module.PromptForm })));
 import { runDeferred } from "./utils/deferredPrefetch";
 import { hideAppSplash } from "./utils/appSplash";
+import { writeReferenceCache } from "./utils/referenceCache";
+
 import {
   invalidateFavoritesCache,
   readFavoritesCache,
   writeFavoritesCache
 } from "./utils/favoritesCache";
-import { preloadPromptCovers } from "./utils/preloadCovers";
 import { AuthRequiredModal } from "./components/web/AuthRequiredModal";
 import { PromptGrid } from "./components/web/PromptGrid";
 import { Sidebar } from "./components/web/Sidebar";
@@ -45,9 +46,10 @@ type ViewMode = "grid" | "list";
 type RoutePath = "/" | "/prompts" | "/favorites" | "/categories" | "/tags" | "/recent" | "/settings";
 
 const storageKey = "prompt-bank-web-auth";
+const CATEGORIES_CACHE_KEY = "prompt-bank-categories";
+const TAGS_CACHE_KEY = "prompt-bank-tags";
 const PROMPTS_PER_PAGE = 12;
 const PROMPTS_FETCH_LIMIT = 40;
-const WEB_HOME_BOOTSTRAP = 12;
 const FAVORITES_FETCH_LIMIT = 40;
 const SEARCH_DEBOUNCE_MS = 350;
 const telegramAuthUrl = (import.meta.env.VITE_TELEGRAM_AUTH_URL as string | undefined)?.trim();
@@ -243,77 +245,32 @@ export function WebApp() {
       setLoading(true);
       setError("");
       try {
-        const promptsData = await api.getPrompts({
-          limit: WEB_HOME_BOOTSTRAP,
-          offset: 0,
-          search: search.trim() || undefined,
-          lite: true,
-          sort: "new",
-          includeTotal: false
-        });
+        const data = await api.bootstrap(PROMPTS_FETCH_LIMIT);
         if (cancelled) return;
-        const mapped = mapPromptsFromApi(promptsData.items);
+        const mapped = mapPromptsFromApi(data.prompts.items);
         setPrompts(mapped);
-        setPromptsTotal(promptsData.total);
+        setPromptsTotal(data.prompts.total);
+        setCategories(data.categories);
+        setTags(data.tags);
+        writeReferenceCache(CATEGORIES_CACHE_KEY, data.categories);
+        writeReferenceCache(TAGS_CACHE_KEY, data.tags);
+        setIsAdmin(Boolean(data.me.isAdmin));
+        setDbUserId(data.me.user?.id ?? null);
+        setUserUsageTotal(data.me.usageTotal ?? 0);
+        const favorites = mapPromptsFromApi(data.favorites);
+        setFavoritePrompts(favorites);
+        writeFavoritesCache(favorites);
         bootstrappedRef.current = true;
-        setLoading(false);
-
-        runDeferred(() => preloadPromptCovers(mapped, 3), 800);
-
-        void api
-          .getPrompts({
-            limit: 1,
-            offset: 0,
-            search: search.trim() || undefined,
-            lite: true,
-            sort: "new",
-            includeTotal: true
-          })
-          .then((data) => {
-            if (!cancelled) setPromptsTotal(data.total);
-          })
-          .catch(console.error);
-
-        void api
-          .getPrompts({
-            limit: PROMPTS_FETCH_LIMIT,
-            offset: 0,
-            search: search.trim() || undefined,
-            lite: true,
-            sort: "new"
-          })
-          .then((fullData) => {
-            if (cancelled) return;
-            const fullMapped = mapPromptsFromApi(fullData.items);
-            setPrompts(fullMapped);
-            setPromptsTotal(fullData.total);
-            scheduleWebPrefetch(fullMapped.length, fullData.total);
-          })
-          .catch(console.error);
-
-        const [categoriesData, tagsData, me] = await Promise.all([
-          api.getCategories(),
-          api.getTags(),
-          api.getMe()
-        ]);
-        if (cancelled) return;
-        setCategories(categoriesData);
-        setTags(tagsData);
-        setIsAdmin(Boolean(me.isAdmin));
-        setDbUserId(me.user?.id ?? null);
-        setUserUsageTotal(me.usageTotal ?? 0);
+        scheduleWebPrefetch(mapped.length, data.prompts.total);
       } catch (err) {
         if (!cancelled) {
-          if (bootstrappedRef.current) {
-            setToast("Справочники загрузятся чуть позже");
-          } else {
-            setError("Не удалось загрузить данные.");
-          }
+          setError("Не удалось загрузить данные.");
           console.error(err);
         }
       } finally {
-        if (!cancelled && !bootstrappedRef.current) {
+        if (!cancelled) {
           setLoading(false);
+          hideAppSplash();
         }
       }
     })();
@@ -343,18 +300,6 @@ export function WebApp() {
     setSort("new");
   }, [path]);
 
-  useEffect(() => {
-    if (!loading) {
-      hideAppSplash();
-    }
-  }, [loading]);
-
-  useEffect(() => {
-    if (error) {
-      hideAppSplash();
-    }
-  }, [error]);
-
   async function refreshWebFavorites(showSpinner: boolean) {
     if (!isAuthenticated) return;
     if (showSpinner) setFavoritesLoading(true);
@@ -373,26 +318,13 @@ export function WebApp() {
 
   useEffect(() => {
     if (path !== "/favorites" || !isAuthenticated) return;
-
     const cached = readFavoritesCache();
     if (cached) {
       setFavoritePrompts(cached);
-      void refreshWebFavorites(false);
       return;
     }
-
     void refreshWebFavorites(true);
   }, [path, isAuthenticated, sort]);
-
-  useEffect(() => {
-    if (!bootstrappedRef.current || !isAuthenticated) return;
-    const cached = readFavoritesCache();
-    if (cached) {
-      setFavoritePrompts(cached);
-      return;
-    }
-    void refreshWebFavorites(false);
-  }, [isAuthenticated]);
 
   function syncFavoritePrompts(next: Prompt) {
     setFavoritePrompts((prev) => {

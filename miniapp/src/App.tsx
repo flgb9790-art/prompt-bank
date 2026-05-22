@@ -31,8 +31,11 @@ import {
   readFavoritesCache,
   writeFavoritesCache
 } from "./utils/favoritesCache";
-import { preloadPromptCovers } from "./utils/preloadCovers";
 import { hideAppSplash } from "./utils/appSplash";
+import { writeReferenceCache } from "./utils/referenceCache";
+
+const CATEGORIES_CACHE_KEY = "prompt-bank-categories";
+const TAGS_CACHE_KEY = "prompt-bank-tags";
 
 const WebApp = lazy(() => import("./WebApp").then((module) => ({ default: module.WebApp })));
 
@@ -243,44 +246,6 @@ function MiniAppApp() {
     });
   }
 
-  async function loadFullPromptsList() {
-    if (fullListLoadedRef.current) return;
-    try {
-      const promptsData = await api.getPrompts({
-        limit: MINI_PROMPTS_PAGE,
-        offset: 0,
-        lite: true,
-        sort: "new"
-      });
-      const mapped = mapPromptsFromApi(promptsData.items);
-      setPrompts(mapped);
-      setPromptsTotal(promptsData.total);
-      if (isDefaultPromptsList(listFiltersRef.current, activeTag)) {
-        syncRecentFromPrompts(mapped);
-      }
-      scheduleMiniPrefetch(mapped.length, promptsData.total, listFiltersRef.current, activeTag);
-      fullListLoadedRef.current = true;
-    } finally {
-      setPromptsListLoading(false);
-    }
-  }
-
-  async function prefetchFavoritesCache() {
-    const cached = readFavoritesCache();
-    if (cached) {
-      setFavoritePrompts(cached);
-      return;
-    }
-    try {
-      const data = await api.getPrompts({ favorite: true, limit: FAVORITES_FETCH_LIMIT, lite: true });
-      const mapped = mapPromptsFromApi(data.items);
-      writeFavoritesCache(mapped);
-      setFavoritePrompts(mapped);
-    } catch {
-      // ignore background prefetch errors
-    }
-  }
-
   async function refreshFavoritesList(showSpinner: boolean) {
     if (showSpinner) setFavoritesLoading(true);
     try {
@@ -301,39 +266,28 @@ function MiniAppApp() {
     fullListLoadedRef.current = false;
     setError("");
     try {
-      const homeData = await api.getPrompts({
-        limit: HOME_RECENT_LIMIT,
-        offset: 0,
-        lite: true,
-        sort: "new",
-        includeTotal: false
-      });
-      const mapped = mapPromptsFromApi(homeData.items);
+      const data = await api.bootstrap(MINI_PROMPTS_PAGE);
+      const mapped = mapPromptsFromApi(data.prompts.items);
+      setCategories(data.categories);
+      writeReferenceCache(CATEGORIES_CACHE_KEY, data.categories);
+      writeReferenceCache(TAGS_CACHE_KEY, data.tags);
+      setIsAdmin(data.me.isAdmin);
+      setUserUsageTotal(data.me.usageTotal ?? 0);
       setPrompts(mapped);
-      setPromptsTotal(homeData.total);
+      setPromptsTotal(data.prompts.total);
       syncRecentFromPrompts(mapped);
-      setLoading(false);
-
-      runDeferred(() => preloadPromptCovers(mapped, 3), 800);
-
-      void api
-        .getPrompts({ limit: 1, offset: 0, lite: true, sort: "new", includeTotal: true })
-        .then((data) => setPromptsTotal(data.total))
-        .catch(() => undefined);
-
-      void Promise.all([
-        loadFullPromptsList(),
-        api.getCategories().then(setCategories).catch(() => undefined),
-        api.getMe().then((me) => {
-          setIsAdmin(me.isAdmin);
-          setUserUsageTotal(me.usageTotal ?? 0);
-        }),
-        prefetchFavoritesCache()
-      ]);
+      const favorites = mapPromptsFromApi(data.favorites);
+      setFavoritePrompts(favorites);
+      writeFavoritesCache(favorites);
+      fullListLoadedRef.current = mapped.length >= MINI_PROMPTS_PAGE;
+      setPromptsListLoading(false);
+      scheduleMiniPrefetch(mapped.length, data.prompts.total, listFiltersRef.current, activeTag);
     } catch {
       setError("Не удалось загрузить данные.");
-      setLoading(false);
       setPromptsListLoading(false);
+    } finally {
+      setLoading(false);
+      hideAppSplash();
     }
   }
 
@@ -463,27 +417,12 @@ function MiniAppApp() {
   }, []);
 
   useEffect(() => {
-    if (!loading) {
-      hideAppSplash();
-    }
-  }, [loading]);
-
-  useEffect(() => {
-    if (error) {
-      hideAppSplash();
-    }
-  }, [error]);
-
-  useEffect(() => {
     if (tab !== "favorites") return;
-
     const cached = readFavoritesCache();
     if (cached) {
       setFavoritePrompts(cached);
-      void refreshFavoritesList(false);
       return;
     }
-
     void refreshFavoritesList(true);
   }, [tab]);
 

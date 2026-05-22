@@ -56,6 +56,14 @@ export type PromptListResponse = {
   total: number;
 };
 
+export type BootstrapResponse = {
+  categories: Category[];
+  tags: TagStat[];
+  me: MeResponse;
+  prompts: PromptListResponse;
+  favorites: Prompt[];
+};
+
 export type TelegramUser = {
   id: number;
   username?: string;
