@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight, Share2, X } from "lucide-react";
 import { resolveMediaUrl } from "../api";
 import type { Category, MediaType, Prompt } from "../types";
 import { getCategoryBadgeClass } from "../utils/categoryStyle";
+import { getPromptExcerpt, hasFullPromptContent } from "../utils/promptContent";
 import { buildPromptShareUrl } from "../utils/promptShare";
 import { MediaLightbox, type LightboxItem } from "./MediaLightbox";
 import { MediaUploader } from "./MediaUploader";
@@ -101,7 +102,7 @@ export function PromptDetailsModal({
 
   function resetEditState(current: Prompt) {
     setTitle(current.title);
-    setContent(current.content);
+    setContent(current.content ?? current.contentExcerpt ?? "");
     setCategoryId(current.categoryId);
     setCoverMedia(
       current.coverMediaUrl && current.coverMediaType
@@ -349,7 +350,9 @@ export function PromptDetailsModal({
                     />
                   ))}
                 </div>
-                <p className="mt-4 whitespace-pre-wrap text-sm leading-relaxed text-[var(--text-soft)]">{prompt.content}</p>
+                <p className="mt-4 whitespace-pre-wrap text-sm leading-relaxed text-[var(--text-soft)]">
+                  {hasFullPromptContent(prompt) ? prompt.content : getPromptExcerpt(prompt) || "Загрузка..."}
+                </p>
                 <div className="action-button-row mt-5">
                   <button type="button" onClick={() => onCopy(prompt)} className="btn-primary justify-center">
                     Скопировать

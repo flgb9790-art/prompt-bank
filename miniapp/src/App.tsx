@@ -17,42 +17,54 @@ import { PromptCard } from "./components/PromptCard";
 import { PromptDetailsModal } from "./components/PromptDetailsModal";
 import { SearchBar } from "./components/SearchBar";
 import { isTelegramMiniAppContext, mockTelegramUser, resolveTelegramUser } from "./telegram";
+import {
+  ensurePromptWithContent,
+  getPromptSearchText,
+  hasFullPromptContent
+} from "./utils/promptContent";
 import { WebApp } from "./WebApp";
 
 const quickTags = ["beauty", "video", "logo", "telegram", "cursor", "ads", "react", "realistic"];
 
 type AppRuntime = "loading" | "telegram" | "web";
 
-function loadTelegramSdk(): Promise<void> {
-  if (window.Telegram?.WebApp) {
-    return Promise.resolve();
-  }
+function hasTelegramUrlHints(): boolean {
+  const params = new URLSearchParams(window.location.search);
+  const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+  return (
+    params.has("tgWebAppData") ||
+    params.has("tgWebAppVersion") ||
+    hashParams.has("tgWebAppData") ||
+    hashParams.has("tgWebAppVersion")
+  );
+}
 
-  const existing = document.querySelector<HTMLScriptElement>('script[data-telegram-webapp="1"]');
-  if (existing) {
-    return new Promise((resolve) => {
-      if (window.Telegram?.WebApp) {
-        resolve();
-        return;
-      }
-      existing.addEventListener("load", () => resolve(), { once: true });
-      window.setTimeout(resolve, 500);
-    });
-  }
+function detectInitialRuntime(): AppRuntime {
+  if (isTelegramMiniAppContext()) return "telegram";
+  if (hasTelegramUrlHints()) return "loading";
+  return "web";
+}
+
+function waitForTelegramSdkFromHtml(): Promise<void> {
+  if (window.Telegram?.WebApp) return Promise.resolve();
+  if (!hasTelegramUrlHints()) return Promise.resolve();
+
+  const script = document.querySelector<HTMLScriptElement>('script[src*="telegram-web-app.js"]');
+  if (!script) return Promise.resolve();
 
   return new Promise((resolve) => {
-    const script = document.createElement("script");
-    script.src = "https://telegram.org/js/telegram-web-app.js";
-    script.async = true;
-    script.dataset.telegramWebapp = "1";
-    script.onload = () => resolve();
-    script.onerror = () => resolve();
-    document.head.appendChild(script);
+    if (window.Telegram?.WebApp) {
+      resolve();
+      return;
+    }
+    script.addEventListener("load", () => resolve(), { once: true });
+    script.addEventListener("error", () => resolve(), { once: true });
+    window.setTimeout(resolve, 200);
   });
 }
 
 export default function App() {
-  const [runtime, setRuntime] = useState<AppRuntime>(() => (isTelegramMiniAppContext() ? "telegram" : "loading"));
+  const [runtime, setRuntime] = useState<AppRuntime>(detectInitialRuntime);
 
   useEffect(() => {
     if (runtime !== "loading") return;
@@ -60,20 +72,13 @@ export default function App() {
     let cancelled = false;
 
     void (async () => {
-      await loadTelegramSdk();
+      await waitForTelegramSdkFromHtml();
       if (cancelled) return;
       setRuntime(isTelegramMiniAppContext() ? "telegram" : "web");
     })();
 
-    const fallback = window.setTimeout(() => {
-      if (!cancelled) {
-        setRuntime(isTelegramMiniAppContext() ? "telegram" : "web");
-      }
-    }, 700);
-
     return () => {
       cancelled = true;
-      window.clearTimeout(fallback);
     };
   }, [runtime]);
 
@@ -124,10 +129,7 @@ function MiniAppApp() {
   const searchResults = useMemo(() => {
     if (!searchQuery) return [];
     const low = searchQuery.toLowerCase();
-    return prompts.filter((item) => {
-      const tags = item.keywords.map((k) => k.keyword.name).join(" ");
-      return `${item.title} ${item.content} ${item.category.name} ${tags}`.toLowerCase().includes(low);
-    });
+    return prompts.filter((item) => getPromptSearchText(item).includes(low));
   }, [searchQuery, prompts]);
 
   async function loadData() {
@@ -223,12 +225,6 @@ function MiniAppApp() {
   }, []);
 
   useEffect(() => {
-    if (!document.querySelector('script[data-telegram-webapp="1"]')) {
-      void loadTelegramSdk();
-    }
-  }, []);
-
-  useEffect(() => {
     if (user?.id) {
       setAuthTelegramId(String(user.id));
     }
@@ -287,10 +283,14 @@ function MiniAppApp() {
     const requestId = ++openPromptRequestRef.current;
     setSelectedPrompt({ ...prompt, examples: prompt.examples ?? [] });
     setPromptShareUrl(prompt.id, replaceUrl);
+    if (hasFullPromptContent(prompt)) {
+      return;
+    }
     try {
       const full = await api.getPrompt(prompt.id);
       if (openPromptRequestRef.current !== requestId) return;
       setSelectedPrompt(full);
+      setPrompts((prev) => prev.map((item) => (item.id === full.id ? mergePromptUpdate(item, full) : item)));
     } catch {
       if (openPromptRequestRef.current !== requestId) return;
     }
@@ -348,11 +348,16 @@ function MiniAppApp() {
 
   async function handleCopyPrompt(prompt: Prompt) {
     try {
-      await navigator.clipboard.writeText(prompt.content);
+      const ready = await ensurePromptWithContent(prompt, (id) => api.getPrompt(id));
+      if (!hasFullPromptContent(ready)) {
+        setToastMessage("Не удалось загрузить промпт");
+        return;
+      }
+      await navigator.clipboard.writeText(ready.content!);
       setToastMessage("Промпт скопирован");
       setPrompts((prev) =>
         prev.map((item) =>
-          item.id === prompt.id ? { ...item, usageCount: item.usageCount + 1 } : item
+          item.id === ready.id ? mergePromptUpdate(item, { ...ready, usageCount: item.usageCount + 1 }) : item
         )
       );
       setUserUsageTotal((prev) => prev + 1);

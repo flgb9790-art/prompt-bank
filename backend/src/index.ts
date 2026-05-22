@@ -23,7 +23,14 @@ app.use(express.json({ limit: "3mb" }));
 fs.mkdirSync(path.join(uploadsDir, "images"), { recursive: true });
 fs.mkdirSync(path.join(uploadsDir, "videos"), { recursive: true });
 
-app.use("/uploads", express.static(uploadsDir));
+app.use(
+  "/uploads",
+  express.static(uploadsDir, {
+    maxAge: "7d",
+    etag: true,
+    lastModified: true
+  })
+);
 
 app.get("/api/health", (_req, res) => {
   res.json({ ok: true });

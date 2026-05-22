@@ -1,6 +1,7 @@
 import { Copy, Star } from "lucide-react";
 import { resolveMediaUrl } from "../api";
 import type { Prompt } from "../types";
+import { getPromptExcerpt } from "../utils/promptContent";
 import { TagPill } from "./TagPill";
 import { getCategoryBadgeClass } from "../utils/categoryStyle";
 
@@ -81,7 +82,7 @@ export function PromptCard({ prompt, variant = "mobile", onOpen, onToggleFavorit
           <div className="prompt-card-body prompt-card-body--list">
             <h3 className="prompt-card-title prompt-card-title--list">{prompt.title}</h3>
             <span className={`category-badge category-badge-mobile ${badgeClass}`}>{prompt.category.name}</span>
-            <p className="prompt-card-excerpt prompt-card-excerpt--list">{prompt.content}</p>
+            <p className="prompt-card-excerpt prompt-card-excerpt--list">{getPromptExcerpt(prompt)}</p>
           </div>
           <button
             type="button"
@@ -129,7 +130,7 @@ export function PromptCard({ prompt, variant = "mobile", onOpen, onToggleFavorit
           <div className="prompt-card-body prompt-card-body--desktop">
             <h3 className="prompt-card-title">{prompt.title}</h3>
             <span className={`category-badge ${badgeClass}`}>{prompt.category.name}</span>
-            <p className="prompt-card-excerpt prompt-card-excerpt--desktop">{prompt.content}</p>
+            <p className="prompt-card-excerpt prompt-card-excerpt--desktop">{getPromptExcerpt(prompt)}</p>
           </div>
           <button
             type="button"
@@ -176,7 +177,7 @@ export function PromptCard({ prompt, variant = "mobile", onOpen, onToggleFavorit
         <div className="prompt-card-body prompt-card-body--mobile">
           <h3 className="prompt-card-title prompt-card-title--mobile">{prompt.title}</h3>
           <span className={`category-badge category-badge-mobile ${badgeClass}`}>{prompt.category.name}</span>
-          <p className="prompt-card-excerpt prompt-card-excerpt--mobile">{prompt.content}</p>
+          <p className="prompt-card-excerpt prompt-card-excerpt--mobile">{getPromptExcerpt(prompt)}</p>
         </div>
         <button
           type="button"

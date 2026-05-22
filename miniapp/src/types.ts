@@ -30,7 +30,10 @@ export type Prompt = {
   id: number;
   userId: number;
   title: string;
-  content: string;
+  /** Полный текст; отсутствует в lite-списке (см. contentExcerpt). */
+  content?: string;
+  /** Укороченный текст для карточек в lite-списке. */
+  contentExcerpt?: string;
   note?: string | null;
   categoryId: number;
   category: Category;

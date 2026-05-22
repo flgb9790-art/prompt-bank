@@ -21,6 +21,11 @@ import { clearPromptShareUrl, parsePromptIdFromLocation, setPromptShareUrl } fro
 import { mergePromptUpdate } from "./utils/mergePrompt";
 import { normalizeTagName, promptHasTag } from "./utils/tagFilter";
 import { countCategoriesWithPrompts } from "./utils/stats";
+import {
+  ensurePromptWithContent,
+  getPromptSearchText,
+  hasFullPromptContent
+} from "./utils/promptContent";
 
 type SortValue = "new" | "old" | "usage";
 type ViewMode = "grid" | "list";
@@ -106,12 +111,7 @@ export function WebApp() {
       ? prompts.filter((prompt) => prompt.category.slug === activeCategory)
       : [...prompts];
     const byTag = activeTag ? byCategory.filter((prompt) => promptHasTag(prompt, activeTag)) : byCategory;
-    const bySearch = low
-      ? byTag.filter((prompt) => {
-          const text = `${prompt.title} ${prompt.content} ${prompt.category.name} ${prompt.keywords.map((k) => k.keyword.name).join(" ")}`.toLowerCase();
-          return text.includes(low);
-        })
-      : byTag;
+    const bySearch = low ? byTag.filter((prompt) => getPromptSearchText(prompt).includes(low)) : byTag;
     if (sort === "new") bySearch.sort((a, b) => Number(new Date(b.createdAt)) - Number(new Date(a.createdAt)));
     if (sort === "old") bySearch.sort((a, b) => Number(new Date(a.createdAt)) - Number(new Date(b.createdAt)));
     if (sort === "usage") bySearch.sort((a, b) => b.usageCount - a.usageCount);
@@ -196,11 +196,50 @@ export function WebApp() {
   }
 
   useEffect(() => {
+    let cancelled = false;
+
     void (async () => {
-      await loadBootstrap();
-      bootstrappedRef.current = true;
-      await loadPrompts();
+      setLoading(true);
+      setError("");
+      try {
+        const [categoriesData, tagsData, me, promptsData] = await Promise.all([
+          api.getCategories(),
+          api.getTags(),
+          api.getMe(),
+          api.getPrompts({
+            limit: PROMPTS_FETCH_LIMIT,
+            search: search.trim() || undefined,
+            lite: true
+          })
+        ]);
+        if (cancelled) return;
+        setCategories(categoriesData);
+        setTags(tagsData);
+        setIsAdmin(Boolean(me.isAdmin));
+        setDbUserId(me.user?.id ?? null);
+        setUserUsageTotal(me.usageTotal ?? 0);
+        setPrompts(
+          promptsData.map((prompt) => ({
+            ...prompt,
+            examples: prompt.examples ?? []
+          }))
+        );
+        bootstrappedRef.current = true;
+      } catch (err) {
+        if (!cancelled) {
+          setError("Не удалось загрузить данные.");
+          console.error(err);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
     })();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -238,10 +277,14 @@ export function WebApp() {
     const requestId = ++openPromptRequestRef.current;
     setSelectedPrompt({ ...prompt, examples: prompt.examples ?? [] });
     setPromptShareUrl(prompt.id, replaceUrl);
+    if (hasFullPromptContent(prompt)) {
+      return;
+    }
     try {
       const full = await api.getPrompt(prompt.id);
       if (openPromptRequestRef.current !== requestId) return;
       setSelectedPrompt(full);
+      upsertPromptInList(full);
     } catch (err) {
       if (openPromptRequestRef.current !== requestId) return;
       console.error(err);
@@ -317,15 +360,24 @@ export function WebApp() {
   }
 
   async function handleCopy(prompt: Prompt) {
-    await navigator.clipboard.writeText(prompt.content);
-    setToast("Промпт скопирован");
-    setPrompts((prev) =>
-      prev.map((item) =>
-        item.id === prompt.id ? { ...item, usageCount: item.usageCount + 1 } : item
-      )
-    );
-    setUserUsageTotal((prev) => prev + 1);
-    void api.increaseUsage(prompt.id).catch(console.error);
+    try {
+      const ready = await ensurePromptWithContent(prompt, (id) => api.getPrompt(id));
+      if (!hasFullPromptContent(ready)) {
+        setToast("Не удалось загрузить промпт");
+        return;
+      }
+      await navigator.clipboard.writeText(ready.content!);
+      setToast("Промпт скопирован");
+      setPrompts((prev) =>
+        prev.map((item) =>
+          item.id === ready.id ? mergePromptUpdate(item, { ...ready, usageCount: item.usageCount + 1 }) : item
+        )
+      );
+      setUserUsageTotal((prev) => prev + 1);
+      void api.increaseUsage(prompt.id).catch(console.error);
+    } catch {
+      setToast("Не удалось скопировать промпт");
+    }
   }
 
   async function handleToggleFavorite(id: number) {

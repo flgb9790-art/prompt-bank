@@ -25,6 +25,8 @@ const promptInclude = {
   examples: true
 } as const;
 
+const LIST_EXCERPT_MAX = 320;
+
 export class PromptService {
   private static async favoritePromptIds(userId?: number): Promise<Set<number>> {
     if (!userId) return new Set();
@@ -39,6 +41,26 @@ export class PromptService {
     return {
       ...prompt,
       isFavorite: favoriteIds.has(prompt.id)
+    };
+  }
+
+  private static toListResponse(
+    prompt: { id: number; content: string },
+    favoriteIds: Set<number>,
+    lite: boolean
+  ) {
+    const withFavorite = PromptService.withFavorite(prompt, favoriteIds);
+    if (!lite) {
+      return withFavorite;
+    }
+
+    const { content, ...rest } = withFavorite;
+    const excerpt =
+      content.length > LIST_EXCERPT_MAX ? `${content.slice(0, LIST_EXCERPT_MAX)}…` : content;
+
+    return {
+      ...rest,
+      contentExcerpt: excerpt
     };
   }
 
@@ -104,7 +126,8 @@ export class PromptService {
       }
     });
 
-    return prompts.map((prompt) => PromptService.withFavorite(prompt, favoriteIds));
+    const lite = params.lite === true;
+    return prompts.map((prompt) => PromptService.toListResponse(prompt, favoriteIds, lite));
   }
 
   static async getById(id: number, userId?: number) {
