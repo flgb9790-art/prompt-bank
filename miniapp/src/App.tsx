@@ -9,6 +9,7 @@ import { PromptsPage } from "./pages/PromptsPage";
 import { AddPromptPage } from "./pages/AddPromptPage";
 import { FavoritesPage } from "./pages/FavoritesPage";
 import { ProfilePage } from "./pages/ProfilePage";
+import { PromptCard } from "./components/PromptCard";
 import { PromptDetailsModal } from "./components/PromptDetailsModal";
 import { SearchBar } from "./components/SearchBar";
 import { mockTelegramUser, resolveTelegramUser } from "./telegram";
@@ -242,6 +243,7 @@ function MiniAppApp() {
           onCopyPrompt={handleCopyPrompt}
           onToggleFavorite={handleToggleFavorite}
           onCreate={() => setTab("add")}
+          onViewAll={() => setTab("prompts")}
         />
       )}
       {tab === "prompts" && (
@@ -267,13 +269,14 @@ function MiniAppApp() {
           </div>
           <div className="space-y-2">
             {searchResults.map((prompt) => (
-              <div key={prompt.id} className="glass-card p-3.5">
-                <p className="font-medium">{prompt.title}</p>
-                <p className="mt-1 text-xs text-slate-300">{prompt.category.name}</p>
-                <button className="mt-2 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-xs" onClick={() => openPrompt(prompt)}>
-                  Открыть
-                </button>
-              </div>
+              <PromptCard
+                key={prompt.id}
+                prompt={prompt}
+                variant="mobile"
+                onOpen={openPrompt}
+                onCopy={handleCopyPrompt}
+                onToggleFavorite={handleToggleFavorite}
+              />
             ))}
           </div>
         </div>
@@ -321,9 +324,7 @@ function MiniAppApp() {
         onEdit={handleEditPrompt}
       />
       {toastMessage ? (
-        <div className="pointer-events-none fixed bottom-24 left-1/2 z-[60] -translate-x-1/2 rounded-xl border border-white/10 bg-[#0f172a]/95 px-4 py-2 text-sm text-white shadow-[0_10px_35px_rgba(0,0,0,0.55)] backdrop-blur">
-          {toastMessage}
-        </div>
+        <div className="toast fixed bottom-24 left-1/2 z-[60] -translate-x-1/2">{toastMessage}</div>
       ) : null}
     </Layout>
   );

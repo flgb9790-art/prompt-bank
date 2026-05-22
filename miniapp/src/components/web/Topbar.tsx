@@ -1,4 +1,4 @@
-import { Plus, Search } from "lucide-react";
+import { Menu, Plus, Search } from "lucide-react";
 import type { TelegramUser } from "../../types";
 import { AuthButton } from "./AuthButton";
 
@@ -10,6 +10,7 @@ type Props = {
   onLoginTelegram: () => void;
   onOpenSettings: () => void;
   onLogout: () => void;
+  onMenuClick?: () => void;
 };
 
 export function Topbar({
@@ -19,34 +20,34 @@ export function Topbar({
   onCreatePrompt,
   onLoginTelegram,
   onOpenSettings,
-  onLogout
+  onLogout,
+  onMenuClick
 }: Props) {
   return (
-    <div className="flex h-[72px] items-center justify-between gap-3 px-4 lg:px-7">
-      <div className="relative w-full max-w-[520px]">
-        <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-        <input
-          value={search}
-          onChange={(event) => onSearchChange(event.target.value)}
-          placeholder="Поиск промптов..."
-          className="h-11 w-full rounded-xl border border-white/10 bg-white/[0.04] pl-9 pr-3 text-sm outline-none ring-[var(--primary)]/30 focus:ring"
-        />
+    <div className="flex h-[72px] items-center justify-between gap-4 px-4 lg:px-7">
+      <div className="flex min-w-0 flex-1 items-center gap-3">
+        {onMenuClick ? (
+          <button type="button" className="btn-ghost-icon lg:hidden" onClick={onMenuClick} aria-label="Меню">
+            <Menu size={20} />
+          </button>
+        ) : null}
+        <div className="search-field w-full max-w-[520px] lg:max-w-[520px]">
+          <Search size={18} className="mr-2 shrink-0 text-[var(--muted)]" />
+          <input
+            value={search}
+            onChange={(event) => onSearchChange(event.target.value)}
+            placeholder="Поиск промптов..."
+          />
+          <span className="hidden text-[13px] text-[var(--muted-light)] md:inline">⌘ K</span>
+        </div>
       </div>
-      <div className="flex items-center gap-2">
-        <button
-          type="button"
-          onClick={onCreatePrompt}
-          className="hidden h-11 items-center gap-2 rounded-[10px] bg-gradient-to-br from-[var(--primary)] to-[var(--primary-2)] px-5 text-sm font-medium md:flex"
-        >
+      <div className="flex shrink-0 items-center gap-3">
+        <button type="button" onClick={onCreatePrompt} className="btn-primary hidden md:inline-flex">
           <Plus size={16} />
-          Новый промпт
+          <span className="hidden lg:inline">Новый промпт</span>
+          <span className="lg:hidden">Новый</span>
         </button>
-        <AuthButton
-          user={user}
-          onLoginTelegram={onLoginTelegram}
-          onOpenSettings={onOpenSettings}
-          onLogout={onLogout}
-        />
+        <AuthButton user={user} onLoginTelegram={onLoginTelegram} onOpenSettings={onOpenSettings} onLogout={onLogout} />
       </div>
     </div>
   );

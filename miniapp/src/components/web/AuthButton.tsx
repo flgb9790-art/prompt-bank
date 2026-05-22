@@ -14,11 +14,7 @@ export function AuthButton({ user, onLoginTelegram, onOpenSettings, onLogout }: 
 
   if (!user) {
     return (
-      <button
-        type="button"
-        onClick={onLoginTelegram}
-        className="h-10 rounded-[10px] border border-white/10 bg-white/10 px-4 text-sm text-white hover:bg-white/15"
-      >
+      <button type="button" onClick={onLoginTelegram} className="btn-secondary">
         Войти
       </button>
     );
@@ -31,21 +27,29 @@ export function AuthButton({ user, onLoginTelegram, onOpenSettings, onLogout }: 
       <button
         type="button"
         onClick={() => setOpen((prev) => !prev)}
-        className="grid h-[42px] w-[42px] place-items-center rounded-full border border-white/15 bg-gradient-to-br from-[var(--primary)] to-[var(--blue)] font-semibold"
+        className="grid h-[42px] w-[42px] place-items-center rounded-full border-2 border-white bg-gradient-to-br from-[var(--primary)] to-[var(--purple)] text-sm font-semibold text-white shadow-[0_6px_16px_rgba(16,24,40,0.10)]"
       >
         {avatarLetter}
       </button>
       {open ? (
-        <div className="absolute right-0 top-12 z-50 w-56 rounded-xl border border-white/10 bg-[#0d1324] p-2 shadow-xl">
+        <div className="absolute right-0 top-12 z-50 w-56 rounded-xl border border-[var(--border)] bg-white p-2 shadow-hover">
           <div className="px-2 py-1.5">
-            <p className="text-sm font-medium">{user.first_name ?? "User"}</p>
-            <p className="text-xs text-muted">@{user.username ?? "telegram"}</p>
+            <p className="text-sm font-medium text-[var(--text)]">{user.first_name ?? "User"}</p>
+            <p className="text-xs text-[var(--muted)]">@{user.username ?? "telegram"}</p>
           </div>
-          <button type="button" className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-sm hover:bg-white/5" onClick={onOpenSettings}>
+          <button
+            type="button"
+            className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-sm text-[var(--text-soft)] hover:bg-[#f5f6fb]"
+            onClick={onOpenSettings}
+          >
             <Settings size={16} />
             Настройки
           </button>
-          <button type="button" className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-sm text-red-300 hover:bg-red-500/10" onClick={onLogout}>
+          <button
+            type="button"
+            className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-sm text-[var(--red)] hover:bg-[var(--red-soft)]"
+            onClick={onLogout}
+          >
             <LogOut size={16} />
             Выйти
           </button>

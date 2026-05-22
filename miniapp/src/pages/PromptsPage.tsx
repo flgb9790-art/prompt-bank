@@ -45,11 +45,7 @@ export function PromptsPage({ prompts, categories, loading, error, onOpenPrompt,
       <SearchBar value={query} onChange={setQuery} placeholder="Поиск по названию, тексту, тегам..." />
       <CategoryTabs categories={categories} active={category} onSelect={setCategory} />
 
-      <select
-        value={sort}
-        onChange={(event) => setSort(event.target.value as SortMode)}
-        className="w-full rounded-2xl border border-white/10 bg-white/[0.03] px-3.5 py-2.5 text-sm"
-      >
+      <select value={sort} onChange={(event) => setSort(event.target.value as SortMode)} className="form-select">
         <option value="new">Новые</option>
         <option value="old">Старые</option>
         <option value="usage">Часто используемые</option>
@@ -57,22 +53,22 @@ export function PromptsPage({ prompts, categories, loading, error, onOpenPrompt,
       </select>
 
       {loading ? (
-        <div className="space-y-2.5">
+        <div className="space-y-3">
           {Array.from({ length: 4 }).map((_, idx) => (
-            <div key={idx} className="glass-card skeleton h-28" />
+            <div key={idx} className="skeleton h-36" />
           ))}
         </div>
       ) : error ? (
-        <p className="text-sm text-red-400">{error}</p>
+        <p className="text-sm text-[var(--red)]">{error}</p>
       ) : !filtered.length ? (
-        <div className="glass-card empty-state">
-          <p className="text-base font-medium text-slate-100">Ничего не найдено</p>
-          <p className="mt-1 text-sm text-muted">Попробуйте другой запрос или категорию.</p>
+        <div className="surface-card empty-state">
+          <p className="text-base font-medium text-[var(--text)]">Ничего не найдено</p>
+          <p className="mt-1 text-sm text-[var(--muted)]">Попробуйте другой запрос или категорию.</p>
         </div>
       ) : (
-        <div className="space-y-2.5">
+        <div className="flex flex-col gap-3">
           {filtered.map((prompt) => (
-            <PromptCard key={prompt.id} prompt={prompt} onOpen={onOpenPrompt} onToggleFavorite={onToggleFavorite} onCopy={onCopyPrompt} />
+            <PromptCard key={prompt.id} prompt={prompt} variant="mobile" onOpen={onOpenPrompt} onToggleFavorite={onToggleFavorite} onCopy={onCopyPrompt} />
           ))}
         </div>
       )}

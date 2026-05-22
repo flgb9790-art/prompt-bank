@@ -10,7 +10,7 @@ export function SortSelect({ value, onChange }: Props) {
     <select
       value={value}
       onChange={(event) => onChange(event.target.value as SortValue)}
-      className="h-[42px] w-[216px] rounded-[10px] border border-white/10 bg-white/[0.04] px-3 text-sm text-slate-200"
+      className="form-select h-[42px] min-w-[210px] rounded-xl text-[14px]"
     >
       <option value="new">Сортировка: Новые</option>
       <option value="old">Сортировка: Старые</option>

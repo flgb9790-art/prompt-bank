@@ -15,6 +15,8 @@ import { Topbar } from "./components/web/Topbar";
 import { Pagination } from "./components/web/Pagination";
 import { ViewToggle } from "./components/web/ViewToggle";
 import { WebLayout } from "./components/web/WebLayout";
+import { MobileWebShell } from "./components/web/MobileWebShell";
+import { AuthButton } from "./components/web/AuthButton";
 
 type SortValue = "new" | "old" | "usage";
 type ViewMode = "grid" | "list";
@@ -68,6 +70,7 @@ export function WebApp() {
   const [page, setPage] = useState(1);
   const isAuthenticated = Boolean(user);
   const bootstrappedRef = useRef(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     document.documentElement.classList.add("web-mode");
@@ -390,36 +393,40 @@ export function WebApp() {
     <>
       {path === "/" ? (
         <div>
-          <h1 className="text-2xl font-bold">Добро пожаловать! 👋</h1>
-          <p className="mt-1 text-[15px] text-[#a4adbd]">Здесь хранятся все ваши промпты. Легко находите, копируйте и улучшайте.</p>
-
-          <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <StatsCard icon={<Layers size={22} />} label="Всего промптов" value={stats.total} iconBg="bg-indigo-500/25 text-indigo-200" />
-            <StatsCard icon={<Heart size={22} />} label="Избранных" value={isAuthenticated ? stats.favorites : 0} iconBg="bg-pink-500/20 text-pink-200" />
-            <StatsCard icon={<Sparkles size={22} />} label="Категории" value={stats.categories} iconBg="bg-cyan-500/20 text-cyan-200" />
-            <StatsCard icon={<BarChart3 size={22} />} label="Использований" value={stats.usage} iconBg="bg-violet-500/25 text-violet-200" />
+          <div className="welcome-block">
+            <h1 className="welcome-title lg:text-[24px]">Добро пожаловать! 👋</h1>
+            <p className="welcome-subtitle">Здесь хранятся все ваши промпты. Легко находите, копируйте и улучшайте.</p>
           </div>
 
-          <div className="mt-8 flex flex-wrap items-center justify-between gap-3">
-            <h2 className="text-lg font-bold">Недавние промпты</h2>
-            <div className="flex flex-wrap gap-2">
-              <button className={`chip ${!activeCategory ? "active" : ""}`} onClick={() => setActiveCategory(undefined)} type="button">
-                Все
-              </button>
-              {categories.slice(0, 6).map((category) => (
-                <button
-                  key={category.id}
-                  className={`chip ${activeCategory === category.slug ? "active" : ""}`}
-                  onClick={() => setActiveCategory(category.slug)}
-                  type="button"
-                >
-                  {category.name}
+          <div className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-[18px]">
+            <StatsCard icon={<Layers size={22} />} label="Всего промптов" value={stats.total} iconBg="bg-[var(--primary-soft)] text-[var(--primary)]" />
+            <StatsCard icon={<Heart size={22} />} label="Избранных" value={isAuthenticated ? stats.favorites : 0} iconBg="bg-[#fdf2f8] text-pink-600" />
+            <StatsCard icon={<Sparkles size={22} />} label="Категории" value={stats.categories} iconBg="bg-[var(--blue-soft)] text-[var(--blue)]" />
+            <StatsCard icon={<BarChart3 size={22} />} label="Использований" value={stats.usage} iconBg="bg-[var(--purple-soft)] text-[var(--purple)]" />
+          </div>
+
+          <div className="mt-8">
+            <h2 className="section-title">Недавние промпты</h2>
+            <div className="mt-3.5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <div className="no-scrollbar flex gap-2.5 overflow-x-auto pb-1">
+                <button className={`chip ${!activeCategory ? "active" : ""}`} onClick={() => setActiveCategory(undefined)} type="button">
+                  Все
                 </button>
-              ))}
-            </div>
-            <div className="flex items-center gap-2">
-              <SortSelect value={sort} onChange={setSort} />
-              <ViewToggle value={viewMode} onChange={setViewMode} />
+                {categories.slice(0, 8).map((category) => (
+                  <button
+                    key={category.id}
+                    className={`chip ${activeCategory === category.slug ? "active" : ""}`}
+                    onClick={() => setActiveCategory(category.slug)}
+                    type="button"
+                  >
+                    {category.name}
+                  </button>
+                ))}
+              </div>
+              <div className="hidden items-center gap-3 lg:flex">
+                <SortSelect value={sort} onChange={setSort} />
+                <ViewToggle value={viewMode} onChange={setViewMode} />
+              </div>
             </div>
           </div>
 
@@ -430,7 +437,7 @@ export function WebApp() {
       {path === "/prompts" ? (
         <div>
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <h2 className="text-lg font-bold">Все промпты</h2>
+            <h2 className="section-title">Все промпты</h2>
             <div className="flex items-center gap-2">
               <SortSelect value={sort} onChange={setSort} />
               <ViewToggle value={viewMode} onChange={setViewMode} />
@@ -464,8 +471,8 @@ export function WebApp() {
         isAuthenticated ? (
           renderPromptList(filteredPrompts.filter((prompt) => prompt.isFavorite))
         ) : (
-          <div className="glass-card empty-state mt-5">
-            <p className="text-base font-medium text-slate-100">Войдите через Telegram, чтобы сохранять промпты в избранное.</p>
+          <div className="surface-card empty-state mt-5">
+            <p className="text-base font-medium text-[var(--text)]">Войдите через Telegram, чтобы сохранять промпты в избранное.</p>
           </div>
         )
       ) : null}
@@ -473,9 +480,9 @@ export function WebApp() {
       {path === "/categories" ? (
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
           {categories.map((category) => (
-            <div key={category.id} className="glass-card p-4">
-              <p className="text-sm text-slate-300">{category.icon ?? "📂"} {category.name}</p>
-              <p className="mt-2 text-2xl font-semibold">{categoryCounts[category.slug] ?? 0}</p>
+            <div key={category.id} className="surface-card p-4">
+              <p className="text-sm text-[var(--text-soft)]">{category.icon ?? "📂"} {category.name}</p>
+              <p className="mt-2 text-2xl font-semibold text-[var(--text)]">{categoryCounts[category.slug] ?? 0}</p>
             </div>
           ))}
         </div>
@@ -506,63 +513,37 @@ export function WebApp() {
 
       {path === "/settings" ? (
         isAuthenticated ? (
-          <div className="glass-card max-w-xl p-5">
-            <h2 className="text-lg font-semibold">Настройки</h2>
-            <p className="mt-2 text-sm text-muted">Профиль Telegram: {user?.username ? `@${user.username}` : user?.first_name}</p>
-            <p className="text-sm text-muted">Добавленных промптов: {userPromptsCount}</p>
-            <button type="button" className="mt-4 rounded-xl bg-red-500/20 px-4 py-2 text-sm text-red-300" onClick={logout}>
+          <div className="surface-card max-w-xl p-5">
+            <h2 className="text-lg font-semibold text-[var(--text)]">Настройки</h2>
+            <p className="mt-2 text-sm text-[var(--muted)]">Профиль Telegram: {user?.username ? `@${user.username}` : user?.first_name}</p>
+            <p className="text-sm text-[var(--muted)]">Добавленных промптов: {userPromptsCount}</p>
+            <button type="button" className="btn-secondary mt-4 text-[var(--red)]" onClick={logout}>
               Выйти
             </button>
           </div>
         ) : (
-          <div className="glass-card empty-state">
-            <p className="text-base font-medium">Нужно войти для доступа к настройкам.</p>
+          <div className="surface-card empty-state">
+            <p className="text-base font-medium text-[var(--text)]">Нужно войти для доступа к настройкам.</p>
           </div>
         )
       ) : null}
     </>
   );
 
-  return (
-    <WebLayout
-      sidebar={
-        <Sidebar
-          currentPath={path}
-          categories={categories}
-          categoryCounts={categoryCounts}
-          activeCategory={activeCategory}
-          isAuthenticated={isAuthenticated}
-          onNavigate={navigate}
-          onSelectCategory={setActiveCategory}
-          onLogin={loginTelegram}
-        />
-      }
-      topbar={
-        <Topbar
-          search={search}
-          onSearchChange={setSearch}
-          user={user}
-          onCreatePrompt={handleCreateClick}
-          onLoginTelegram={loginTelegram}
-          onOpenSettings={() => navigate("/settings")}
-          onLogout={logout}
-        />
-      }
-    >
-      {loading ? (
-        <div className="space-y-3">
-          {Array.from({ length: 5 }).map((_, idx) => (
-            <div key={idx} className="glass-card skeleton h-28" />
-          ))}
-        </div>
-      ) : error ? (
-        <div className="glass-card p-4 text-red-300">{error}</div>
-      ) : (
-        <div className={promptsLoading ? "pointer-events-none opacity-70 transition-opacity" : "transition-opacity"}>
-          {content}
-        </div>
-      )}
+  const body = loading ? (
+    <div className="space-y-3">
+      {Array.from({ length: 5 }).map((_, idx) => (
+        <div key={idx} className="skeleton h-28" />
+      ))}
+    </div>
+  ) : error ? (
+    <div className="surface-card p-4 text-[var(--red)]">{error}</div>
+  ) : (
+    <div className={promptsLoading ? "pointer-events-none opacity-70 transition-opacity" : "transition-opacity"}>{content}</div>
+  );
 
+  const modals = (
+    <>
       <PromptDetailsModal
         prompt={selectedPrompt}
         categories={categories}
@@ -574,16 +555,14 @@ export function WebApp() {
         onDelete={handleDeletePrompt}
         onEdit={handleEditPrompt}
       />
-
       {isAddModalOpen && isAuthenticated ? (
-        <div className="fixed inset-0 z-[75] grid place-items-center bg-black/65 p-4">
-          <div className="w-full max-h-[90vh] max-w-[720px] overflow-y-auto rounded-[20px] border border-white/10 bg-[#0b1020] p-5">
-            <h3 className="mb-4 text-lg font-semibold">Новый промпт</h3>
+        <div className="modal-overlay fixed inset-0 z-[75] grid place-items-center p-4">
+          <div className="modal-panel max-h-[90vh] w-full max-w-[720px] overflow-y-auto p-6">
+            <h3 className="mb-4 text-lg font-semibold text-[var(--text)]">Новый промпт</h3>
             <PromptForm categories={categories} user={user!} onSubmit={handleSavePrompt} onCancel={() => setIsAddModalOpen(false)} />
           </div>
         </div>
       ) : null}
-
       <AuthRequiredModal open={authRequiredOpen} onClose={() => setAuthRequiredOpen(false)} onLogin={loginTelegram} />
       <TelegramAuthModal
         open={telegramAuthModalOpen}
@@ -595,33 +574,67 @@ export function WebApp() {
           void loadBootstrap().then(() => loadPrompts());
         }}
       />
+      {toast ? <div className="toast fixed bottom-24 right-4 z-[80] lg:bottom-8">{toast}</div> : null}
+    </>
+  );
 
-      {toast ? (
-        <div className="pointer-events-none fixed bottom-24 right-4 z-[80] rounded-xl border border-white/10 bg-[#0f172a]/95 px-4 py-2 text-sm shadow-xl">
-          {toast}
-        </div>
-      ) : null}
-
-      <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-white/10 bg-[#070b16]/92 px-3 py-2 backdrop-blur-xl lg:hidden">
-        <div className="grid grid-cols-5 gap-1">
-          {[
-            { label: "Главная", route: "/" as RoutePath },
-            { label: "Промпты", route: "/prompts" as RoutePath },
-            { label: "Поиск", route: "/tags" as RoutePath },
-            { label: "Избранное", route: "/favorites" as RoutePath },
-            { label: "Профиль", route: "/settings" as RoutePath }
-          ].map((item) => (
-            <button
-              key={item.label}
-              type="button"
-              onClick={() => navigate(item.route)}
-              className={`rounded-xl px-2 py-2 text-[11px] ${path === item.route ? "bg-[var(--primary)]/25 text-white" : "text-muted"}`}
-            >
-              {item.label}
-            </button>
-          ))}
-        </div>
+  return (
+    <>
+      <div className="hidden h-full lg:block">
+        <WebLayout
+          sidebarOpen={sidebarOpen}
+          onSidebarClose={() => setSidebarOpen(false)}
+          sidebar={
+            <Sidebar
+              currentPath={path}
+              categories={categories}
+              categoryCounts={categoryCounts}
+              activeCategory={activeCategory}
+              isAuthenticated={isAuthenticated}
+              onNavigate={(route) => {
+                navigate(route);
+                setSidebarOpen(false);
+              }}
+              onSelectCategory={setActiveCategory}
+              onLogin={loginTelegram}
+            />
+          }
+          topbar={
+            <Topbar
+              search={search}
+              onSearchChange={setSearch}
+              user={user}
+              onCreatePrompt={handleCreateClick}
+              onLoginTelegram={loginTelegram}
+              onOpenSettings={() => navigate("/settings")}
+              onLogout={logout}
+              onMenuClick={() => setSidebarOpen(true)}
+            />
+          }
+        >
+          {body}
+        </WebLayout>
       </div>
-    </WebLayout>
+
+      <MobileWebShell
+        currentPath={path}
+        search={search}
+        onSearchChange={setSearch}
+        onNavigate={navigate}
+        onCreatePrompt={handleCreateClick}
+        headerRight={
+          <AuthButton
+            user={user}
+            onLoginTelegram={loginTelegram}
+            onOpenSettings={() => navigate("/settings")}
+            onLogout={logout}
+          />
+        }
+      >
+        {body}
+      </MobileWebShell>
+
+      {modals}
+    </>
   );
 }

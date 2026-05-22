@@ -4,17 +4,28 @@ export default {
   theme: {
     extend: {
       colors: {
-        bg: "#050814",
-        card: "#0d1324",
-        "card-soft": "#111827",
-        text: "#ffffff",
-        muted: "#9ca3af",
-        primary: "#6d5dfc",
-        "primary-2": "#8b5cf6",
-        blue: "#3b82f6"
+        bg: "var(--bg)",
+        "bg-soft": "var(--bg-soft)",
+        card: "var(--card)",
+        "card-soft": "var(--card-soft)",
+        border: "var(--border)",
+        text: "var(--text)",
+        "text-soft": "var(--text-soft)",
+        muted: "var(--muted)",
+        "muted-light": "var(--muted-light)",
+        primary: "var(--primary)",
+        "primary-hover": "var(--primary-hover)",
+        "primary-soft": "var(--primary-soft)",
+        purple: "var(--purple)",
+        blue: "var(--blue)",
+        green: "var(--green)",
+        orange: "var(--orange)",
+        yellow: "var(--yellow)",
+        red: "var(--red)"
       },
       boxShadow: {
-        glow: "0 20px 60px rgba(109,93,252,0.25)"
+        card: "var(--shadow-card)",
+        hover: "var(--shadow-hover)"
       }
     }
   },

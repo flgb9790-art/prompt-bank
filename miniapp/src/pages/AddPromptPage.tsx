@@ -24,16 +24,16 @@ export function AddPromptPage({
 }: Props) {
   if (successPromptId) {
     return (
-      <div className="glass-card space-y-3 p-4 text-center">
-        <h2 className="text-xl font-semibold">Промпт сохранен ✅</h2>
+      <div className="surface-card space-y-3 p-4 text-center">
+        <h2 className="text-xl font-semibold text-[var(--text)]">Промпт сохранен ✅</h2>
         <div className="space-y-2">
-          <button onClick={onOpenPrompt} className="w-full rounded-xl bg-primary px-4 py-3 text-sm">
+          <button onClick={onOpenPrompt} className="btn-primary w-full justify-center">
             Открыть промпт
           </button>
-          <button onClick={onAddMore} className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm">
+          <button onClick={onAddMore} className="btn-secondary w-full">
             Добавить еще
           </button>
-          <button onClick={onGoHome} className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm">
+          <button onClick={onGoHome} className="btn-secondary w-full">
             На главную
           </button>
         </div>

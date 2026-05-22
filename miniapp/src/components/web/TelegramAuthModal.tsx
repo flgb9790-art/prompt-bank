@@ -56,25 +56,25 @@ export function TelegramAuthModal({ open, botUsername, onClose, onAuthSuccess }:
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[90] grid place-items-center bg-black/70 p-4">
-      <div className="w-full max-w-md rounded-2xl border border-white/10 bg-[#0b1020] p-5">
-        <h3 className="text-lg font-semibold">Вход через Telegram</h3>
-        <p className="mt-2 text-sm text-muted">
+    <div className="modal-overlay fixed inset-0 z-[90] grid place-items-center p-4">
+      <div className="modal-panel w-full max-w-md p-6">
+        <h3 className="text-lg font-semibold text-[var(--text)]">Вход через Telegram</h3>
+        <p className="mt-2 text-sm text-[var(--muted)]">
           Войдите в свой Telegram-аккаунт, чтобы добавлять, редактировать, удалять и сохранять избранные промпты.
         </p>
 
         {canRenderWidget ? (
-          <div className="mt-4 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+          <div className="upload-zone mt-4">
             <div ref={widgetContainerRef} className="flex justify-center" />
           </div>
         ) : (
-          <div className="mt-4 rounded-xl border border-amber-400/20 bg-amber-500/10 p-3 text-sm text-amber-200">
+          <div className="mt-4 rounded-xl border border-[var(--yellow)]/30 bg-[var(--yellow-soft)] p-3 text-sm text-[#92400e]">
             Не настроен Telegram Login Widget. Укажите `VITE_TELEGRAM_BOT_USERNAME` или корректный `VITE_TELEGRAM_AUTH_URL`.
           </div>
         )}
 
         <div className="mt-4 flex justify-end">
-          <button type="button" onClick={onClose} className="rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2 text-sm">
+          <button type="button" onClick={onClose} className="btn-secondary">
             Закрыть
           </button>
         </div>

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { X } from "lucide-react";
 import { resolveMediaUrl } from "../api";
 import type { Category, MediaType, Prompt } from "../types";
+import { getCategoryBadgeClass } from "../utils/categoryStyle";
 import { MediaUploader } from "./MediaUploader";
 
 export type PromptEditPayload = {
@@ -25,6 +26,14 @@ type Props = {
   onDelete: (id: number) => void;
   onEdit: (promptId: number, data: PromptEditPayload) => Promise<void>;
 };
+
+function MediaPreview({ url, type, className }: { url: string; type: MediaType; className?: string }) {
+  return (
+    <div className={`preview-4x5 ${className ?? ""}`}>
+      {type === "video" ? <video src={resolveMediaUrl(url)} controls /> : <img src={resolveMediaUrl(url)} alt="media" />}
+    </div>
+  );
+}
 
 export function PromptDetailsModal({
   prompt,
@@ -69,33 +78,28 @@ export function PromptDetailsModal({
 
   if (!prompt) return null;
 
+  const badgeClass = getCategoryBadgeClass(prompt.category.slug, prompt.category.name);
   const visibleExamples = [
     ...(prompt.examples ?? []).filter((example) => keptExampleIds.includes(example.id)),
     ...newExamples.map((example, index) => ({ ...example, id: -(index + 1) }))
   ];
 
   return (
-    <div className={`fixed inset-0 z-50 flex justify-center bg-black/70 p-4 backdrop-blur-[2px] ${desktopMode ? "items-center" : "items-end"}`}>
-      <div className={`fade-up glass-card overflow-y-auto p-4 ${desktopMode ? "max-h-[90vh] w-full max-w-[860px]" : "max-h-[90vh] w-full max-w-[460px]"}`}>
-        <div className="mb-3 flex items-center justify-between">
-          <h3 className="text-lg font-semibold">Детали промпта</h3>
-          <button type="button" onClick={onClose} className="rounded-xl border border-white/10 bg-white/[0.04] p-2 text-muted">
+    <div className={`modal-overlay fixed inset-0 z-50 flex justify-center p-4 ${desktopMode ? "items-center" : "items-end"}`}>
+      <div
+        className={`modal-panel fade-up max-h-[90vh] w-full overflow-y-auto p-5 ${desktopMode ? "max-w-[860px] rounded-[24px]" : "max-w-[460px]"}`}
+      >
+        <div className="mb-4 flex items-center justify-between">
+          <h3 className="text-lg font-semibold text-[var(--text)]">Детали промпта</h3>
+          <button type="button" onClick={onClose} className="btn-ghost-icon h-9 w-9">
             <X size={16} />
           </button>
         </div>
+
         {isEditing ? (
           <div className="space-y-3">
-            <input
-              value={title}
-              onChange={(event) => setTitle(event.target.value)}
-              className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm"
-              placeholder="Название"
-            />
-            <select
-              value={categoryId}
-              onChange={(event) => setCategoryId(Number(event.target.value))}
-              className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm"
-            >
+            <input value={title} onChange={(event) => setTitle(event.target.value)} className="form-input" placeholder="Название" />
+            <select value={categoryId} onChange={(event) => setCategoryId(Number(event.target.value))} className="form-select">
               {categories.map((category) => (
                 <option key={category.id} value={category.id}>
                   {category.name}
@@ -103,51 +107,32 @@ export function PromptDetailsModal({
               ))}
             </select>
 
-            <p className="text-sm font-semibold text-indigo-200">Изображения и примеры</p>
+            <p className="text-sm font-semibold text-[var(--primary)]">Изображения и примеры</p>
 
-            <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
-              <p className="mb-2 text-sm font-medium">Заставка / превью</p>
+            <div className="surface-card-soft p-3">
+              <p className="mb-2 text-sm font-medium text-[var(--text)]">Заставка / превью</p>
               {coverMedia ? (
-                <div className="mb-2 flex max-h-48 items-center justify-center overflow-hidden rounded-xl border border-white/10 bg-black/30 p-1">
-                  {coverMedia.type === "video" ? (
-                    <video src={resolveMediaUrl(coverMedia.url)} controls className="max-h-44 w-full object-contain" />
-                  ) : (
-                    <img src={resolveMediaUrl(coverMedia.url)} alt="cover" className="max-h-44 w-full object-contain" />
-                  )}
-                </div>
+                <MediaPreview url={coverMedia.url} type={coverMedia.type} className="mb-2 max-w-[200px]" />
               ) : (
-                <p className="mb-2 text-xs text-muted">Заставка не задана</p>
+                <p className="mb-2 text-xs text-[var(--muted)]">Заставка не задана</p>
               )}
               <div className="flex flex-wrap gap-2">
-                <MediaUploader
-                  label="Заменить заставку"
-                  onUploaded={(items) => {
-                    if (items[0]) setCoverMedia(items[0]);
-                  }}
-                />
+                <MediaUploader label="Заменить заставку" onUploaded={(items) => items[0] && setCoverMedia(items[0])} />
                 {coverMedia ? (
-                  <button
-                    type="button"
-                    onClick={() => setCoverMedia(null)}
-                    className="rounded-xl border border-red-400/30 bg-red-500/10 px-3 py-2 text-xs text-red-300"
-                  >
+                  <button type="button" onClick={() => setCoverMedia(null)} className="btn-secondary text-[var(--red)]">
                     Удалить заставку
                   </button>
                 ) : null}
               </div>
             </div>
 
-            <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
-              <p className="mb-2 text-sm font-medium">Примеры</p>
+            <div className="surface-card-soft p-3">
+              <p className="mb-2 text-sm font-medium text-[var(--text)]">Примеры</p>
               <div className="grid grid-cols-2 gap-2">
                 {visibleExamples.length ? (
                   visibleExamples.map((example) => (
-                    <div key={example.id} className="relative overflow-hidden rounded-xl border border-white/10 bg-black/25 p-1">
-                      {example.type === "video" ? (
-                        <video src={resolveMediaUrl(example.url)} controls className="block max-h-40 w-full rounded-lg object-contain" />
-                      ) : (
-                        <img src={resolveMediaUrl(example.url)} alt="example" className="block max-h-40 w-full rounded-lg object-contain" />
-                      )}
+                    <div key={example.id} className="relative">
+                      <MediaPreview url={example.url} type={example.type} className="w-full" />
                       <button
                         type="button"
                         onClick={() => {
@@ -158,34 +143,23 @@ export function PromptDetailsModal({
                             setNewExamples((prev) => prev.filter((_, idx) => idx !== index));
                           }
                         }}
-                        className="absolute right-2 top-2 rounded-lg bg-red-500/80 px-2 py-1 text-[10px] text-white"
+                        className="absolute right-2 top-2 rounded-lg bg-[var(--red)] px-2 py-1 text-[10px] text-white"
                       >
                         Удалить
                       </button>
                     </div>
                   ))
                 ) : (
-                  <p className="col-span-2 text-xs text-muted">Примеры не добавлены.</p>
+                  <p className="col-span-2 text-xs text-[var(--muted)]">Примеры не добавлены.</p>
                 )}
               </div>
               <div className="mt-2">
-                <MediaUploader
-                  label="Добавить примеры"
-                  multiple
-                  onUploaded={(items) => setNewExamples((prev) => [...prev, ...items])}
-                />
+                <MediaUploader label="Добавить примеры" multiple onUploaded={(items) => setNewExamples((prev) => [...prev, ...items])} />
               </div>
             </div>
 
-            <textarea
-              value={content}
-              onChange={(event) => setContent(event.target.value)}
-              rows={5}
-              className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm"
-              placeholder="Текст промпта"
-            />
-
-            {saveError ? <p className="text-xs text-red-400">{saveError}</p> : null}
+            <textarea value={content} onChange={(event) => setContent(event.target.value)} rows={6} className="form-textarea" placeholder="Текст промпта" />
+            {saveError ? <p className="text-xs text-[var(--red)]">{saveError}</p> : null}
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
@@ -197,11 +171,9 @@ export function PromptDetailsModal({
                     const removedExampleIds = (prompt.examples ?? [])
                       .map((example) => example.id)
                       .filter((id) => !keptExampleIds.includes(id));
-
                     const coverChanged =
                       (prompt.coverMediaUrl ?? null) !== (coverMedia?.url ?? null) ||
                       (prompt.coverMediaType ?? null) !== (coverMedia?.type ?? null);
-
                     await onEdit(prompt.id, {
                       title: title.trim(),
                       content: content.trim(),
@@ -218,7 +190,7 @@ export function PromptDetailsModal({
                     setIsSaving(false);
                   }
                 }}
-                className="rounded-xl bg-gradient-to-r from-primary to-primary-2 px-3 py-2 text-sm"
+                className="btn-primary justify-center"
               >
                 {isSaving ? "Сохраняем..." : "Сохранить"}
               </button>
@@ -228,94 +200,68 @@ export function PromptDetailsModal({
                   setIsEditing(false);
                   resetEditState(prompt);
                 }}
-                className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm"
+                className="btn-secondary"
               >
                 Отмена
               </button>
             </div>
           </div>
         ) : (
-          <div className={`${desktopMode ? "grid gap-4 md:grid-cols-[340px_1fr]" : ""}`}>
+          <div className={desktopMode ? "grid gap-6 md:grid-cols-[300px_1fr]" : ""}>
             <div>
-              {prompt.coverMediaUrl ? (
-                prompt.coverMediaType === "video" ? (
-                  <div className="mb-3 flex max-h-[420px] min-h-40 w-full items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-black/30">
-                    <video src={resolveMediaUrl(prompt.coverMediaUrl)} controls className="max-h-[420px] w-full object-contain" />
-                  </div>
-                ) : (
-                  <div className="mb-3 flex max-h-[420px] min-h-40 w-full items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-black/30">
-                    <img src={resolveMediaUrl(prompt.coverMediaUrl)} alt={prompt.title} className="max-h-[420px] w-full object-contain" />
-                  </div>
-                )
+              {prompt.coverMediaUrl && prompt.coverMediaType ? (
+                <MediaPreview url={prompt.coverMediaUrl} type={prompt.coverMediaType} className="mb-4 w-full max-w-[280px]" />
               ) : null}
-
-              <div className="mt-4">
-                <h4 className="mb-2 text-sm font-semibold">Примеры</h4>
-                <div className={`${desktopMode ? "grid grid-cols-2 gap-2" : "grid grid-cols-2 gap-2"}`}>
-                  {(prompt.examples ?? []).length ? (
-                    (prompt.examples ?? []).map((example) =>
-                      example.type === "video" ? (
-                        <div key={example.id} className="overflow-hidden rounded-xl border border-white/10 bg-black/25 p-1">
-                          <video src={resolveMediaUrl(example.url)} controls className="block max-h-64 w-full rounded-lg object-contain" />
-                        </div>
-                      ) : (
-                        <div key={example.id} className="overflow-hidden rounded-xl border border-white/10 bg-black/25 p-1">
-                          <img src={resolveMediaUrl(example.url)} alt="example" className="block max-h-64 w-full rounded-lg object-contain" />
-                        </div>
-                      )
-                    )
-                  ) : (
-                    <p className="col-span-2 text-xs text-muted">Примеры не добавлены.</p>
-                  )}
-                </div>
+              <h4 className="mb-2 text-sm font-semibold text-[var(--text)]">Примеры</h4>
+              <div className="grid grid-cols-2 gap-2">
+                {(prompt.examples ?? []).length ? (
+                  (prompt.examples ?? []).map((example) => (
+                    <MediaPreview key={example.id} url={example.url} type={example.type} className="w-full" />
+                  ))
+                ) : (
+                  <p className="col-span-2 text-xs text-[var(--muted)]">Примеры не добавлены.</p>
+                )}
               </div>
             </div>
 
             <div>
-              <h2 className="text-xl font-semibold">{prompt.title}</h2>
-              <p className="mt-1 text-sm text-muted">{prompt.category.name}</p>
-              <div className="mt-2 flex flex-wrap gap-1">
+              <h2 className="text-xl font-semibold text-[var(--text)]">{prompt.title}</h2>
+              <span className={`category-badge mt-2 ${badgeClass}`}>{prompt.category.name}</span>
+              <div className="mt-3 flex flex-wrap gap-1.5">
                 {prompt.keywords.map((item) => (
-                  <span key={item.keyword.id} className="rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-xs text-indigo-100">
+                  <span key={item.keyword.id} className="tag-pill bg-[var(--primary-soft)] text-[var(--primary)]">
                     #{item.keyword.name}
                   </span>
                 ))}
               </div>
-
-              <p className="mt-4 whitespace-pre-wrap text-sm text-slate-100">{prompt.content}</p>
-
-              <div className="mt-4 flex gap-2">
-                <button type="button" onClick={() => onCopy(prompt)} className="flex-1 rounded-xl bg-gradient-to-r from-primary to-primary-2 px-4 py-2 text-sm font-medium">
+              <p className="mt-4 whitespace-pre-wrap text-sm leading-relaxed text-[var(--text-soft)]">{prompt.content}</p>
+              <div className="mt-5 flex gap-2">
+                <button type="button" onClick={() => onCopy(prompt)} className="btn-primary flex-1 justify-center">
                   Скопировать
                 </button>
-                <button
-                  type="button"
-                  onClick={() => onToggleFavorite(prompt.id)}
-                  className="flex-1 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2 text-sm"
-                >
+                <button type="button" onClick={() => onToggleFavorite(prompt.id)} className="btn-secondary flex-1">
                   В избранное
                 </button>
               </div>
-
               {canManage ? (
-                <div className="mt-5 grid grid-cols-2 gap-2">
+                <div className="mt-4 grid grid-cols-2 gap-2">
                   <button
                     type="button"
                     onClick={() => {
                       resetEditState(prompt);
                       setIsEditing(true);
                     }}
-                    className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm"
+                    className="btn-secondary"
                   >
                     Редактировать (текст и фото)
                   </button>
-                  <button type="button" onClick={() => onDelete(prompt.id)} className="rounded-xl bg-red-500/20 px-3 py-2 text-sm text-red-300">
+                  <button type="button" onClick={() => onDelete(prompt.id)} className="btn-secondary text-[var(--red)]">
                     Удалить
                   </button>
                 </div>
               ) : (
-                <p className="mt-5 text-xs text-muted">
-                  Чтобы заменить битые изображения, войдите через Telegram (кнопка «Войти») под аккаунтом администратора, затем нажмите «Редактировать (текст и фото)».
+                <p className="mt-4 text-xs text-[var(--muted)]">
+                  Чтобы заменить битые изображения, войдите через Telegram под аккаунтом администратора, затем нажмите «Редактировать (текст и фото)».
                 </p>
               )}
             </div>

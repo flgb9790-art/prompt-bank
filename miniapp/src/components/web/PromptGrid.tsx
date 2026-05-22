@@ -12,18 +12,56 @@ type Props = {
 export function PromptGrid({ prompts, view, onOpenPrompt, onCopyPrompt, onToggleFavorite }: Props) {
   if (!prompts.length) {
     return (
-      <div className="glass-card empty-state mt-5">
-        <p className="text-base font-medium text-slate-100">Промпты не найдены</p>
-        <p className="mt-1 text-sm text-muted">Измените фильтры или добавьте новый промпт.</p>
+      <div className="surface-card empty-state mt-5">
+        <p className="text-base font-medium text-[var(--text)]">Промпты не найдены</p>
+        <p className="mt-1 text-sm text-[var(--muted)]">Измените фильтры или добавьте новый промпт.</p>
+      </div>
+    );
+  }
+
+  if (view === "list") {
+    return (
+      <div className="mt-4 flex flex-col gap-3 md:hidden">
+        {prompts.map((prompt) => (
+          <PromptCard
+            key={prompt.id}
+            prompt={prompt}
+            variant="mobile"
+            onOpen={onOpenPrompt}
+            onCopy={onCopyPrompt}
+            onToggleFavorite={onToggleFavorite}
+          />
+        ))}
       </div>
     );
   }
 
   return (
-    <div className={`mt-5 grid gap-5 ${view === "grid" ? "grid-cols-1 xl:grid-cols-2 2xl:grid-cols-3" : "grid-cols-1"}`}>
-      {prompts.map((prompt) => (
-        <PromptCard key={prompt.id} prompt={prompt} onOpen={onOpenPrompt} onCopy={onCopyPrompt} onToggleFavorite={onToggleFavorite} />
-      ))}
-    </div>
+    <>
+      <div className="mt-4 hidden grid-cols-1 gap-5 md:grid lg:grid-cols-2 xl:grid-cols-3">
+        {prompts.map((prompt) => (
+          <PromptCard
+            key={prompt.id}
+            prompt={prompt}
+            variant="desktop"
+            onOpen={onOpenPrompt}
+            onCopy={onCopyPrompt}
+            onToggleFavorite={onToggleFavorite}
+          />
+        ))}
+      </div>
+      <div className="mt-4 flex flex-col gap-3 md:hidden">
+        {prompts.map((prompt) => (
+          <PromptCard
+            key={prompt.id}
+            prompt={prompt}
+            variant="mobile"
+            onOpen={onOpenPrompt}
+            onCopy={onCopyPrompt}
+            onToggleFavorite={onToggleFavorite}
+          />
+        ))}
+      </div>
+    </>
   );
 }

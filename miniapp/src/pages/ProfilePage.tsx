@@ -9,29 +9,29 @@ type Props = {
 export function ProfilePage({ user, promptsCount, favoritesCount }: Props) {
   return (
     <div className="space-y-3">
-      <div className="glass-card p-4">
-        <h2 className="text-lg font-semibold">Профиль</h2>
-        <p className="mt-2 text-sm text-muted">ID: {user.id}</p>
-        <p className="text-sm text-muted">Username: {user.username ?? "—"}</p>
-        <p className="text-sm text-muted">
-          Имя: {[user.first_name, user.last_name].filter(Boolean).join(" ") || "—"}
-        </p>
+      <div className="surface-card p-4">
+        <h2 className="text-lg font-semibold text-[var(--text)]">Профиль</h2>
+        <p className="mt-2 text-sm text-[var(--muted)]">ID: {user.id}</p>
+        <p className="text-sm text-[var(--muted)]">Username: {user.username ?? "—"}</p>
+        <p className="text-sm text-[var(--muted)]">Имя: {[user.first_name, user.last_name].filter(Boolean).join(" ") || "—"}</p>
       </div>
-      <div className="grid grid-cols-2 gap-2">
-        <div className="glass-card p-3">
-          <p className="text-xs text-muted">Промптов</p>
-          <p className="text-xl font-semibold">{promptsCount}</p>
+      <div className="grid grid-cols-2 gap-3">
+        <div className="stat-card-mobile">
+          <div>
+            <p className="stat-value-mobile">{promptsCount}</p>
+            <p className="stat-label-mobile">Промптов</p>
+          </div>
         </div>
-        <div className="glass-card p-3">
-          <p className="text-xs text-muted">Избранных</p>
-          <p className="text-xl font-semibold">{favoritesCount}</p>
+        <div className="stat-card-mobile">
+          <div>
+            <p className="stat-value-mobile">{favoritesCount}</p>
+            <p className="stat-label-mobile">Избранных</p>
+          </div>
         </div>
       </div>
-      <div className="glass-card p-4 text-sm text-muted">
-        <p className="font-medium text-slate-200">О проекте</p>
-        <p className="mt-1">
-          Prompt Bank MVP: Telegram-бот + Mini App для хранения, поиска, копирования и управления промптами.
-        </p>
+      <div className="surface-card p-4 text-sm text-[var(--muted)]">
+        <p className="font-medium text-[var(--text)]">О проекте</p>
+        <p className="mt-1">Prompt Bank — библиотека промптов для AI: хранение, поиск, копирование и управление.</p>
       </div>
     </div>
   );

@@ -1,5 +1,4 @@
-import { ChevronDown, FolderTree, Hash, Heart, Home, LayoutGrid, Settings, Timer } from "lucide-react";
-import { useState } from "react";
+import { FolderTree, Hash, Heart, Home, LayoutGrid, Plus, Settings, Timer } from "lucide-react";
 import type { Category } from "../../types";
 
 type RouteKey = "/" | "/prompts" | "/favorites" | "/recent" | "/categories" | "/tags" | "/settings";
@@ -33,106 +32,70 @@ export function Sidebar({
   onSelectCategory,
   onLogin
 }: Props) {
-  const [categoriesOpen, setCategoriesOpen] = useState(currentPath === "/categories");
-
   return (
-    <div className="flex h-full flex-col p-4">
-      <button type="button" onClick={() => onNavigate("/")} className="flex items-center gap-3 px-2 text-left">
-        <div className="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-[var(--primary)] to-[var(--blue)] font-bold">P</div>
-        <div>
-          <p className="text-xl font-bold">Prompt Bank</p>
-        </div>
+    <div className="flex h-full flex-col">
+      <button type="button" onClick={() => onNavigate("/")} className="flex h-12 items-center gap-3 text-left">
+        <div className="brand-logo-icon">P</div>
+        <span className="brand-logo-text">Prompt Bank</span>
       </button>
 
-      <nav className="mt-8 space-y-1">
+      <nav className="mt-7 space-y-1">
         {navItems.map((item) => {
           const Icon = item.icon;
           const active = currentPath === item.path;
           return (
-            <button
-              key={item.path}
-              onClick={() => onNavigate(item.path)}
-              className={`flex h-[42px] w-full items-center gap-3 rounded-xl px-3 text-left text-[15px] transition ${
-                active
-                  ? "bg-gradient-to-r from-[rgba(109,93,252,0.22)] to-[rgba(139,92,246,0.1)] text-[#a78bfa]"
-                  : "text-[#a4adbd] hover:bg-white/5"
-              }`}
-              type="button"
-            >
-              <Icon size={18} />
+            <button key={item.path} type="button" onClick={() => onNavigate(item.path)} className={`nav-item ${active ? "active" : ""}`}>
+              <Icon size={20} />
               {item.label}
             </button>
           );
         })}
-
-        <button
-          type="button"
-          onClick={() => {
-            setCategoriesOpen((prev) => !prev);
-          }}
-          className={`mt-1 flex h-[42px] w-full items-center justify-between rounded-xl px-3 text-left text-[15px] transition ${
-            currentPath === "/categories"
-              ? "bg-gradient-to-r from-[rgba(109,93,252,0.22)] to-[rgba(139,92,246,0.1)] text-[#a78bfa]"
-              : "text-[#a4adbd] hover:bg-white/5"
-          }`}
-        >
-          <span className="flex items-center gap-3">
-            <FolderTree size={18} />
-            Категории
-          </span>
-          <ChevronDown
-            size={16}
-            className={`transition-transform ${categoriesOpen ? "rotate-180" : ""}`}
-          />
-        </button>
-
-        {categoriesOpen ? (
-          <div className="no-scrollbar mt-2 max-h-[280px] space-y-1 overflow-y-auto pl-2 pr-1">
-            {categories.map((category) => {
-              const isActive = activeCategory === category.slug;
-              return (
-                <button
-                  key={category.id}
-                  type="button"
-                  onClick={() => {
-                    onSelectCategory(category.slug);
-                    onNavigate("/prompts");
-                  }}
-                  className={`flex h-[34px] w-full items-center justify-between rounded-lg px-2 text-sm ${
-                    isActive ? "bg-white/10 text-white" : "text-slate-300 hover:bg-white/5"
-                  }`}
-                >
-                  <span className="flex items-center gap-2 truncate">
-                    <span className="grid h-5 w-5 place-items-center rounded bg-white/10 text-xs">
-                      {category.icon ?? "•"}
-                    </span>
-                    <span className="truncate">{category.name}</span>
-                  </span>
-                  <span className="text-xs text-[#8a93a5]">{categoryCounts[category.slug] ?? 0}</span>
-                </button>
-              );
-            })}
-          </div>
-        ) : null}
       </nav>
 
-      <div className="mt-auto space-y-2 p-2">
-        {isAuthenticated ? (
+      <div className="mt-7">
+        <div className="mb-3 flex items-center justify-between">
+          <span className="categories-label">Категории</span>
           <button
             type="button"
-            onClick={() => onNavigate("/settings")}
-            className="flex h-[42px] w-full items-center gap-3 rounded-xl border border-white/10 bg-white/5 px-3 text-sm text-slate-200"
+            className="grid h-7 w-7 place-items-center rounded-lg text-[var(--muted)] transition hover:bg-[#f2f4f7]"
+            onClick={() => onNavigate("/categories")}
+            aria-label="Все категории"
           >
+            <Plus size={16} />
+          </button>
+        </div>
+        <div className="no-scrollbar max-h-[280px] space-y-0.5 overflow-y-auto">
+          {categories.map((category) => {
+            const isActive = activeCategory === category.slug;
+            return (
+              <button
+                key={category.id}
+                type="button"
+                onClick={() => {
+                  onSelectCategory(category.slug);
+                  onNavigate("/prompts");
+                }}
+                className={`category-item ${isActive ? "active" : ""}`}
+              >
+                <span className="category-item-icon">{category.icon ?? "•"}</span>
+                <span className="truncate">{category.name}</span>
+                <span className="ml-auto text-[13px] text-[var(--muted)]">{categoryCounts[category.slug] ?? 0}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="mt-8 pb-4">
+        {isAuthenticated ? (
+          <button type="button" onClick={() => onNavigate("/settings")} className="settings-btn flex h-12 w-full items-center gap-3 rounded-[14px] border border-[var(--border)] bg-white px-4 text-[15px] text-[var(--text-soft)]">
             <Settings size={18} />
             Настройки
           </button>
         ) : (
-          <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3">
-            <p className="text-xs text-muted">Войдите, чтобы добавлять свои промпты</p>
-            <button type="button" onClick={onLogin} className="mt-2 w-full rounded-lg bg-white/10 py-2 text-sm">
-              Войти
-            </button>
-          </div>
+          <button type="button" onClick={onLogin} className="btn-secondary h-12 w-full">
+            Войти
+          </button>
         )}
       </div>
     </div>
