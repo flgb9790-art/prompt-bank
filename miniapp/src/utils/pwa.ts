@@ -10,7 +10,16 @@ export function registerWebPwa() {
 
   if (inTelegram) return;
 
-  void import("virtual:pwa-register").then(({ registerSW }) => {
-    registerSW({ immediate: true });
-  });
+  const register = () => {
+    void import("virtual:pwa-register").then(({ registerSW }) => {
+      registerSW({ immediate: true });
+    });
+  };
+
+  const schedule =
+    typeof window.requestIdleCallback === "function"
+      ? (cb: () => void) => window.requestIdleCallback(cb, { timeout: 5000 })
+      : (cb: () => void) => window.setTimeout(cb, 3000);
+
+  schedule(register);
 }

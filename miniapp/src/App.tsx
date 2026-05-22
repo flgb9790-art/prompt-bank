@@ -14,10 +14,9 @@ import { AddPromptPage } from "./pages/AddPromptPage";
 import { FavoritesPage } from "./pages/FavoritesPage";
 import { ProfilePage } from "./pages/ProfilePage";
 import { SearchPage } from "./pages/SearchPage";
-const PromptDetailsModal = lazy(() =>
-  import("./components/PromptDetailsModal").then((module) => ({ default: module.PromptDetailsModal }))
-);
+import { PromptDetailsModal } from "./components/PromptDetailsModal";
 import { isTelegramMiniAppContext, mockTelegramUser, resolveTelegramUser } from "./telegram";
+import { runDeferred } from "./utils/deferredPrefetch";
 import {
   ensurePromptWithContent,
   hasFullPromptContent,
@@ -62,6 +61,13 @@ function miniPromptsQuery(
   };
 }
 
+function isDefaultPromptsList(
+  filters: { search: string; category?: string; sort: ListSortMode },
+  tag?: string
+) {
+  return !filters.search && !filters.category && filters.sort === "new" && !tag;
+}
+
 function scheduleMiniPrefetch(
   loadedCount: number,
   total: number,
@@ -69,7 +75,7 @@ function scheduleMiniPrefetch(
   tag?: string
 ) {
   if (loadedCount >= total) return;
-  prefetchPromptsPage(miniPromptsQuery(loadedCount, filters, tag));
+  runDeferred(() => prefetchPromptsPage(miniPromptsQuery(loadedCount, filters, tag)));
 }
 
 function AppLoadingScreen() {
@@ -155,7 +161,6 @@ function MiniAppApp() {
   const [tab, setTab] = useState<TabKey>("home");
   const [prompts, setPrompts] = useState<Prompt[]>([]);
   const [recentPrompts, setRecentPrompts] = useState<Prompt[]>([]);
-  const [recentLoading, setRecentLoading] = useState(false);
   const [promptsTotal, setPromptsTotal] = useState(0);
   const [loadingMore, setLoadingMore] = useState(false);
   const [listReloading, setListReloading] = useState(false);
@@ -181,8 +186,6 @@ function MiniAppApp() {
   const [isMiniAppExpanded, setIsMiniAppExpanded] = useState(true);
   const deepLinkHandledRef = useRef(false);
   const openPromptRequestRef = useRef(0);
-  const prevTabRef = useRef<TabKey>(tab);
-
   const favorites = useMemo(() => prompts.filter((item) => item.isFavorite), [prompts]);
   const favoritesForView = tab === "favorites" ? favoritePrompts : favorites;
   const hasMorePrompts = prompts.length < promptsTotal;
@@ -218,29 +221,8 @@ function MiniAppApp() {
     };
   }, [searchQuery, tab]);
 
-  useEffect(() => {
-    const prev = prevTabRef.current;
-    prevTabRef.current = tab;
-    if (tab === "home" && prev !== "home" && !loading) {
-      void loadRecentPrompts();
-    }
-  }, [tab, loading]);
-
-  async function loadRecentPrompts() {
-    setRecentLoading(true);
-    try {
-      const recentData = await api.getPrompts({
-        limit: HOME_RECENT_LIMIT,
-        offset: 0,
-        lite: true,
-        sort: "new"
-      });
-      setRecentPrompts(mapPromptsFromApi(recentData.items));
-    } catch {
-      setRecentPrompts([]);
-    } finally {
-      setRecentLoading(false);
-    }
+  function syncRecentFromPrompts(source: Prompt[]) {
+    setRecentPrompts(source.slice(0, HOME_RECENT_LIMIT));
   }
 
   function syncRecentPrompt(next: Prompt) {
@@ -257,23 +239,29 @@ function MiniAppApp() {
     setLoading(true);
     setError("");
     try {
-      const [promptsData, categoriesData, me, recentData] = await Promise.all([
-        api.getPrompts({ limit: MINI_PROMPTS_PAGE, offset: 0, lite: true, sort: "new" }),
-        api.getCategories(),
-        api.getMe(),
-        api.getPrompts({ limit: HOME_RECENT_LIMIT, offset: 0, lite: true, sort: "new" })
-      ]);
+      const promptsData = await api.getPrompts({
+        limit: MINI_PROMPTS_PAGE,
+        offset: 0,
+        lite: true,
+        sort: "new"
+      });
       const mapped = mapPromptsFromApi(promptsData.items);
       setPrompts(mapped);
       setPromptsTotal(promptsData.total);
+      syncRecentFromPrompts(mapped);
       scheduleMiniPrefetch(mapped.length, promptsData.total, listFiltersRef.current, activeTag);
-      setRecentPrompts(mapPromptsFromApi(recentData.items));
-      setCategories(categoriesData);
-      setIsAdmin(me.isAdmin);
-      setUserUsageTotal(me.usageTotal ?? 0);
+      setLoading(false);
+
+      try {
+        const [categoriesData, me] = await Promise.all([api.getCategories(), api.getMe()]);
+        setCategories(categoriesData);
+        setIsAdmin(me.isAdmin);
+        setUserUsageTotal(me.usageTotal ?? 0);
+      } catch {
+        setToastMessage("Категории загрузятся чуть позже");
+      }
     } catch {
       setError("Не удалось загрузить данные.");
-    } finally {
       setLoading(false);
     }
   }
@@ -287,6 +275,9 @@ function MiniAppApp() {
       const mapped = mapPromptsFromApi(promptsData.items);
       setPrompts(mapped);
       setPromptsTotal(promptsData.total);
+      if (isDefaultPromptsList(listFiltersRef.current, activeTag)) {
+        syncRecentFromPrompts(mapped);
+      }
       scheduleMiniPrefetch(mapped.length, promptsData.total, listFiltersRef.current, activeTag);
     } catch {
       setError("Не удалось загрузить промпты.");
@@ -620,7 +611,7 @@ function MiniAppApp() {
       {tab === "home" && (
         <HomePage
           recentPrompts={recentPrompts}
-          recentLoading={loading || recentLoading}
+          recentLoading={loading}
           stats={stats}
           onOpenPrompt={openPrompt}
           onCopyPrompt={handleCopyPrompt}
@@ -702,22 +693,18 @@ function MiniAppApp() {
         />
       )}
       <BottomNav current={tab === "add" ? "home" : tab} onChange={handleTabChange} />
-      {selectedPrompt ? (
-        <Suspense fallback={null}>
-          <PromptDetailsModal
-            prompt={selectedPrompt}
-            categories={categories}
-            canManage={isAdmin}
-            onClose={closePromptModal}
-            onCopy={handleCopyPrompt}
-            onToggleFavorite={handleToggleFavorite}
-            onDelete={handleDeletePrompt}
-            onEdit={handleEditPrompt}
-            onShareLinkCopied={() => setToastMessage("Ссылка скопирована")}
-            onTagClick={handleSelectTag}
-          />
-        </Suspense>
-      ) : null}
+      <PromptDetailsModal
+        prompt={selectedPrompt}
+        categories={categories}
+        canManage={isAdmin}
+        onClose={closePromptModal}
+        onCopy={handleCopyPrompt}
+        onToggleFavorite={handleToggleFavorite}
+        onDelete={handleDeletePrompt}
+        onEdit={handleEditPrompt}
+        onShareLinkCopied={() => setToastMessage("Ссылка скопирована")}
+        onTagClick={handleSelectTag}
+      />
       {toastMessage ? (
         <div className="toast fixed bottom-24 left-1/2 z-[60] -translate-x-1/2">{toastMessage}</div>
       ) : null}

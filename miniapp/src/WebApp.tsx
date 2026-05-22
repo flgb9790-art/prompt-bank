@@ -2,11 +2,9 @@ import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { BarChart3, Heart, Layers, Sparkles, X } from "lucide-react";
 import { api, ApiError, invalidateReferenceCaches, setAuthTelegramId } from "./api";
 import type { Category, Prompt, PromptCreatePayload, TagStat, TelegramUser } from "./types";
-import type { PromptEditPayload } from "./components/PromptDetailsModal";
-const PromptDetailsModal = lazy(() =>
-  import("./components/PromptDetailsModal").then((module) => ({ default: module.PromptDetailsModal }))
-);
+import { PromptDetailsModal, type PromptEditPayload } from "./components/PromptDetailsModal";
 const PromptForm = lazy(() => import("./components/PromptForm").then((module) => ({ default: module.PromptForm })));
+import { runDeferred } from "./utils/deferredPrefetch";
 import { AuthRequiredModal } from "./components/web/AuthRequiredModal";
 import { PromptGrid } from "./components/web/PromptGrid";
 import { Sidebar } from "./components/web/Sidebar";
@@ -90,6 +88,7 @@ export function WebApp() {
   const [page, setPage] = useState(1);
   const isAuthenticated = Boolean(user);
   const bootstrappedRef = useRef(false);
+  const filtersEffectReadyRef = useRef(false);
   const deepLinkHandledRef = useRef(false);
   const openPromptRequestRef = useRef(0);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -180,7 +179,7 @@ export function WebApp() {
 
   function scheduleWebPrefetch(loadedCount: number, total: number) {
     if (loadedCount >= total) return;
-    prefetchPromptsPage(buildPromptsQuery(loadedCount));
+    runDeferred(() => prefetchPromptsPage(buildPromptsQuery(loadedCount)));
   }
 
   const loadMoreRef = useLoadMoreOnScroll({
@@ -234,16 +233,25 @@ export function WebApp() {
       setLoading(true);
       setError("");
       try {
-        const [categoriesData, tagsData, me, promptsData] = await Promise.all([
+        const promptsData = await api.getPrompts({
+          limit: PROMPTS_FETCH_LIMIT,
+          offset: 0,
+          search: search.trim() || undefined,
+          lite: true,
+          sort: "new"
+        });
+        if (cancelled) return;
+        const mapped = mapPromptsFromApi(promptsData.items);
+        setPrompts(mapped);
+        setPromptsTotal(promptsData.total);
+        scheduleWebPrefetch(mapped.length, promptsData.total);
+        bootstrappedRef.current = true;
+        setLoading(false);
+
+        const [categoriesData, tagsData, me] = await Promise.all([
           api.getCategories(),
           api.getTags(),
-          api.getMe(),
-          api.getPrompts({
-            limit: PROMPTS_FETCH_LIMIT,
-            offset: 0,
-            search: search.trim() || undefined,
-            lite: true
-          })
+          api.getMe()
         ]);
         if (cancelled) return;
         setCategories(categoriesData);
@@ -251,18 +259,17 @@ export function WebApp() {
         setIsAdmin(Boolean(me.isAdmin));
         setDbUserId(me.user?.id ?? null);
         setUserUsageTotal(me.usageTotal ?? 0);
-        const mapped = mapPromptsFromApi(promptsData.items);
-        setPrompts(mapped);
-        setPromptsTotal(promptsData.total);
-        scheduleWebPrefetch(mapped.length, promptsData.total);
-        bootstrappedRef.current = true;
       } catch (err) {
         if (!cancelled) {
-          setError("Не удалось загрузить данные.");
+          if (bootstrappedRef.current) {
+            setToast("Справочники загрузятся чуть позже");
+          } else {
+            setError("Не удалось загрузить данные.");
+          }
           console.error(err);
         }
       } finally {
-        if (!cancelled) {
+        if (!cancelled && !bootstrappedRef.current) {
           setLoading(false);
         }
       }
@@ -275,6 +282,10 @@ export function WebApp() {
 
   useEffect(() => {
     if (!bootstrappedRef.current) return;
+    if (!filtersEffectReadyRef.current) {
+      filtersEffectReadyRef.current = true;
+      return;
+    }
     const timer = setTimeout(() => {
       void loadPrompts();
     }, SEARCH_DEBOUNCE_MS);
@@ -818,23 +829,19 @@ export function WebApp() {
 
   const modals = (
     <>
-      {selectedPrompt ? (
-        <Suspense fallback={null}>
-          <PromptDetailsModal
-            prompt={selectedPrompt}
-            categories={categories}
-            canManage={isAdmin}
-            desktopMode
-            onClose={closePromptModal}
-            onCopy={handleCopy}
-            onToggleFavorite={handleToggleFavorite}
-            onDelete={handleDeletePrompt}
-            onEdit={handleEditPrompt}
-            onShareLinkCopied={() => setToast("Ссылка скопирована")}
-            onTagClick={handleSelectTag}
-          />
-        </Suspense>
-      ) : null}
+      <PromptDetailsModal
+        prompt={selectedPrompt}
+        categories={categories}
+        canManage={isAdmin}
+        desktopMode
+        onClose={closePromptModal}
+        onCopy={handleCopy}
+        onToggleFavorite={handleToggleFavorite}
+        onDelete={handleDeletePrompt}
+        onEdit={handleEditPrompt}
+        onShareLinkCopied={() => setToast("Ссылка скопирована")}
+        onTagClick={handleSelectTag}
+      />
       {isAddModalOpen && isAuthenticated && isAdmin ? (
         <div className="modal-overlay fixed inset-0 z-[75] grid place-items-center p-4">
           <div className="modal-panel add-prompt-modal max-h-[90vh] w-full overflow-y-auto p-6">

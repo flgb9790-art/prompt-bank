@@ -5,21 +5,16 @@ const router = Router();
 
 router.get("/", async (_req, res, next) => {
   try {
-    const [categories, grouped] = await Promise.all([
-      prisma.category.findMany({ orderBy: { sortOrder: "asc" } }),
-      prisma.prompt.groupBy({
-        by: ["categoryId"],
-        _count: { _all: true }
-      })
-    ]);
-
-    const countByCategoryId = new Map(grouped.map((row) => [row.categoryId, row._count._all]));
+    const categories = await prisma.category.findMany({
+      orderBy: { sortOrder: "asc" },
+      include: { _count: { select: { prompts: true } } }
+    });
 
     res.set("Cache-Control", "public, max-age=300");
     res.json(
-      categories.map((category) => ({
+      categories.map(({ _count, ...category }) => ({
         ...category,
-        promptCount: countByCategoryId.get(category.id) ?? 0
+        promptCount: _count.prompts
       }))
     );
   } catch (error) {

@@ -120,9 +120,11 @@ export const api = {
   async getCategories() {
     const cached = readReferenceCache<Category[]>(CATEGORIES_CACHE_KEY);
     if (cached?.length) {
-      void request<Category[]>("/api/categories")
-        .then((fresh) => writeReferenceCache(CATEGORIES_CACHE_KEY, fresh))
-        .catch(() => undefined);
+      window.setTimeout(() => {
+        void request<Category[]>("/api/categories")
+          .then((fresh) => writeReferenceCache(CATEGORIES_CACHE_KEY, fresh))
+          .catch(() => undefined);
+      }, 4000);
       return cached;
     }
     const fresh = await request<Category[]>("/api/categories");
@@ -132,9 +134,11 @@ export const api = {
   async getTags() {
     const cached = readReferenceCache<TagStat[]>(TAGS_CACHE_KEY);
     if (cached) {
-      void request<TagStat[]>("/api/tags")
-        .then((fresh) => writeReferenceCache(TAGS_CACHE_KEY, fresh))
-        .catch(() => undefined);
+      window.setTimeout(() => {
+        void request<TagStat[]>("/api/tags")
+          .then((fresh) => writeReferenceCache(TAGS_CACHE_KEY, fresh))
+          .catch(() => undefined);
+      }, 4000);
       return cached;
     }
     const fresh = await request<TagStat[]>("/api/tags");
