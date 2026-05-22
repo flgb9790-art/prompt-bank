@@ -2290,6 +2290,16 @@ button.brand-logo {
   border-bottom: none;
 }
 
+.settings-stack--mini .settings-privacy-row {
+  border-bottom: none;
+}
+
+.settings-stack--mini .settings-privacy-row + .settings-privacy-row {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-soft);
+}
+
 .settings-privacy-icon {
   width: 40px;
   height: 40px;
