@@ -566,24 +566,50 @@ html.web-mode #root {
   border-radius: 12px;
 }
 
-/* Prompt cards — fixed outer height */
+/* Prompt cards — desktop grid on web */
 .prompt-card-desktop {
   box-sizing: border-box;
-  height: 258px;
   min-height: 258px;
-  max-height: 258px;
+  height: auto;
   border-radius: 18px;
   background: #ffffff;
   border: 1px solid var(--border);
   box-shadow: var(--shadow-card);
-  display: flex;
-  flex-direction: row;
-  align-items: flex-start;
   overflow: hidden;
   position: relative;
   transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
   cursor: pointer;
   text-align: left;
+}
+
+.prompt-card-desktop-layout {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  align-items: start;
+  min-height: 258px;
+}
+
+.prompt-card-desktop-layout > .prompt-card-preview--desktop {
+  grid-column: 1;
+  grid-row: 1;
+  margin: 14px 0 0 14px;
+}
+
+.prompt-card-desktop-layout > .prompt-card-body--desktop {
+  grid-column: 2;
+  grid-row: 1;
+  min-height: 230px;
+}
+
+.prompt-card-desktop-layout > .prompt-card-tags--span-content {
+  grid-column: 1 / 3;
+  grid-row: 2;
+  padding: 8px 14px 14px;
+  margin-top: 0;
+  flex-wrap: wrap;
+  max-height: none;
+  overflow: visible;
 }
 
 .prompt-card-desktop:hover {
@@ -639,12 +665,15 @@ html.web-mode #root {
 }
 
 .prompt-card-tags--span-content {
-  grid-column: 1;
   min-width: 0;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 5px;
+}
+
+.prompt-card-mobile-layout > .prompt-card-tags--span-content {
+  grid-column: 1;
 }
 
 .prompt-card-mobile-layout > .prompt-card-actions {

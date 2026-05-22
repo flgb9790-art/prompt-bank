@@ -130,6 +130,8 @@ export function PromptCard({ prompt, variant = "mobile", onOpen, onToggleFavorit
   }
 
   if (variant === "desktop") {
+    const desktopTags = prompt.keywords.slice(0, 3);
+
     return (
       <article
         role="button"
@@ -140,40 +142,42 @@ export function PromptCard({ prompt, variant = "mobile", onOpen, onToggleFavorit
         }}
         className="prompt-card-desktop fade-up"
       >
-        <CardPreview prompt={prompt} variant="desktop" />
-        <div className="prompt-card-body prompt-card-body--desktop">
-          <button
-            type="button"
-            className={`prompt-card-star ${prompt.isFavorite ? "active" : ""}`}
-            onClick={(event) => {
-              event.stopPropagation();
-              onToggleFavorite(prompt.id);
-            }}
-            aria-label="Избранное"
-          >
-            <Star size={20} fill={prompt.isFavorite ? "currentColor" : "none"} />
-          </button>
-          <h3 className="prompt-card-title">{prompt.title}</h3>
-          <span className={`category-badge ${badgeClass}`}>{prompt.category.name}</span>
-          <p className="prompt-card-excerpt prompt-card-excerpt--desktop">{prompt.content}</p>
-          <div className="prompt-card-tags">
-            {prompt.keywords.slice(0, 3).map((item) => (
-              <TagPill key={item.keyword.id} name={item.keyword.name} onClick={onTagClick} />
-            ))}
-          </div>
-          <div className="prompt-card-footer">
+        <div className="prompt-card-desktop-layout">
+          <CardPreview prompt={prompt} variant="desktop" />
+          <div className="prompt-card-body prompt-card-body--desktop">
             <button
               type="button"
-              className="prompt-card-action"
+              className={`prompt-card-star ${prompt.isFavorite ? "active" : ""}`}
               onClick={(event) => {
                 event.stopPropagation();
-                onCopy(prompt);
+                onToggleFavorite(prompt.id);
               }}
-              aria-label="Копировать"
+              aria-label="Избранное"
             >
-              <Copy size={16} />
+              <Star size={20} fill={prompt.isFavorite ? "currentColor" : "none"} />
             </button>
+            <h3 className="prompt-card-title">{prompt.title}</h3>
+            <span className={`category-badge ${badgeClass}`}>{prompt.category.name}</span>
+            <p className="prompt-card-excerpt prompt-card-excerpt--desktop">{prompt.content}</p>
+            <div className="prompt-card-footer">
+              <button
+                type="button"
+                className="prompt-card-action"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onCopy(prompt);
+                }}
+                aria-label="Копировать"
+              >
+                <Copy size={16} />
+              </button>
+            </div>
           </div>
+          <CardTagsRow
+            tags={desktopTags}
+            className="prompt-card-tags prompt-card-tags--span-content"
+            onTagClick={onTagClick}
+          />
         </div>
       </article>
     );
