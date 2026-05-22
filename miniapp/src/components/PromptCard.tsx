@@ -58,35 +58,23 @@ function CardTagsRow({
   );
 }
 
-function CardActions({
+function CardFooterRow({
+  tags,
   prompt,
-  onToggleFavorite,
   onCopy,
-  layout = "stacked"
+  onTagClick
 }: {
+  tags: Prompt["keywords"];
   prompt: Prompt;
-  onToggleFavorite: (id: number) => void;
   onCopy: (prompt: Prompt) => void;
-  layout?: "stacked" | "inline";
+  onTagClick?: (tag: string) => void;
 }) {
-  const className = layout === "stacked" ? "prompt-card-actions prompt-card-actions--stacked" : "prompt-card-actions";
-
   return (
-    <div className={className}>
+    <div className="prompt-card-footer-row">
+      <CardTagsRow tags={tags} className="prompt-card-tags prompt-card-tags--footer" onTagClick={onTagClick} />
       <button
         type="button"
-        className={`prompt-card-action ${prompt.isFavorite ? "active" : ""}`}
-        onClick={(event) => {
-          event.stopPropagation();
-          onToggleFavorite(prompt.id);
-        }}
-        aria-label="Избранное"
-      >
-        <Star size={16} fill={prompt.isFavorite ? "currentColor" : "none"} />
-      </button>
-      <button
-        type="button"
-        className="prompt-card-action"
+        className="prompt-card-action prompt-card-copy-slot"
         onClick={(event) => {
           event.stopPropagation();
           onCopy(prompt);
@@ -122,8 +110,18 @@ export function PromptCard({ prompt, variant = "mobile", onOpen, onToggleFavorit
             <span className={`category-badge category-badge-mobile ${badgeClass}`}>{prompt.category.name}</span>
             <p className="prompt-card-excerpt prompt-card-excerpt--list">{prompt.content}</p>
           </div>
-          <CardActions prompt={prompt} onToggleFavorite={onToggleFavorite} onCopy={onCopy} layout="stacked" />
-          <CardTagsRow tags={listTags} className="prompt-card-tags prompt-card-tags--span-content" onTagClick={onTagClick} />
+          <button
+            type="button"
+            className={`prompt-card-action prompt-card-star-slot ${prompt.isFavorite ? "active" : ""}`}
+            onClick={(event) => {
+              event.stopPropagation();
+              onToggleFavorite(prompt.id);
+            }}
+            aria-label="Избранное"
+          >
+            <Star size={16} fill={prompt.isFavorite ? "currentColor" : "none"} />
+          </button>
+          <CardFooterRow tags={listTags} prompt={prompt} onCopy={onCopy} onTagClick={onTagClick} />
         </div>
       </article>
     );
@@ -159,25 +157,8 @@ export function PromptCard({ prompt, variant = "mobile", onOpen, onToggleFavorit
             <h3 className="prompt-card-title">{prompt.title}</h3>
             <span className={`category-badge ${badgeClass}`}>{prompt.category.name}</span>
             <p className="prompt-card-excerpt prompt-card-excerpt--desktop">{prompt.content}</p>
-            <div className="prompt-card-footer">
-              <button
-                type="button"
-                className="prompt-card-action"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onCopy(prompt);
-                }}
-                aria-label="Копировать"
-              >
-                <Copy size={16} />
-              </button>
-            </div>
+            <CardFooterRow tags={desktopTags} prompt={prompt} onCopy={onCopy} onTagClick={onTagClick} />
           </div>
-          <CardTagsRow
-            tags={desktopTags}
-            className="prompt-card-tags prompt-card-tags--span-content"
-            onTagClick={onTagClick}
-          />
         </div>
       </article>
     );
@@ -204,8 +185,18 @@ export function PromptCard({ prompt, variant = "mobile", onOpen, onToggleFavorit
             <p className="prompt-card-excerpt prompt-card-excerpt--mobile">{prompt.content}</p>
           </div>
         </div>
-        <CardActions prompt={prompt} onToggleFavorite={onToggleFavorite} onCopy={onCopy} layout="stacked" />
-        <CardTagsRow tags={mobileTags} className="prompt-card-tags prompt-card-tags--span-content" onTagClick={onTagClick} />
+        <button
+          type="button"
+          className={`prompt-card-action prompt-card-star-slot ${prompt.isFavorite ? "active" : ""}`}
+          onClick={(event) => {
+            event.stopPropagation();
+            onToggleFavorite(prompt.id);
+          }}
+          aria-label="Избранное"
+        >
+          <Star size={16} fill={prompt.isFavorite ? "currentColor" : "none"} />
+        </button>
+        <CardFooterRow tags={mobileTags} prompt={prompt} onCopy={onCopy} onTagClick={onTagClick} />
       </div>
     </article>
   );

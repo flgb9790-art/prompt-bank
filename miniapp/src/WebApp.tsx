@@ -76,6 +76,7 @@ export function WebApp() {
   const isAuthenticated = Boolean(user);
   const bootstrappedRef = useRef(false);
   const deepLinkHandledRef = useRef(false);
+  const openPromptRequestRef = useRef(0);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
@@ -234,17 +235,21 @@ export function WebApp() {
   }
 
   async function openPrompt(prompt: Prompt, replaceUrl = false) {
+    const requestId = ++openPromptRequestRef.current;
     setSelectedPrompt({ ...prompt, examples: prompt.examples ?? [] });
     setPromptShareUrl(prompt.id, replaceUrl);
     try {
       const full = await api.getPrompt(prompt.id);
+      if (openPromptRequestRef.current !== requestId) return;
       setSelectedPrompt(full);
     } catch (err) {
+      if (openPromptRequestRef.current !== requestId) return;
       console.error(err);
     }
   }
 
   function closePromptModal() {
+    openPromptRequestRef.current += 1;
     setSelectedPrompt(undefined);
     clearPromptShareUrl();
   }
@@ -254,6 +259,7 @@ export function WebApp() {
       setPath(getRoutePath(window.location.pathname));
       const promptId = parsePromptIdFromLocation();
       if (!promptId) {
+        openPromptRequestRef.current += 1;
         setSelectedPrompt(undefined);
         return;
       }

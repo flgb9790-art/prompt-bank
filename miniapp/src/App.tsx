@@ -108,6 +108,7 @@ function MiniAppApp() {
   const [toastMessage, setToastMessage] = useState("");
   const [isMiniAppExpanded, setIsMiniAppExpanded] = useState(true);
   const deepLinkHandledRef = useRef(false);
+  const openPromptRequestRef = useRef(0);
 
   const favorites = useMemo(() => prompts.filter((item) => item.isFavorite), [prompts]);
   const stats = useMemo(
@@ -283,17 +284,20 @@ function MiniAppApp() {
   }
 
   async function openPrompt(prompt: Prompt, replaceUrl = false) {
+    const requestId = ++openPromptRequestRef.current;
     setSelectedPrompt({ ...prompt, examples: prompt.examples ?? [] });
     setPromptShareUrl(prompt.id, replaceUrl);
     try {
       const full = await api.getPrompt(prompt.id);
+      if (openPromptRequestRef.current !== requestId) return;
       setSelectedPrompt(full);
     } catch {
-      // keep partial prompt in modal
+      if (openPromptRequestRef.current !== requestId) return;
     }
   }
 
   function closePromptModal() {
+    openPromptRequestRef.current += 1;
     setSelectedPrompt(undefined);
     clearPromptShareUrl();
   }
@@ -302,6 +306,7 @@ function MiniAppApp() {
     const onPopState = () => {
       const promptId = parsePromptIdFromLocation();
       if (!promptId) {
+        openPromptRequestRef.current += 1;
         setSelectedPrompt(undefined);
         return;
       }

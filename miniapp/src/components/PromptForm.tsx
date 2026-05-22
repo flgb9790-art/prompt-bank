@@ -110,11 +110,11 @@ export function PromptForm({ categories, user, onSubmit, onCancel }: Props) {
         <textarea rows={2} value={note} onChange={(e) => setNote(e.target.value)} className="form-textarea min-h-[80px]" />
       </div>
       {error ? <p className="text-xs text-[var(--red)]">{error}</p> : null}
-      <div className="grid grid-cols-2 gap-2">
+      <div className="action-button-row">
         <button disabled={loading} type="submit" className="btn-primary justify-center">
           {loading ? "Сохраняем..." : "Сохранить промпт"}
         </button>
-        <button type="button" onClick={onCancel} className="btn-secondary">
+        <button type="button" onClick={onCancel} className="btn-secondary justify-center">
           Отмена
         </button>
       </div>

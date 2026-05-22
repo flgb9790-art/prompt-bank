@@ -222,7 +222,7 @@ export function PromptDetailsModal({
 
               <textarea value={content} onChange={(event) => setContent(event.target.value)} rows={6} className="form-textarea" placeholder="Текст промпта" />
               {saveError ? <p className="text-xs text-[var(--red)]">{saveError}</p> : null}
-              <div className="grid grid-cols-2 gap-2">
+              <div className="action-button-row">
                 <button
                   type="button"
                   disabled={isSaving}
@@ -346,16 +346,16 @@ export function PromptDetailsModal({
                   ))}
                 </div>
                 <p className="mt-4 whitespace-pre-wrap text-sm leading-relaxed text-[var(--text-soft)]">{prompt.content}</p>
-                <div className="mt-5 flex gap-2">
-                  <button type="button" onClick={() => onCopy(prompt)} className="btn-primary flex-1 justify-center">
+                <div className="action-button-row mt-5">
+                  <button type="button" onClick={() => onCopy(prompt)} className="btn-primary justify-center">
                     Скопировать
                   </button>
-                  <button type="button" onClick={() => onToggleFavorite(prompt.id)} className="btn-secondary flex-1">
+                  <button type="button" onClick={() => onToggleFavorite(prompt.id)} className="btn-secondary justify-center">
                     В избранное
                   </button>
                 </div>
                 {canManage ? (
-                  <div className="mt-4 grid grid-cols-2 gap-2">
+                  <div className="action-button-row mt-4">
                     <button
                       type="button"
                       onClick={() => {
