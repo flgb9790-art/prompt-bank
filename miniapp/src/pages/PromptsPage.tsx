@@ -3,6 +3,7 @@ import type { Category, Prompt } from "../types";
 import { SearchBar } from "../components/SearchBar";
 import { CategoryTabs } from "../components/CategoryTabs";
 import { PromptCard } from "../components/PromptCard";
+import { promptHasTag } from "../utils/tagFilter";
 
 type Props = {
   prompts: Prompt[];
@@ -62,10 +63,7 @@ export function PromptsPage({
       list = list.filter((item) => item.category.slug === category);
     }
     if (activeTag) {
-      const tagLow = activeTag.toLowerCase();
-      list = list.filter((item) =>
-        item.keywords.some((itemKeyword) => itemKeyword.keyword.name.toLowerCase() === tagLow)
-      );
+      list = list.filter((item) => promptHasTag(item, activeTag));
     }
     if (sort === "new") list.sort((a, b) => Number(new Date(b.createdAt)) - Number(new Date(a.createdAt)));
     if (sort === "old") list.sort((a, b) => Number(new Date(a.createdAt)) - Number(new Date(b.createdAt)));

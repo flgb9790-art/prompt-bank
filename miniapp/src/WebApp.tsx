@@ -19,6 +19,7 @@ import { MobileWebShell } from "./components/web/MobileWebShell";
 import { AuthButton } from "./components/web/AuthButton";
 import { clearPromptShareUrl, parsePromptIdFromLocation, setPromptShareUrl } from "./utils/promptShare";
 import { mergePromptUpdate } from "./utils/mergePrompt";
+import { normalizeTagName, promptHasTag } from "./utils/tagFilter";
 
 type SortValue = "new" | "old" | "usage";
 type ViewMode = "grid" | "list";
@@ -101,9 +102,7 @@ export function WebApp() {
     const byCategory = activeCategory
       ? prompts.filter((prompt) => prompt.category.slug === activeCategory)
       : [...prompts];
-    const byTag = activeTag
-      ? byCategory.filter((prompt) => prompt.keywords.some((item) => item.keyword.name === activeTag))
-      : byCategory;
+    const byTag = activeTag ? byCategory.filter((prompt) => promptHasTag(prompt, activeTag)) : byCategory;
     const bySearch = low
       ? byTag.filter((prompt) => {
           const text = `${prompt.title} ${prompt.content} ${prompt.category.name} ${prompt.keywords.map((k) => k.keyword.name).join(" ")}`.toLowerCase();
@@ -440,9 +439,11 @@ export function WebApp() {
   }
 
   function handleSelectTag(tagName: string) {
+    const tag = normalizeTagName(tagName);
+    if (!tag) return;
     setSelectedPrompt(undefined);
     clearPromptShareUrl();
-    setActiveTag(tagName);
+    setActiveTag(tag);
     setActiveCategory(undefined);
     setPromptSearch("");
     setPage(1);

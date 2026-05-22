@@ -37,14 +37,18 @@ function CardPreview({ prompt, variant }: { prompt: Prompt; variant: "desktop" |
 function CardActions({
   prompt,
   onToggleFavorite,
-  onCopy
+  onCopy,
+  layout = "stacked"
 }: {
   prompt: Prompt;
   onToggleFavorite: (id: number) => void;
   onCopy: (prompt: Prompt) => void;
+  layout?: "stacked" | "inline";
 }) {
+  const className = layout === "stacked" ? "prompt-card-actions prompt-card-actions--stacked" : "prompt-card-actions";
+
   return (
-    <div className="prompt-card-actions">
+    <div className={className}>
       <button
         type="button"
         className={`prompt-card-action ${prompt.isFavorite ? "active" : ""}`}
@@ -151,7 +155,7 @@ export function PromptCard({ prompt, variant = "mobile", onOpen, onToggleFavorit
     );
   }
 
-  const mobileTags = prompt.keywords.slice(0, 6);
+  const mobileTags = prompt.keywords.slice(0, 8);
 
   return (
     <article className="prompt-card-mobile fade-up">
@@ -170,17 +174,20 @@ export function PromptCard({ prompt, variant = "mobile", onOpen, onToggleFavorit
             <h3 className="prompt-card-title prompt-card-title--mobile">{prompt.title}</h3>
             <span className={`category-badge category-badge-mobile ${badgeClass}`}>{prompt.category.name}</span>
             <p className="prompt-card-excerpt prompt-card-excerpt--mobile">{prompt.content}</p>
+            {mobileTags.length ? (
+              <div
+                className="prompt-card-tags prompt-card-tags--under-text"
+                onClick={(event) => event.stopPropagation()}
+              >
+                {mobileTags.map((item) => (
+                  <TagPill key={item.keyword.id} name={item.keyword.name} onClick={onTagClick} />
+                ))}
+              </div>
+            ) : null}
           </div>
         </div>
-        <CardActions prompt={prompt} onToggleFavorite={onToggleFavorite} onCopy={onCopy} />
+        <CardActions prompt={prompt} onToggleFavorite={onToggleFavorite} onCopy={onCopy} layout="stacked" />
       </div>
-      {mobileTags.length ? (
-        <div className="prompt-card-mobile-tags-row">
-          {mobileTags.map((item) => (
-            <TagPill key={item.keyword.id} name={item.keyword.name} onClick={onTagClick} />
-          ))}
-        </div>
-      ) : null}
     </article>
   );
 }

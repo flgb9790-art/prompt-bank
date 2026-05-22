@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { clearPromptShareUrl, parsePromptIdFromLocation, setPromptShareUrl } from "./utils/promptShare";
 import { mergePromptUpdate } from "./utils/mergePrompt";
+import { normalizeTagName } from "./utils/tagFilter";
 import { api, setAuthTelegramId } from "./api";
 import type { Category, Prompt, PromptCreatePayload, TelegramUser } from "./types";
 import type { PromptEditPayload } from "./components/PromptDetailsModal";
@@ -393,6 +394,7 @@ function MiniAppApp() {
       )}
       {tab === "prompts" && (
         <PromptsPage
+          key={activeTag ?? "all"}
           prompts={prompts}
           categories={categories}
           loading={loading}

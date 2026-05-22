@@ -269,7 +269,7 @@ export function PromptDetailsModal({
               </div>
             </div>
           ) : (
-            <div className={desktopMode ? "grid gap-6 md:grid-cols-[300px_1fr]" : ""}>
+            <div className={desktopMode ? "grid gap-6 md:grid-cols-[300px_1fr]" : "flex flex-col gap-4"}>
               <div>
                 {galleryItems.length ? (
                   <div className="prompt-gallery">
@@ -330,7 +330,19 @@ export function PromptDetailsModal({
                 <span className={`category-badge mt-2 ${badgeClass}`}>{prompt.category.name}</span>
                 <div className="mt-3 flex flex-wrap gap-1.5">
                   {prompt.keywords.map((item) => (
-                    <TagPill key={item.keyword.id} name={item.keyword.name} variant="accent" onClick={onTagClick} />
+                    <TagPill
+                      key={item.keyword.id}
+                      name={item.keyword.name}
+                      variant="accent"
+                      onClick={
+                        onTagClick
+                          ? (name) => {
+                              onClose();
+                              onTagClick(name);
+                            }
+                          : undefined
+                      }
+                    />
                   ))}
                 </div>
                 <p className="mt-4 whitespace-pre-wrap text-sm leading-relaxed text-[var(--text-soft)]">{prompt.content}</p>
@@ -352,7 +364,7 @@ export function PromptDetailsModal({
                       }}
                       className="btn-secondary"
                     >
-                      Редактировать (текст и фото)
+                      Редактировать
                     </button>
                     <button type="button" onClick={() => onDelete(prompt.id)} className="btn-secondary text-[var(--red)]">
                       Удалить
@@ -360,7 +372,7 @@ export function PromptDetailsModal({
                   </div>
                 ) : (
                   <p className="mt-4 text-xs text-[var(--muted)]">
-                    Чтобы заменить битые изображения, войдите через Telegram под аккаунтом администратора, затем нажмите «Редактировать (текст и фото)».
+                    Чтобы заменить битые изображения, войдите через Telegram под аккаунтом администратора, затем нажмите «Редактировать».
                   </p>
                 )}
               </div>
