@@ -33,6 +33,7 @@ import {
 } from "./utils/favoritesCache";
 import { hideAppSplash } from "./utils/appSplash";
 import { writeReferenceCache } from "./utils/referenceCache";
+import { createPromptLoadingShell } from "./utils/promptShell";
 
 const CATEGORIES_CACHE_KEY = "prompt-bank-categories";
 const TAGS_CACHE_KEY = "prompt-bank-tags";
@@ -282,6 +283,9 @@ function MiniAppApp() {
       fullListLoadedRef.current = mapped.length >= MINI_PROMPTS_PAGE;
       setPromptsListLoading(false);
       scheduleMiniPrefetch(mapped.length, data.prompts.total, listFiltersRef.current, activeTag);
+      runDeferred(() => {
+        mapped.slice(0, 4).forEach((item) => api.prefetchPrompt(item.id));
+      });
     } catch {
       setError("Не удалось загрузить данные.");
       setPromptsListLoading(false);
@@ -404,6 +408,13 @@ function MiniAppApp() {
   }, []);
 
   useEffect(() => {
+    const promptId = parsePromptIdFromLocation();
+    if (promptId) {
+      api.prefetchPrompt(promptId);
+    }
+  }, []);
+
+  useEffect(() => {
     const actualUser = resolveTelegramUser() ?? mockTelegramUser;
     if (actualUser?.id) {
       setAuthTelegramId(String(actualUser.id));
@@ -493,12 +504,7 @@ function MiniAppApp() {
       await openPrompt(cached, replaceUrl);
       return;
     }
-    try {
-      const full = withPromptDetails(await api.getPrompt(promptId));
-      await openPrompt(full, replaceUrl);
-    } catch {
-      clearPromptShareUrl();
-    }
+    await openPrompt(createPromptLoadingShell(promptId), replaceUrl);
   }
 
   async function openPrompt(prompt: Prompt, replaceUrl = false) {
@@ -516,6 +522,8 @@ function MiniAppApp() {
       syncRecentPrompt(full);
     } catch {
       if (openPromptRequestRef.current !== requestId) return;
+      closePromptModal();
+      setToastMessage("Не удалось загрузить промпт");
     }
   }
 

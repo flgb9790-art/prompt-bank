@@ -1,8 +1,8 @@
 import { memo, useState } from "react";
 import { Copy, Star } from "lucide-react";
-import { resolveCardMediaUrl, resolveMediaUrl } from "../api";
+import { resolveCardMediaUrl, resolveMediaUrl, api } from "../api";
 import type { Prompt } from "../types";
-import { getPromptExcerpt } from "../utils/promptContent";
+import { getPromptExcerpt, hasFullPromptDetails } from "../utils/promptContent";
 import { TagPill } from "./TagPill";
 import { getCategoryBadgeClass } from "../utils/categoryStyle";
 
@@ -107,6 +107,12 @@ export const PromptCard = memo(function PromptCard({
 }: Props) {
   const badgeClass = getCategoryBadgeClass(prompt.category.slug, prompt.category.name);
 
+  function prefetchDetails() {
+    if (!hasFullPromptDetails(prompt)) {
+      api.prefetchPrompt(prompt.id);
+    }
+  }
+
   if (variant === "list") {
     const listTags = prompt.keywords.slice(0, 4);
 
@@ -115,6 +121,8 @@ export const PromptCard = memo(function PromptCard({
         role="button"
         tabIndex={0}
         onClick={() => onOpen(prompt)}
+        onPointerEnter={prefetchDetails}
+        onFocus={prefetchDetails}
         onKeyDown={(event) => {
           if (event.key === "Enter") onOpen(prompt);
         }}
@@ -163,6 +171,8 @@ export const PromptCard = memo(function PromptCard({
         role="button"
         tabIndex={0}
         onClick={() => onOpen(prompt)}
+        onPointerEnter={prefetchDetails}
+        onFocus={prefetchDetails}
         onKeyDown={(event) => {
           if (event.key === "Enter") onOpen(prompt);
         }}
@@ -210,6 +220,8 @@ export const PromptCard = memo(function PromptCard({
       role="button"
       tabIndex={0}
       onClick={() => onOpen(prompt)}
+      onPointerEnter={prefetchDetails}
+      onFocus={prefetchDetails}
       onKeyDown={(event) => {
         if (event.key === "Enter") onOpen(prompt);
       }}

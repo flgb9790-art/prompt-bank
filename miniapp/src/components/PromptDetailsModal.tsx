@@ -3,7 +3,7 @@ import { ChevronLeft, ChevronRight, Share2, X } from "lucide-react";
 import { resolveMediaUrl } from "../api";
 import type { Category, MediaType, Prompt } from "../types";
 import { getCategoryBadgeClass } from "../utils/categoryStyle";
-import { getPromptExcerpt, hasFullPromptContent } from "../utils/promptContent";
+import { hasFullPromptDetails } from "../utils/promptContent";
 import { buildPromptShareUrl } from "../utils/promptShare";
 import type { LightboxItem } from "./MediaLightbox";
 
@@ -78,6 +78,30 @@ function buildGalleryItems(prompt: Prompt): LightboxItem[] {
   return items;
 }
 
+function PromptDetailsLoadingPanel({ desktopMode }: { desktopMode: boolean }) {
+  return (
+    <div
+      className={`prompt-details-loading ${desktopMode ? "prompt-details-loading--desktop" : ""}`}
+      role="status"
+      aria-live="polite"
+    >
+      <div className="prompt-details-loading-head">
+        <span className="prompt-details-loading-spinner" aria-hidden />
+        <span>Загрузка промпта…</span>
+      </div>
+      <div className={desktopMode ? "grid gap-6 md:grid-cols-[300px_1fr]" : "flex flex-col gap-4"}>
+        <div className="prompt-details-skeleton-gallery" aria-hidden />
+        <div className="space-y-3" aria-hidden>
+          <div className="prompt-details-skeleton-line prompt-details-skeleton-line--wide" />
+          <div className="prompt-details-skeleton-line" />
+          <div className="prompt-details-skeleton-line" />
+          <div className="prompt-details-skeleton-line prompt-details-skeleton-line--short" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function PromptDetailsModal({
   prompt,
   categories,
@@ -131,6 +155,8 @@ export function PromptDetailsModal({
 
   if (!prompt) return null;
 
+  const loadingDetails = !hasFullPromptDetails(prompt);
+  const isShellPrompt = loadingDetails && prompt.category.slug === "loading";
   const badgeClass = getCategoryBadgeClass(prompt.category.slug, prompt.category.name);
   const visibleExamples = [
     ...(prompt.examples ?? []).filter((example) => keptExampleIds.includes(example.id)),
@@ -287,10 +313,14 @@ export function PromptDetailsModal({
                 </button>
               </div>
             </div>
+          ) : isShellPrompt ? (
+            <PromptDetailsLoadingPanel desktopMode={desktopMode} />
           ) : (
             <div className={desktopMode ? "grid gap-6 md:grid-cols-[300px_1fr]" : "flex flex-col gap-4"}>
               <div>
-                {galleryItems.length ? (
+                {loadingDetails && !galleryItems.length ? (
+                  <div className="prompt-details-skeleton-gallery" aria-hidden />
+                ) : galleryItems.length ? (
                   <div className="prompt-gallery">
                     <div className="prompt-gallery-main">
                       {galleryItems.length > 1 ? (
@@ -365,11 +395,31 @@ export function PromptDetailsModal({
                     />
                   ))}
                 </div>
-                <p className="mt-4 whitespace-pre-wrap text-sm leading-relaxed text-[var(--text-soft)]">
-                  {hasFullPromptContent(prompt) ? prompt.content : getPromptExcerpt(prompt) || "Загрузка..."}
-                </p>
+                {loadingDetails ? (
+                  <div className="mt-4 space-y-3" role="status" aria-live="polite">
+                    <div className="prompt-details-loading-head">
+                      <span className="prompt-details-loading-spinner" aria-hidden />
+                      <span>Загрузка текста и примеров…</span>
+                    </div>
+                    <div className="space-y-2" aria-hidden>
+                      <div className="prompt-details-skeleton-line prompt-details-skeleton-line--wide" />
+                      <div className="prompt-details-skeleton-line" />
+                      <div className="prompt-details-skeleton-line" />
+                      <div className="prompt-details-skeleton-line prompt-details-skeleton-line--short" />
+                    </div>
+                  </div>
+                ) : (
+                  <p className="mt-4 whitespace-pre-wrap text-sm leading-relaxed text-[var(--text-soft)]">
+                    {prompt.content}
+                  </p>
+                )}
                 <div className="action-button-row mt-5">
-                  <button type="button" onClick={() => onCopy(prompt)} className="btn-primary justify-center">
+                  <button
+                    type="button"
+                    disabled={loadingDetails}
+                    onClick={() => onCopy(prompt)}
+                    className="btn-primary justify-center disabled:opacity-60"
+                  >
                     Скопировать
                   </button>
                   <button type="button" onClick={() => onToggleFavorite(prompt.id)} className="btn-secondary justify-center">

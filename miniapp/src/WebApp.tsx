@@ -8,6 +8,7 @@ const PromptForm = lazy(() => import("./components/PromptForm").then((module) =>
 import { runDeferred } from "./utils/deferredPrefetch";
 import { hideAppSplash } from "./utils/appSplash";
 import { writeReferenceCache } from "./utils/referenceCache";
+import { createPromptLoadingShell } from "./utils/promptShell";
 
 import {
   invalidateFavoritesCache,
@@ -262,6 +263,9 @@ export function WebApp() {
         writeFavoritesCache(favorites);
         bootstrappedRef.current = true;
         scheduleWebPrefetch(mapped.length, data.prompts.total);
+        runDeferred(() => {
+          mapped.slice(0, 4).forEach((item) => api.prefetchPrompt(item.id));
+        });
       } catch (err) {
         if (!cancelled) {
           setError("Не удалось загрузить данные.");
@@ -347,6 +351,13 @@ export function WebApp() {
   }
 
   useEffect(() => {
+    const promptId = parsePromptIdFromLocation();
+    if (promptId) {
+      api.prefetchPrompt(promptId);
+    }
+  }, []);
+
+  useEffect(() => {
     if (loading || deepLinkHandledRef.current) return;
     const promptId = parsePromptIdFromLocation();
     if (!promptId) return;
@@ -360,13 +371,7 @@ export function WebApp() {
       await openPrompt(cached, replaceUrl);
       return;
     }
-    try {
-      const full = withPromptDetails(await api.getPrompt(promptId));
-      await openPrompt(full, replaceUrl);
-    } catch (err) {
-      console.error(err);
-      clearPromptShareUrl();
-    }
+    await openPrompt(createPromptLoadingShell(promptId), replaceUrl);
   }
 
   async function openPrompt(prompt: Prompt, replaceUrl = false) {
@@ -384,6 +389,8 @@ export function WebApp() {
     } catch (err) {
       if (openPromptRequestRef.current !== requestId) return;
       console.error(err);
+      closePromptModal();
+      setToast("Не удалось загрузить промпт");
     }
   }
 

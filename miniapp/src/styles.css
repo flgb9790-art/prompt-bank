@@ -1827,3 +1827,69 @@ html.web-mode #root {
     background-position: 100% 50%;
   }
 }
+
+.prompt-details-loading {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.prompt-details-loading-head {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.prompt-details-loading-spinner {
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  border: 2px solid rgba(109, 93, 252, 0.18);
+  border-top-color: var(--primary);
+  animation: prompt-details-spin 0.8s linear infinite;
+  flex-shrink: 0;
+}
+
+.prompt-details-skeleton-gallery {
+  width: 100%;
+  max-width: 280px;
+  aspect-ratio: 4 / 5;
+  border-radius: 16px;
+  background: linear-gradient(90deg, #eef2ff 0%, #f8f9fd 45%, #eef2ff 100%);
+  background-size: 200% 100%;
+  animation: prompt-details-shimmer 1.4s ease-in-out infinite;
+}
+
+.prompt-details-skeleton-line {
+  height: 12px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #eef2ff 0%, #f8f9fd 45%, #eef2ff 100%);
+  background-size: 200% 100%;
+  animation: prompt-details-shimmer 1.4s ease-in-out infinite;
+}
+
+.prompt-details-skeleton-line--wide {
+  width: 92%;
+}
+
+.prompt-details-skeleton-line--short {
+  width: 58%;
+}
+
+@keyframes prompt-details-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes prompt-details-shimmer {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
+}

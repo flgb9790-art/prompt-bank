@@ -48,6 +48,15 @@ const CATEGORIES_CACHE_KEY = "prompt-bank-categories";
 const TAGS_CACHE_KEY = "prompt-bank-tags";
 
 const promptRequests = new Map<number, Promise<Prompt>>();
+const promptCache = new Map<number, Prompt>();
+
+export function invalidatePromptCache(id?: number) {
+  if (typeof id === "number") {
+    promptCache.delete(id);
+    return;
+  }
+  promptCache.clear();
+}
 
 export function invalidateReferenceCaches() {
   removeReferenceCache(CATEGORIES_CACHE_KEY);
@@ -100,22 +109,42 @@ export const api = {
     return request<PromptListResponse>(`/api/prompts${query ? `?${query}` : ""}`);
   },
   getPrompt(id: number) {
+    const cached = promptCache.get(id);
+    if (cached) {
+      return Promise.resolve(cached);
+    }
+
     const existing = promptRequests.get(id);
     if (existing) return existing;
 
-    const pending = request<Prompt>(`/api/prompts/${id}`).finally(() => {
-      promptRequests.delete(id);
-    });
+    const pending = request<Prompt>(`/api/prompts/${id}`)
+      .then((prompt) => {
+        promptCache.set(id, prompt);
+        return prompt;
+      })
+      .finally(() => {
+        promptRequests.delete(id);
+      });
     promptRequests.set(id, pending);
     return pending;
   },
+  prefetchPrompt(id: number) {
+    void api.getPrompt(id).catch(() => undefined);
+  },
   createPrompt(payload: PromptCreatePayload) {
-    return request<Prompt>("/api/prompts", { method: "POST", body: JSON.stringify(payload) });
+    return request<Prompt>("/api/prompts", { method: "POST", body: JSON.stringify(payload) }).then((prompt) => {
+      promptCache.set(prompt.id, prompt);
+      return prompt;
+    });
   },
   updatePrompt(id: number, payload: PromptUpdatePayload) {
-    return request<Prompt>(`/api/prompts/${id}`, { method: "PUT", body: JSON.stringify(payload) });
+    return request<Prompt>(`/api/prompts/${id}`, { method: "PUT", body: JSON.stringify(payload) }).then((prompt) => {
+      promptCache.set(id, prompt);
+      return prompt;
+    });
   },
   deletePrompt(id: number) {
+    invalidatePromptCache(id);
     return request<void>(`/api/prompts/${id}`, { method: "DELETE" });
   },
   toggleFavorite(id: number) {
