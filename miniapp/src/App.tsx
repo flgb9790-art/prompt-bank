@@ -2,7 +2,7 @@ import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { clearPromptShareUrl, parsePromptIdFromLocation, setPromptShareUrl } from "./utils/promptShare";
 import { mergePromptUpdate } from "./utils/mergePrompt";
 import { normalizeTagName } from "./utils/tagFilter";
-import { countCategoriesWithPrompts } from "./utils/stats";
+import { countCategoriesWithPromptCount, countCategoriesWithPrompts } from "./utils/stats";
 import { api, invalidateReferenceCaches, setAuthTelegramId } from "./api";
 import type { Category, Prompt, PromptCreatePayload, TelegramUser } from "./types";
 import type { PromptEditPayload } from "./components/PromptDetailsModal";
@@ -13,15 +13,17 @@ import { PromptsPage } from "./pages/PromptsPage";
 import { AddPromptPage } from "./pages/AddPromptPage";
 import { FavoritesPage } from "./pages/FavoritesPage";
 import { ProfilePage } from "./pages/ProfilePage";
-import { PromptCard } from "./components/PromptCard";
-import { PromptDetailsModal } from "./components/PromptDetailsModal";
-import { SearchBar } from "./components/SearchBar";
+import { SearchPage } from "./pages/SearchPage";
+const PromptDetailsModal = lazy(() =>
+  import("./components/PromptDetailsModal").then((module) => ({ default: module.PromptDetailsModal }))
+);
 import { isTelegramMiniAppContext, mockTelegramUser, resolveTelegramUser } from "./telegram";
 import {
   ensurePromptWithContent,
-  getPromptSearchText,
   hasFullPromptContent,
-  mapPromptsFromApi
+  hasFullPromptDetails,
+  mapPromptsFromApi,
+  withPromptDetails
 } from "./utils/promptContent";
 import { prefetchPromptsPage, takePrefetchedPromptsPage } from "./utils/promptsPrefetch";
 
@@ -29,14 +31,45 @@ const WebApp = lazy(() => import("./WebApp").then((module) => ({ default: module
 
 const quickTags = ["beauty", "video", "logo", "telegram", "cursor", "ads", "react", "realistic"];
 const MINI_PROMPTS_PAGE = 30;
+const HOME_RECENT_LIMIT = 8;
+const LIST_FILTER_DEBOUNCE_MS = 350;
 
-function miniPromptsQuery(offset: number) {
-  return { limit: MINI_PROMPTS_PAGE, offset, lite: true as const };
+type ListSortMode = "new" | "old" | "usage" | "favorites";
+
+function miniPromptsQuery(
+  offset: number,
+  filters: { search: string; category?: string; sort: ListSortMode },
+  tag?: string
+) {
+  const normalizedTag = tag ? normalizeTagName(tag) : undefined;
+  if (filters.sort === "favorites") {
+    return {
+      limit: MINI_PROMPTS_PAGE,
+      offset,
+      favorite: true as const,
+      lite: true as const,
+      tag: normalizedTag
+    };
+  }
+  return {
+    limit: MINI_PROMPTS_PAGE,
+    offset,
+    lite: true as const,
+    search: filters.search.trim() || undefined,
+    category: filters.category,
+    tag: normalizedTag,
+    sort: filters.sort
+  };
 }
 
-function scheduleMiniPrefetch(loadedCount: number, total: number) {
+function scheduleMiniPrefetch(
+  loadedCount: number,
+  total: number,
+  filters: { search: string; category?: string; sort: ListSortMode },
+  tag?: string
+) {
   if (loadedCount >= total) return;
-  prefetchPromptsPage(miniPromptsQuery(loadedCount));
+  prefetchPromptsPage(miniPromptsQuery(loadedCount, filters, tag));
 }
 
 function AppLoadingScreen() {
@@ -121,8 +154,15 @@ export default function App() {
 function MiniAppApp() {
   const [tab, setTab] = useState<TabKey>("home");
   const [prompts, setPrompts] = useState<Prompt[]>([]);
+  const [recentPrompts, setRecentPrompts] = useState<Prompt[]>([]);
+  const [recentLoading, setRecentLoading] = useState(false);
   const [promptsTotal, setPromptsTotal] = useState(0);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [listReloading, setListReloading] = useState(false);
+  const listFiltersRef = useRef<{ search: string; category?: string; sort: ListSortMode }>({
+    search: "",
+    sort: "new"
+  });
   const [favoritePrompts, setFavoritePrompts] = useState<Prompt[]>([]);
   const [favoritesLoading, setFavoritesLoading] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -131,6 +171,8 @@ function MiniAppApp() {
   const [selectedPrompt, setSelectedPrompt] = useState<Prompt>();
   const [createdPromptId, setCreatedPromptId] = useState<number>();
   const [searchQuery, setSearchQuery] = useState("");
+  const [searchPrompts, setSearchPrompts] = useState<Prompt[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
   const [activeTag, setActiveTag] = useState<string>();
   const [isAdmin, setIsAdmin] = useState(false);
   const [userUsageTotal, setUserUsageTotal] = useState(0);
@@ -139,6 +181,7 @@ function MiniAppApp() {
   const [isMiniAppExpanded, setIsMiniAppExpanded] = useState(true);
   const deepLinkHandledRef = useRef(false);
   const openPromptRequestRef = useRef(0);
+  const prevTabRef = useRef<TabKey>(tab);
 
   const favorites = useMemo(() => prompts.filter((item) => item.isFavorite), [prompts]);
   const favoritesForView = tab === "favorites" ? favoritePrompts : favorites;
@@ -148,31 +191,83 @@ function MiniAppApp() {
     () => ({
       total: promptsTotal || prompts.length,
       favorites: favoritesForView.length || favorites.length,
-      categories: countCategoriesWithPrompts(prompts),
+      categories: countCategoriesWithPromptCount(categories) || countCategoriesWithPrompts(prompts),
       usage: userUsageTotal
     }),
-    [prompts, promptsTotal, favorites.length, favoritesForView.length, userUsageTotal]
+    [categories, prompts, promptsTotal, favorites.length, favoritesForView.length, userUsageTotal]
   );
 
-  const searchResults = useMemo(() => {
-    if (!searchQuery) return [];
-    const low = searchQuery.toLowerCase();
-    return prompts.filter((item) => getPromptSearchText(item).includes(low));
-  }, [searchQuery, prompts]);
+  useEffect(() => {
+    if (tab !== "search") return;
+    const q = searchQuery.trim();
+    if (q.length < 2) {
+      setSearchPrompts([]);
+      setSearchLoading(false);
+      return;
+    }
+    setSearchLoading(true);
+    const timer = window.setTimeout(() => {
+      void api
+        .getPrompts({ search: q, limit: 50, lite: true })
+        .then((data) => setSearchPrompts(mapPromptsFromApi(data.items)))
+        .catch(() => setToastMessage("Не удалось выполнить поиск"))
+        .finally(() => setSearchLoading(false));
+    }, LIST_FILTER_DEBOUNCE_MS);
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [searchQuery, tab]);
+
+  useEffect(() => {
+    const prev = prevTabRef.current;
+    prevTabRef.current = tab;
+    if (tab === "home" && prev !== "home" && !loading) {
+      void loadRecentPrompts();
+    }
+  }, [tab, loading]);
+
+  async function loadRecentPrompts() {
+    setRecentLoading(true);
+    try {
+      const recentData = await api.getPrompts({
+        limit: HOME_RECENT_LIMIT,
+        offset: 0,
+        lite: true,
+        sort: "new"
+      });
+      setRecentPrompts(mapPromptsFromApi(recentData.items));
+    } catch {
+      setRecentPrompts([]);
+    } finally {
+      setRecentLoading(false);
+    }
+  }
+
+  function syncRecentPrompt(next: Prompt) {
+    setRecentPrompts((prev) => {
+      const index = prev.findIndex((item) => item.id === next.id);
+      if (index === -1) return prev;
+      const copy = [...prev];
+      copy[index] = mergePromptUpdate(prev[index], next);
+      return copy;
+    });
+  }
 
   async function loadData() {
     setLoading(true);
     setError("");
     try {
-      const [promptsData, categoriesData, me] = await Promise.all([
-        api.getPrompts({ limit: MINI_PROMPTS_PAGE, offset: 0, lite: true }),
+      const [promptsData, categoriesData, me, recentData] = await Promise.all([
+        api.getPrompts({ limit: MINI_PROMPTS_PAGE, offset: 0, lite: true, sort: "new" }),
         api.getCategories(),
-        api.getMe()
+        api.getMe(),
+        api.getPrompts({ limit: HOME_RECENT_LIMIT, offset: 0, lite: true, sort: "new" })
       ]);
       const mapped = mapPromptsFromApi(promptsData.items);
       setPrompts(mapped);
       setPromptsTotal(promptsData.total);
-      scheduleMiniPrefetch(mapped.length, promptsData.total);
+      scheduleMiniPrefetch(mapped.length, promptsData.total, listFiltersRef.current, activeTag);
+      setRecentPrompts(mapPromptsFromApi(recentData.items));
       setCategories(categoriesData);
       setIsAdmin(me.isAdmin);
       setUserUsageTotal(me.usageTotal ?? 0);
@@ -183,16 +278,33 @@ function MiniAppApp() {
     }
   }
 
+  async function reloadPromptsList() {
+    setListReloading(true);
+    setError("");
+    try {
+      const query = miniPromptsQuery(0, listFiltersRef.current, activeTag);
+      const promptsData = await api.getPrompts(query);
+      const mapped = mapPromptsFromApi(promptsData.items);
+      setPrompts(mapped);
+      setPromptsTotal(promptsData.total);
+      scheduleMiniPrefetch(mapped.length, promptsData.total, listFiltersRef.current, activeTag);
+    } catch {
+      setError("Не удалось загрузить промпты.");
+    } finally {
+      setListReloading(false);
+    }
+  }
+
   async function loadMorePrompts() {
     if (loadingMore || !hasMorePrompts) return;
     setLoadingMore(true);
-    const query = miniPromptsQuery(prompts.length);
+    const query = miniPromptsQuery(prompts.length, listFiltersRef.current, activeTag);
     try {
       const cached = await takePrefetchedPromptsPage(query);
       const promptsData = cached ?? (await api.getPrompts(query));
       setPrompts((prev) => {
         const merged = [...prev, ...mapPromptsFromApi(promptsData.items)];
-        scheduleMiniPrefetch(merged.length, promptsData.total);
+        scheduleMiniPrefetch(merged.length, promptsData.total, listFiltersRef.current, activeTag);
         return merged;
       });
       setPromptsTotal(promptsData.total);
@@ -333,11 +445,13 @@ function MiniAppApp() {
       setToastMessage("Добавлять промпты могут только администраторы");
       return;
     }
-    const created = await api.createPrompt(payload);
+    const created = withPromptDetails(await api.createPrompt(payload));
     invalidateReferenceCaches();
     setCreatedPromptId(created.id);
     setPrompts((prev) => [created, ...prev]);
+    setRecentPrompts((prev) => [created, ...prev].slice(0, HOME_RECENT_LIMIT));
     setPromptsTotal((prev) => prev + 1);
+    void api.getCategories().then(setCategories).catch(() => undefined);
   }
 
   async function handleToggleFavorite(id: number) {
@@ -347,6 +461,7 @@ function MiniAppApp() {
     const optimistic = { ...previous, isFavorite: !previous.isFavorite };
     setPrompts((prev) => prev.map((item) => (item.id === id ? optimistic : item)));
     syncFavoritePrompts(optimistic);
+    syncRecentPrompt(optimistic);
     if (selectedPrompt?.id === id) setSelectedPrompt(optimistic);
 
     try {
@@ -356,8 +471,10 @@ function MiniAppApp() {
         setSelectedPrompt((current) => (current ? mergePromptUpdate(current, updated) : updated));
       }
       syncFavoritePrompts(updated);
+      syncRecentPrompt(updated);
     } catch {
       syncFavoritePrompts(previous);
+      syncRecentPrompt(previous);
       setPrompts((prev) => prev.map((item) => (item.id === id ? previous : item)));
       if (selectedPrompt?.id === id) setSelectedPrompt(previous);
       setToastMessage("Не удалось обновить избранное");
@@ -365,13 +482,13 @@ function MiniAppApp() {
   }
 
   async function openPromptById(promptId: number, replaceUrl = false) {
-    const cached = prompts.find((item) => item.id === promptId);
+    const cached = prompts.find((item) => item.id === promptId) ?? recentPrompts.find((item) => item.id === promptId);
     if (cached) {
       await openPrompt(cached, replaceUrl);
       return;
     }
     try {
-      const full = await api.getPrompt(promptId);
+      const full = withPromptDetails(await api.getPrompt(promptId));
       await openPrompt(full, replaceUrl);
     } catch {
       clearPromptShareUrl();
@@ -382,14 +499,15 @@ function MiniAppApp() {
     const requestId = ++openPromptRequestRef.current;
     setSelectedPrompt({ ...prompt, examples: prompt.examples ?? [] });
     setPromptShareUrl(prompt.id, replaceUrl);
-    if (hasFullPromptContent(prompt)) {
+    if (hasFullPromptDetails(prompt)) {
       return;
     }
     try {
-      const full = await api.getPrompt(prompt.id);
+      const full = withPromptDetails(await api.getPrompt(prompt.id));
       if (openPromptRequestRef.current !== requestId) return;
       setSelectedPrompt(full);
       setPrompts((prev) => prev.map((item) => (item.id === full.id ? mergePromptUpdate(item, full) : item)));
+      syncRecentPrompt(full);
     } catch {
       if (openPromptRequestRef.current !== requestId) return;
     }
@@ -428,8 +546,10 @@ function MiniAppApp() {
     invalidateReferenceCaches();
     closePromptModal();
     setPrompts((prev) => prev.filter((item) => item.id !== id));
+    setRecentPrompts((prev) => prev.filter((item) => item.id !== id));
     setFavoritePrompts((prev) => prev.filter((item) => item.id !== id));
     setPromptsTotal((prev) => Math.max(0, prev - 1));
+    void api.getCategories().then(setCategories).catch(() => undefined);
   }
 
   function handleTabChange(nextTab: TabKey) {
@@ -444,8 +564,10 @@ function MiniAppApp() {
     closePromptModal();
     setActiveTag(tagName);
     setSearchQuery("");
+    listFiltersRef.current = { search: "", category: undefined, sort: "new" };
     setTab("prompts");
     setToastMessage(`Промпты с тегом: ${tagName}`);
+    void reloadPromptsList();
   }
 
   async function handleCopyPrompt(prompt: Prompt) {
@@ -487,8 +609,9 @@ function MiniAppApp() {
       ...data.removedExampleIds.map((exampleId) => api.removeExample(exampleId)),
       ...data.newExamples.map((example) => api.addExample(promptId, example))
     ]);
-    const fresh = await api.getPrompt(promptId);
+    const fresh = withPromptDetails(await api.getPrompt(promptId));
     setPrompts((prev) => prev.map((item) => (item.id === promptId ? fresh : item)));
+    syncRecentPrompt(fresh);
     setSelectedPrompt(fresh);
   }
 
@@ -496,7 +619,8 @@ function MiniAppApp() {
     <Layout freezeScroll={!isMiniAppExpanded}>
       {tab === "home" && (
         <HomePage
-          prompts={prompts}
+          recentPrompts={recentPrompts}
+          recentLoading={loading || recentLoading}
           stats={stats}
           onOpenPrompt={openPrompt}
           onCopyPrompt={handleCopyPrompt}
@@ -513,7 +637,7 @@ function MiniAppApp() {
           key={activeTag ?? "all"}
           prompts={prompts}
           categories={categories}
-          loading={loading}
+          loading={loading || listReloading}
           loadingMore={loadingMore}
           hasMore={hasMorePrompts}
           onLoadMore={loadMorePrompts}
@@ -524,32 +648,25 @@ function MiniAppApp() {
           onTagClick={handleSelectTag}
           activeTag={activeTag}
           onClearTag={() => setActiveTag(undefined)}
+          onFiltersChange={(filters) => {
+            listFiltersRef.current = filters;
+            void reloadPromptsList();
+          }}
+          filterDebounceMs={LIST_FILTER_DEBOUNCE_MS}
         />
       )}
       {tab === "search" && (
-        <div className="space-y-3">
-          <SearchBar value={searchQuery} onChange={setSearchQuery} placeholder="Введите слово, тег или часть названия..." />
-          <div className="flex flex-wrap gap-2">
-            {quickTags.map((tag) => (
-              <button key={tag} className="chip" onClick={() => setSearchQuery(tag)}>
-                {tag}
-              </button>
-            ))}
-          </div>
-          <div className="space-y-2">
-            {searchResults.map((prompt) => (
-              <PromptCard
-                key={prompt.id}
-                prompt={prompt}
-                variant="mobile"
-                onOpen={openPrompt}
-                onCopy={handleCopyPrompt}
-                onToggleFavorite={handleToggleFavorite}
-                onTagClick={handleSelectTag}
-              />
-            ))}
-          </div>
-        </div>
+        <SearchPage
+          query={searchQuery}
+          onQueryChange={setSearchQuery}
+          quickTags={quickTags}
+          results={searchPrompts}
+          loading={searchLoading}
+          onOpenPrompt={openPrompt}
+          onCopyPrompt={handleCopyPrompt}
+          onToggleFavorite={handleToggleFavorite}
+          onTagClick={handleSelectTag}
+        />
       )}
       {tab === "favorites" && (
         <FavoritesPage
@@ -585,18 +702,22 @@ function MiniAppApp() {
         />
       )}
       <BottomNav current={tab === "add" ? "home" : tab} onChange={handleTabChange} />
-      <PromptDetailsModal
-        prompt={selectedPrompt}
-        categories={categories}
-        canManage={isAdmin}
-        onClose={closePromptModal}
-        onCopy={handleCopyPrompt}
-        onToggleFavorite={handleToggleFavorite}
-        onDelete={handleDeletePrompt}
-        onEdit={handleEditPrompt}
-        onShareLinkCopied={() => setToastMessage("Ссылка скопирована")}
-        onTagClick={handleSelectTag}
-      />
+      {selectedPrompt ? (
+        <Suspense fallback={null}>
+          <PromptDetailsModal
+            prompt={selectedPrompt}
+            categories={categories}
+            canManage={isAdmin}
+            onClose={closePromptModal}
+            onCopy={handleCopyPrompt}
+            onToggleFavorite={handleToggleFavorite}
+            onDelete={handleDeletePrompt}
+            onEdit={handleEditPrompt}
+            onShareLinkCopied={() => setToastMessage("Ссылка скопирована")}
+            onTagClick={handleSelectTag}
+          />
+        </Suspense>
+      ) : null}
       {toastMessage ? (
         <div className="toast fixed bottom-24 left-1/2 z-[60] -translate-x-1/2">{toastMessage}</div>
       ) : null}

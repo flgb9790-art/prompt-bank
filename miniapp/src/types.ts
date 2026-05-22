@@ -7,6 +7,8 @@ export type Category = {
   icon?: string | null;
   color?: string | null;
   sortOrder: number;
+  /** Число промптов в категории (с сервера). */
+  promptCount?: number;
 };
 
 export type Keyword = {
@@ -43,6 +45,8 @@ export type Prompt = {
   usageCount: number;
   keywords: PromptKeyword[];
   examples?: MediaExample[];
+  /** Клиентский флаг: полные данные (текст + примеры) уже загружены с API. */
+  detailLoaded?: boolean;
   createdAt: string;
   updatedAt: string;
 };

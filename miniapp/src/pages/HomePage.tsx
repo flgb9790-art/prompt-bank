@@ -3,7 +3,8 @@ import type { Prompt } from "../types";
 import { PromptCard } from "../components/PromptCard";
 
 type Props = {
-  prompts: Prompt[];
+  recentPrompts: Prompt[];
+  recentLoading?: boolean;
   stats: { total: number; favorites: number; categories: number; usage: number };
   onOpenPrompt: (prompt: Prompt) => void;
   onCopyPrompt: (prompt: Prompt) => void;
@@ -16,7 +17,8 @@ type Props = {
 };
 
 export function HomePage({
-  prompts,
+  recentPrompts,
+  recentLoading = false,
   stats,
   onOpenPrompt,
   onCopyPrompt,
@@ -66,9 +68,15 @@ export function HomePage({
             </button>
           ) : null}
         </div>
-        {prompts.length ? (
+        {recentLoading ? (
+          <div className="mt-4 space-y-3">
+            {Array.from({ length: 3 }).map((_, idx) => (
+              <div key={idx} className="skeleton h-36" />
+            ))}
+          </div>
+        ) : recentPrompts.length ? (
           <div className="mt-4 flex flex-col gap-3">
-            {prompts.slice(0, 8).map((prompt) => (
+            {recentPrompts.map((prompt) => (
               <PromptCard
                 key={prompt.id}
                 prompt={prompt}

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLoadMoreOnScroll } from "../hooks/useLoadMoreOnScroll";
 import type { Category, Prompt } from "../types";
 import { SearchBar } from "../components/SearchBar";
@@ -6,6 +6,14 @@ import { CategoryTabs } from "../components/CategoryTabs";
 import { VirtualPromptList } from "../components/VirtualPromptList";
 import { promptHasTag } from "../utils/tagFilter";
 import { getPromptSearchText } from "../utils/promptContent";
+
+type SortMode = "new" | "old" | "usage" | "favorites";
+
+type ListFilters = {
+  search: string;
+  category?: string;
+  sort: SortMode;
+};
 
 type Props = {
   prompts: Prompt[];
@@ -21,9 +29,9 @@ type Props = {
   onTagClick?: (tag: string) => void;
   activeTag?: string;
   onClearTag?: () => void;
+  onFiltersChange?: (filters: ListFilters) => void;
+  filterDebounceMs?: number;
 };
-
-type SortMode = "new" | "old" | "usage" | "favorites";
 
 export function PromptsPage({
   prompts,
@@ -38,17 +46,33 @@ export function PromptsPage({
   onCopyPrompt,
   onTagClick,
   activeTag,
-  onClearTag
+  onClearTag,
+  onFiltersChange,
+  filterDebounceMs = 350
 }: Props) {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<string>();
   const [sort, setSort] = useState<SortMode>("new");
+  const serverFilters = Boolean(onFiltersChange);
+  const filtersBootstrappedRef = useRef(false);
 
   useEffect(() => {
     if (!activeTag) return;
     setQuery("");
     setCategory(undefined);
   }, [activeTag]);
+
+  useEffect(() => {
+    if (!onFiltersChange) return;
+    if (!filtersBootstrappedRef.current) {
+      filtersBootstrappedRef.current = true;
+      return;
+    }
+    const timer = setTimeout(() => {
+      onFiltersChange({ search: query, category, sort });
+    }, filterDebounceMs);
+    return () => clearTimeout(timer);
+  }, [query, category, sort, onFiltersChange, filterDebounceMs]);
 
   const categoriesWithPrompts = useMemo(() => {
     const counts = prompts.reduce<Record<string, number>>((acc, prompt) => {
@@ -59,6 +83,9 @@ export function PromptsPage({
   }, [categories, prompts]);
 
   const filtered = useMemo(() => {
+    if (serverFilters) {
+      return prompts;
+    }
     let list = [...prompts];
     if (query) {
       const low = query.toLowerCase();
@@ -75,7 +102,7 @@ export function PromptsPage({
     if (sort === "usage") list.sort((a, b) => b.usageCount - a.usageCount);
     if (sort === "favorites") list = list.filter((item) => item.isFavorite);
     return list;
-  }, [prompts, query, category, sort, activeTag]);
+  }, [prompts, query, category, sort, activeTag, serverFilters]);
 
   const loadMoreRef = useLoadMoreOnScroll({
     enabled: !loading && !error && filtered.length > 0,

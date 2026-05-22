@@ -6,7 +6,6 @@ type RouteKey = "/" | "/prompts" | "/favorites" | "/recent" | "/categories" | "/
 type Props = {
   currentPath: string;
   categories: Category[];
-  categoryCounts: Record<string, number>;
   activeCategory?: string;
   isAuthenticated: boolean;
   onNavigate: (path: RouteKey) => void;
@@ -25,14 +24,13 @@ const navItems: Array<{ path: RouteKey; label: string; icon: typeof Home }> = [
 export function Sidebar({
   currentPath,
   categories,
-  categoryCounts,
   activeCategory,
   isAuthenticated,
   onNavigate,
   onSelectCategory,
   onLogin
 }: Props) {
-  const visibleCategories = categories.filter((category) => (categoryCounts[category.slug] ?? 0) > 0);
+  const visibleCategories = categories.filter((category) => (category.promptCount ?? 0) > 0);
 
   return (
     <div className="sidebar-shell flex h-full min-h-0 flex-col">
@@ -82,7 +80,7 @@ export function Sidebar({
                 >
                   <span className="category-item-icon">{category.icon ?? "•"}</span>
                   <span className="truncate">{category.name}</span>
-                  <span className="ml-auto text-[13px] text-[var(--muted)]">{categoryCounts[category.slug] ?? 0}</span>
+                  <span className="ml-auto text-[13px] text-[var(--muted)]">{category.promptCount ?? 0}</span>
                 </button>
               );
             })

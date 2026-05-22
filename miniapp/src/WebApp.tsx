@@ -1,10 +1,12 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { BarChart3, Heart, Layers, Sparkles, X } from "lucide-react";
 import { api, ApiError, invalidateReferenceCaches, setAuthTelegramId } from "./api";
 import type { Category, Prompt, PromptCreatePayload, TagStat, TelegramUser } from "./types";
 import type { PromptEditPayload } from "./components/PromptDetailsModal";
-import { PromptDetailsModal } from "./components/PromptDetailsModal";
-import { PromptForm } from "./components/PromptForm";
+const PromptDetailsModal = lazy(() =>
+  import("./components/PromptDetailsModal").then((module) => ({ default: module.PromptDetailsModal }))
+);
+const PromptForm = lazy(() => import("./components/PromptForm").then((module) => ({ default: module.PromptForm })));
 import { AuthRequiredModal } from "./components/web/AuthRequiredModal";
 import { PromptGrid } from "./components/web/PromptGrid";
 import { Sidebar } from "./components/web/Sidebar";
@@ -19,16 +21,17 @@ import { MobileWebShell } from "./components/web/MobileWebShell";
 import { AuthButton } from "./components/web/AuthButton";
 import { clearPromptShareUrl, parsePromptIdFromLocation, setPromptShareUrl } from "./utils/promptShare";
 import { mergePromptUpdate } from "./utils/mergePrompt";
-import { normalizeTagName, promptHasTag } from "./utils/tagFilter";
-import { countCategoriesWithPrompts } from "./utils/stats";
+import { normalizeTagName } from "./utils/tagFilter";
+import { countCategoriesWithPromptCount, countCategoriesWithPrompts } from "./utils/stats";
 import type { GetPromptsParams } from "./api";
 import { useLoadMoreOnScroll } from "./hooks/useLoadMoreOnScroll";
 import { prefetchPromptsPage, takePrefetchedPromptsPage } from "./utils/promptsPrefetch";
 import {
   ensurePromptWithContent,
-  getPromptSearchText,
   hasFullPromptContent,
-  mapPromptsFromApi
+  hasFullPromptDetails,
+  mapPromptsFromApi,
+  withPromptDetails
 } from "./utils/promptContent";
 
 type SortValue = "new" | "old" | "usage";
@@ -61,7 +64,6 @@ function parseSavedUser(): TelegramUser | null {
 export function WebApp() {
   const [path, setPath] = useState<RoutePath>(getRoutePath(window.location.pathname));
   const [search, setSearch] = useState("");
-  const [promptSearch, setPromptSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState<string>();
   const [activeTag, setActiveTag] = useState<string>();
   const [sort, setSort] = useState<SortValue>("new");
@@ -113,30 +115,13 @@ export function WebApp() {
     return () => clearTimeout(timer);
   }, [toast]);
 
-  const filteredPrompts = useMemo(() => {
-    const low = promptSearch.trim().toLowerCase();
-    const byCategory = activeCategory
-      ? prompts.filter((prompt) => prompt.category.slug === activeCategory)
-      : [...prompts];
-    const byTag = activeTag ? byCategory.filter((prompt) => promptHasTag(prompt, activeTag)) : byCategory;
-    const bySearch = low ? byTag.filter((prompt) => getPromptSearchText(prompt).includes(low)) : byTag;
-    return bySearch;
-  }, [activeCategory, activeTag, promptSearch, prompts]);
-
   useEffect(() => {
     setPage(1);
-  }, [activeCategory, activeTag, promptSearch, sort, path]);
-
-  const categoryCounts = useMemo(() => {
-    return prompts.reduce<Record<string, number>>((acc, prompt) => {
-      acc[prompt.category.slug] = (acc[prompt.category.slug] ?? 0) + 1;
-      return acc;
-    }, {});
-  }, [prompts]);
+  }, [activeCategory, activeTag, search, sort, path]);
 
   const categoriesWithPrompts = useMemo(
-    () => categories.filter((category) => (categoryCounts[category.slug] ?? 0) > 0),
-    [categories, categoryCounts]
+    () => categories.filter((category) => (category.promptCount ?? 0) > 0),
+    [categories]
   );
 
   const tagsWithPrompts = useMemo(() => tags.filter((tag) => tag.count > 0), [tags]);
@@ -145,10 +130,10 @@ export function WebApp() {
     () => ({
       total: promptsTotal || prompts.length,
       favorites: favoritePrompts.length || prompts.filter((prompt) => prompt.isFavorite).length,
-      categories: countCategoriesWithPrompts(prompts),
+      categories: countCategoriesWithPromptCount(categories) || countCategoriesWithPrompts(prompts),
       usage: isAuthenticated ? userUsageTotal : 0
     }),
-    [favoritePrompts.length, isAuthenticated, prompts, promptsTotal, userUsageTotal]
+    [categories, favoritePrompts.length, isAuthenticated, prompts, promptsTotal, userUsageTotal]
   );
 
   const userPromptsCount = useMemo(() => {
@@ -181,7 +166,7 @@ export function WebApp() {
   const hasMoreRemote = prompts.length < promptsTotal;
 
   function buildPromptsQuery(offset: number): GetPromptsParams {
-    const query = search.trim() || promptSearch.trim();
+    const query = search.trim();
     return {
       limit: PROMPTS_FETCH_LIMIT,
       offset,
@@ -208,9 +193,15 @@ export function WebApp() {
   async function loadMoreRemotePrompts() {
     if (loadingMoreRemote || !hasMoreRemote) return;
     setLoadingMoreRemote(true);
+    const query = buildPromptsQuery(prompts.length);
     try {
-      const promptsData = await api.getPrompts(buildPromptsQuery(prompts.length));
-      setPrompts((prev) => [...prev, ...mapPromptsFromApi(promptsData.items)]);
+      const cached = await takePrefetchedPromptsPage(query);
+      const promptsData = cached ?? (await api.getPrompts(query));
+      setPrompts((prev) => {
+        const merged = [...prev, ...mapPromptsFromApi(promptsData.items)];
+        scheduleWebPrefetch(merged.length, promptsData.total);
+        return merged;
+      });
       setPromptsTotal(promptsData.total);
     } catch (err) {
       console.error(err);
@@ -288,7 +279,15 @@ export function WebApp() {
       void loadPrompts();
     }, SEARCH_DEBOUNCE_MS);
     return () => clearTimeout(timer);
-  }, [search, promptSearch, activeCategory, activeTag, sort]);
+  }, [search, activeCategory, activeTag, sort]);
+
+  useEffect(() => {
+    if (!bootstrappedRef.current || path !== "/recent") return;
+    setActiveCategory(undefined);
+    setActiveTag(undefined);
+    setSearch("");
+    setSort("new");
+  }, [path]);
 
   useEffect(() => {
     if (path !== "/favorites" || !isAuthenticated) return;
@@ -349,7 +348,7 @@ export function WebApp() {
       return;
     }
     try {
-      const full = await api.getPrompt(promptId);
+      const full = withPromptDetails(await api.getPrompt(promptId));
       await openPrompt(full, replaceUrl);
     } catch (err) {
       console.error(err);
@@ -361,11 +360,11 @@ export function WebApp() {
     const requestId = ++openPromptRequestRef.current;
     setSelectedPrompt({ ...prompt, examples: prompt.examples ?? [] });
     setPromptShareUrl(prompt.id, replaceUrl);
-    if (hasFullPromptContent(prompt)) {
+    if (hasFullPromptDetails(prompt)) {
       return;
     }
     try {
-      const full = await api.getPrompt(prompt.id);
+      const full = withPromptDetails(await api.getPrompt(prompt.id));
       if (openPromptRequestRef.current !== requestId) return;
       setSelectedPrompt(full);
       upsertPromptInList(full);
@@ -509,6 +508,7 @@ export function WebApp() {
       setFavoritePrompts((prev) => prev.filter((item) => item.id !== id));
       setPromptsTotal((prev) => Math.max(0, prev - 1));
       setToast("Промпт удален");
+      void Promise.all([api.getTags().then(setTags), api.getCategories().then(setCategories)]).catch(console.error);
     } catch (err) {
       if (!handleUnauthorized(err)) {
         setToast("Ошибка загрузки");
@@ -533,7 +533,7 @@ export function WebApp() {
         ...data.removedExampleIds.map((exampleId) => api.removeExample(exampleId)),
         ...data.newExamples.map((example) => api.addExample(promptId, example))
       ]);
-      const fresh = await api.getPrompt(promptId);
+      const fresh = withPromptDetails(await api.getPrompt(promptId));
       upsertPromptInList(fresh);
       setSelectedPrompt(fresh);
       setToast("Промпт сохранен");
@@ -555,13 +555,13 @@ export function WebApp() {
       return;
     }
     try {
-      const created = await api.createPrompt(payload);
+      const created = withPromptDetails(await api.createPrompt(payload));
       invalidateReferenceCaches();
       upsertPromptInList(created);
       setPromptsTotal((prev) => prev + 1);
       setToast("Промпт сохранен");
       setIsAddModalOpen(false);
-      void api.getTags().then(setTags).catch(console.error);
+      void Promise.all([api.getTags().then(setTags), api.getCategories().then(setCategories)]).catch(console.error);
     } catch (err) {
       if (!handleUnauthorized(err)) {
         setToast("Ошибка загрузки");
@@ -602,7 +602,7 @@ export function WebApp() {
     clearPromptShareUrl();
     setActiveTag(tag);
     setActiveCategory(undefined);
-    setPromptSearch("");
+    setSearch("");
     setPage(1);
     navigate("/prompts", { keepTag: true });
   }
@@ -690,7 +690,7 @@ export function WebApp() {
             </div>
           </div>
 
-          {renderPromptList(filteredPrompts)}
+          {renderPromptList(prompts)}
         </div>
       ) : null}
 
@@ -700,7 +700,7 @@ export function WebApp() {
             <div className="mb-3">
               <h2 className="text-base font-semibold text-[var(--text)]">
                 Тег: {activeTag}
-                <span className="ml-2 text-sm font-normal text-[var(--muted)]">({filteredPrompts.length})</span>
+                <span className="ml-2 text-sm font-normal text-[var(--muted)]">({promptsTotal})</span>
               </h2>
             </div>
           ) : null}
@@ -731,7 +731,7 @@ export function WebApp() {
               </button>
             ) : null}
           </div>
-          {renderPromptList(filteredPrompts)}
+          {renderPromptList(prompts)}
         </div>
       ) : null}
 
@@ -758,7 +758,7 @@ export function WebApp() {
           {categoriesWithPrompts.map((category) => (
             <div key={category.id} className="surface-card p-4">
               <p className="text-sm text-[var(--text-soft)]">{category.icon ?? "📂"} {category.name}</p>
-              <p className="mt-2 text-2xl font-semibold text-[var(--text)]">{categoryCounts[category.slug] ?? 0}</p>
+              <p className="mt-2 text-2xl font-semibold text-[var(--text)]">{category.promptCount ?? 0}</p>
             </div>
           ))}
         </div>
@@ -783,9 +783,7 @@ export function WebApp() {
         </div>
       ) : null}
 
-      {path === "/recent" ? (
-        renderPromptList([...prompts].sort((a, b) => Number(new Date(b.createdAt)) - Number(new Date(a.createdAt))))
-      ) : null}
+      {path === "/recent" ? renderPromptList(prompts) : null}
 
       {path === "/settings" ? (
         isAuthenticated ? (
@@ -820,19 +818,23 @@ export function WebApp() {
 
   const modals = (
     <>
-      <PromptDetailsModal
-        prompt={selectedPrompt}
-        categories={categories}
-        canManage={isAdmin}
-        desktopMode
-        onClose={closePromptModal}
-        onCopy={handleCopy}
-        onToggleFavorite={handleToggleFavorite}
-        onDelete={handleDeletePrompt}
-        onEdit={handleEditPrompt}
-        onShareLinkCopied={() => setToast("Ссылка скопирована")}
-        onTagClick={handleSelectTag}
-      />
+      {selectedPrompt ? (
+        <Suspense fallback={null}>
+          <PromptDetailsModal
+            prompt={selectedPrompt}
+            categories={categories}
+            canManage={isAdmin}
+            desktopMode
+            onClose={closePromptModal}
+            onCopy={handleCopy}
+            onToggleFavorite={handleToggleFavorite}
+            onDelete={handleDeletePrompt}
+            onEdit={handleEditPrompt}
+            onShareLinkCopied={() => setToast("Ссылка скопирована")}
+            onTagClick={handleSelectTag}
+          />
+        </Suspense>
+      ) : null}
       {isAddModalOpen && isAuthenticated && isAdmin ? (
         <div className="modal-overlay fixed inset-0 z-[75] grid place-items-center p-4">
           <div className="modal-panel add-prompt-modal max-h-[90vh] w-full overflow-y-auto p-6">
@@ -847,7 +849,14 @@ export function WebApp() {
                 <X size={16} />
               </button>
             </div>
-            <PromptForm categories={categories} user={user!} onSubmit={handleSavePrompt} onCancel={() => setIsAddModalOpen(false)} />
+            <Suspense fallback={<div className="skeleton h-64 w-full" />}>
+              <PromptForm
+                categories={categories}
+                user={user!}
+                onSubmit={handleSavePrompt}
+                onCancel={() => setIsAddModalOpen(false)}
+              />
+            </Suspense>
           </div>
         </div>
       ) : null}
@@ -876,7 +885,6 @@ export function WebApp() {
             <Sidebar
               currentPath={path}
               categories={categories}
-              categoryCounts={categoryCounts}
               activeCategory={activeCategory}
               isAuthenticated={isAuthenticated}
               onNavigate={(route) => {

@@ -1,12 +1,14 @@
-import { useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, Share2, X } from "lucide-react";
 import { resolveMediaUrl } from "../api";
 import type { Category, MediaType, Prompt } from "../types";
 import { getCategoryBadgeClass } from "../utils/categoryStyle";
 import { getPromptExcerpt, hasFullPromptContent } from "../utils/promptContent";
 import { buildPromptShareUrl } from "../utils/promptShare";
-import { MediaLightbox, type LightboxItem } from "./MediaLightbox";
-import { MediaUploader } from "./MediaUploader";
+import type { LightboxItem } from "./MediaLightbox";
+
+const MediaLightbox = lazy(() => import("./MediaLightbox").then((module) => ({ default: module.MediaLightbox })));
+const MediaUploader = lazy(() => import("./MediaUploader").then((module) => ({ default: module.MediaUploader })));
 import { TagPill } from "./TagPill";
 
 export type PromptEditPayload = {
@@ -55,7 +57,11 @@ function MediaPreview({
       onClick={onClick}
       disabled={!clickable}
     >
-      {type === "video" ? <video src={resolveMediaUrl(url)} muted playsInline /> : <img src={resolveMediaUrl(url)} alt="media" />}
+      {type === "video" ? (
+        <video src={resolveMediaUrl(url)} muted playsInline preload="metadata" />
+      ) : (
+        <img src={resolveMediaUrl(url)} alt="media" loading="lazy" decoding="async" />
+      )}
       {clickable ? <span className="preview-clickable-hint">Открыть</span> : null}
     </button>
   );
@@ -183,7 +189,9 @@ export function PromptDetailsModal({
                   <p className="mb-2 text-xs text-[var(--muted)]">Заставка не задана</p>
                 )}
                 <div className="edit-media-toolbar">
-                  <MediaUploader compact label="Заменить заставку" onUploaded={(items) => items[0] && setCoverMedia(items[0])} />
+                  <Suspense fallback={<div className="skeleton h-10 w-40" />}>
+                    <MediaUploader compact label="Заменить заставку" onUploaded={(items) => items[0] && setCoverMedia(items[0])} />
+                  </Suspense>
                   {coverMedia ? (
                     <button type="button" onClick={() => setCoverMedia(null)} className="btn-compact btn-compact-danger">
                       Удалить заставку
@@ -220,7 +228,14 @@ export function PromptDetailsModal({
                   )}
                 </div>
                 <div className="edit-media-toolbar mt-2">
-                  <MediaUploader compact label="Добавить примеры" multiple onUploaded={(items) => setNewExamples((prev) => [...prev, ...items])} />
+                  <Suspense fallback={<div className="skeleton h-10 w-40" />}>
+                    <MediaUploader
+                      compact
+                      label="Добавить примеры"
+                      multiple
+                      onUploaded={(items) => setNewExamples((prev) => [...prev, ...items])}
+                    />
+                  </Suspense>
                 </div>
               </div>
 
@@ -389,7 +404,9 @@ export function PromptDetailsModal({
       </div>
 
       {lightboxOpen && galleryItems.length ? (
-        <MediaLightbox items={galleryItems} initialIndex={galleryIndex} onClose={() => setLightboxOpen(false)} />
+        <Suspense fallback={null}>
+          <MediaLightbox items={galleryItems} initialIndex={galleryIndex} onClose={() => setLightboxOpen(false)} />
+        </Suspense>
       ) : null}
     </>
   );

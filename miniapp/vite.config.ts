@@ -1,8 +1,31 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
+import { VitePWA } from "vite-plugin-pwa";
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react(),
+    VitePWA({
+      registerType: "autoUpdate",
+      includeAssets: [],
+      manifest: {
+        name: "Prompt Bank",
+        short_name: "Prompt Bank",
+        theme_color: "#ffffff",
+        background_color: "#ffffff",
+        display: "standalone",
+        start_url: "/",
+        icons: []
+      },
+      workbox: {
+        globPatterns: ["**/*.{js,css,html,woff2}"],
+        navigateFallbackDenylist: [/^\/api/, /^\/uploads/]
+      },
+      devOptions: {
+        enabled: false
+      }
+    })
+  ],
   build: {
     rollupOptions: {
       output: {

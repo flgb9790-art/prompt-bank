@@ -8,6 +8,7 @@ export function mergePromptUpdate(existing: Prompt, patch: Prompt): Prompt {
     keywords: patch.keywords?.length ? patch.keywords : existing.keywords,
     examples: patch.examples ?? existing.examples ?? [],
     content: patch.content !== undefined ? patch.content : existing.content,
-    contentExcerpt: patch.contentExcerpt !== undefined ? patch.contentExcerpt : existing.contentExcerpt
+    contentExcerpt: patch.contentExcerpt !== undefined ? patch.contentExcerpt : existing.contentExcerpt,
+    detailLoaded: patch.detailLoaded ?? existing.detailLoaded
   };
 }
