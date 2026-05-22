@@ -13,7 +13,8 @@
     "prisma:studio": "prisma studio",
     "thumbs:backfill": "tsx scripts/backfill-thumbs.ts",
     "db:migrate-railway": "tsx scripts/migrate-supabase-to-railway.ts",
-    "media:migrate-railway": "tsx scripts/migrate-supabase-media.ts"
+    "media:migrate-railway": "tsx scripts/migrate-supabase-media.ts",
+    "backup:full": "tsx scripts/full-backup.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.8.2",
