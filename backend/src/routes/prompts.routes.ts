@@ -17,6 +17,7 @@ async function optionalUserId(req: { header: (name: string) => string | undefine
 router.get("/", async (req, res, next) => {
   try {
     const userId = await optionalUserId(req);
+    const includeTotal = req.query.total !== "0";
     const result = await PromptService.list({
       search: req.query.search as string | undefined,
       category: req.query.category as string | undefined,
@@ -26,6 +27,7 @@ router.get("/", async (req, res, next) => {
       limit: req.query.limit ? Number(req.query.limit) : undefined,
       offset: req.query.offset ? Number(req.query.offset) : undefined,
       lite: req.query.lite === "1" || req.query.lite === "true",
+      includeTotal,
       userId
     });
     res.json(result);

@@ -32,6 +32,7 @@ import {
   writeFavoritesCache
 } from "./utils/favoritesCache";
 import { preloadPromptCovers } from "./utils/preloadCovers";
+import { hideAppSplash } from "./utils/appSplash";
 
 const WebApp = lazy(() => import("./WebApp").then((module) => ({ default: module.WebApp })));
 
@@ -179,6 +180,7 @@ function MiniAppApp() {
   const [promptsListLoading, setPromptsListLoading] = useState(true);
   const [error, setError] = useState("");
   const fullListLoadedRef = useRef(false);
+  const bootstrapStartedRef = useRef(false);
   const [selectedPrompt, setSelectedPrompt] = useState<Prompt>();
   const [createdPromptId, setCreatedPromptId] = useState<number>();
   const [searchQuery, setSearchQuery] = useState("");
@@ -303,14 +305,21 @@ function MiniAppApp() {
         limit: HOME_RECENT_LIMIT,
         offset: 0,
         lite: true,
-        sort: "new"
+        sort: "new",
+        includeTotal: false
       });
       const mapped = mapPromptsFromApi(homeData.items);
       setPrompts(mapped);
       setPromptsTotal(homeData.total);
       syncRecentFromPrompts(mapped);
-      preloadPromptCovers(mapped, 4);
       setLoading(false);
+
+      runDeferred(() => preloadPromptCovers(mapped, 3), 800);
+
+      void api
+        .getPrompts({ limit: 1, offset: 0, lite: true, sort: "new", includeTotal: true })
+        .then((data) => setPromptsTotal(data.total))
+        .catch(() => undefined);
 
       void Promise.all([
         loadFullPromptsList(),
@@ -441,14 +450,29 @@ function MiniAppApp() {
   }, []);
 
   useEffect(() => {
-    if (user?.id) {
-      setAuthTelegramId(String(user.id));
+    const actualUser = resolveTelegramUser() ?? mockTelegramUser;
+    if (actualUser?.id) {
+      setAuthTelegramId(String(actualUser.id));
     }
+    if (bootstrapStartedRef.current) return;
+    bootstrapStartedRef.current = true;
     void loadData();
     return () => {
       setAuthTelegramId(null);
     };
-  }, [user.id]);
+  }, []);
+
+  useEffect(() => {
+    if (!loading) {
+      hideAppSplash();
+    }
+  }, [loading]);
+
+  useEffect(() => {
+    if (error) {
+      hideAppSplash();
+    }
+  }, [error]);
 
   useEffect(() => {
     if (tab !== "favorites") return;
@@ -659,13 +683,9 @@ function MiniAppApp() {
     setSelectedPrompt(fresh);
   }
 
-  if (loading) {
-    return <BrandSplash />;
-  }
-
   return (
     <Layout freezeScroll={!isMiniAppExpanded}>
-      {tab === "home" && (
+      {tab === "home" && !loading ? (
         <HomePage
           recentPrompts={recentPrompts}
           recentLoading={loading}
@@ -679,7 +699,7 @@ function MiniAppApp() {
           isAdmin={isAdmin}
           onViewAll={() => handleTabChange("prompts")}
         />
-      )}
+      ) : null}
       {tab === "prompts" && (
         <PromptsPage
           key={activeTag ?? "all"}

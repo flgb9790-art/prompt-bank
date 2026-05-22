@@ -24,6 +24,8 @@ export type GetPromptsParams = {
   offset?: number;
   lite?: boolean;
   sort?: "new" | "old" | "usage";
+  /** false — не считать total на сервере (быстрее первый экран). */
+  includeTotal?: boolean;
 };
 
 export class ApiError extends Error {
@@ -189,6 +191,7 @@ export function buildPromptsQueryString(params?: GetPromptsParams) {
   if (params.offset !== undefined) searchParams.set("offset", String(params.offset));
   if (params.sort) searchParams.set("sort", params.sort);
   if (params.lite) searchParams.set("lite", "1");
+  if (params.includeTotal === false) searchParams.set("total", "0");
   return searchParams.toString();
 }
 

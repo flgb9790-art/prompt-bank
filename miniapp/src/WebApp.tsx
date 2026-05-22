@@ -6,6 +6,7 @@ import { BrandSplash } from "./components/BrandSplash";
 import { PromptDetailsModal, type PromptEditPayload } from "./components/PromptDetailsModal";
 const PromptForm = lazy(() => import("./components/PromptForm").then((module) => ({ default: module.PromptForm })));
 import { runDeferred } from "./utils/deferredPrefetch";
+import { hideAppSplash } from "./utils/appSplash";
 import {
   invalidateFavoritesCache,
   readFavoritesCache,
@@ -247,15 +248,31 @@ export function WebApp() {
           offset: 0,
           search: search.trim() || undefined,
           lite: true,
-          sort: "new"
+          sort: "new",
+          includeTotal: false
         });
         if (cancelled) return;
         const mapped = mapPromptsFromApi(promptsData.items);
         setPrompts(mapped);
         setPromptsTotal(promptsData.total);
-        preloadPromptCovers(mapped, 4);
         bootstrappedRef.current = true;
         setLoading(false);
+
+        runDeferred(() => preloadPromptCovers(mapped, 3), 800);
+
+        void api
+          .getPrompts({
+            limit: 1,
+            offset: 0,
+            search: search.trim() || undefined,
+            lite: true,
+            sort: "new",
+            includeTotal: true
+          })
+          .then((data) => {
+            if (!cancelled) setPromptsTotal(data.total);
+          })
+          .catch(console.error);
 
         void api
           .getPrompts({
@@ -325,6 +342,18 @@ export function WebApp() {
     setSearch("");
     setSort("new");
   }, [path]);
+
+  useEffect(() => {
+    if (!loading) {
+      hideAppSplash();
+    }
+  }, [loading]);
+
+  useEffect(() => {
+    if (error) {
+      hideAppSplash();
+    }
+  }, [error]);
 
   async function refreshWebFavorites(showSpinner: boolean) {
     if (!isAuthenticated) return;
@@ -919,7 +948,7 @@ export function WebApp() {
   );
 
   if (loading) {
-    return <BrandSplash />;
+    return null;
   }
 
   return (

@@ -1,12 +1,131 @@
 <!doctype html>
-<html lang="en">
+<html lang="ru" class="app-booting">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content" />
-    <title>Prompt Bank Mini App</title>
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content"
+    />
+    <title>Prompt Bank</title>
     <link rel="preload" href="/brand-logo.svg" as="image" type="image/svg+xml" />
+    <style>
+      html,
+      body {
+        margin: 0;
+        min-height: 100%;
+        background: #f8f9fd;
+      }
+
+      #root {
+        min-height: 100dvh;
+      }
+
+      #app-splash {
+        position: fixed;
+        inset: 0;
+        z-index: 99999;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 20px;
+        background: linear-gradient(165deg, #f8f9fd 0%, #eef2ff 45%, #f5f3ff 100%);
+        padding: 24px;
+      }
+
+      #app-splash-logo-wrap {
+        position: relative;
+        width: 132px;
+        height: 138px;
+        display: grid;
+        place-items: center;
+      }
+
+      #app-splash-logo {
+        position: relative;
+        z-index: 1;
+        width: 120px;
+        height: auto;
+        animation: app-splash-float 2.2s ease-in-out infinite;
+      }
+
+      #app-splash-glow {
+        position: absolute;
+        inset: 8%;
+        border-radius: 28px;
+        background: radial-gradient(circle, rgba(109, 93, 252, 0.35) 0%, rgba(109, 93, 252, 0) 70%);
+        animation: app-splash-pulse 2.2s ease-in-out infinite;
+      }
+
+      #app-splash-text {
+        margin: 0;
+        font: 600 15px/1.4 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+        color: #667085;
+        letter-spacing: 0.02em;
+      }
+
+      #app-splash-progress {
+        width: min(220px, 70vw);
+        height: 4px;
+        border-radius: 999px;
+        background: rgba(109, 93, 252, 0.15);
+        overflow: hidden;
+      }
+
+      #app-splash-progress-bar {
+        width: 42%;
+        height: 100%;
+        border-radius: inherit;
+        background: linear-gradient(90deg, #6d5dfc, #2f80ed, #6d5dfc);
+        background-size: 200% 100%;
+        animation: app-splash-progress 1.4s ease-in-out infinite;
+      }
+
+      @keyframes app-splash-float {
+        0%,
+        100% {
+          transform: translateY(0) scale(1);
+        }
+        50% {
+          transform: translateY(-8px) scale(1.03);
+        }
+      }
+
+      @keyframes app-splash-pulse {
+        0%,
+        100% {
+          opacity: 0.55;
+          transform: scale(0.96);
+        }
+        50% {
+          opacity: 1;
+          transform: scale(1.06);
+        }
+      }
+
+      @keyframes app-splash-progress {
+        0% {
+          transform: translateX(-120%);
+          background-position: 0% 50%;
+        }
+        100% {
+          transform: translateX(280%);
+          background-position: 100% 50%;
+        }
+      }
+    </style>
   </head>
   <body>
+    <div id="app-splash" role="status" aria-live="polite" aria-busy="true">
+      <div id="app-splash-logo-wrap">
+        <div id="app-splash-glow" aria-hidden="true"></div>
+        <img id="app-splash-logo" src="/brand-logo.svg" alt="" width="120" height="125" decoding="async" />
+      </div>
+      <p id="app-splash-text">Загрузка...</p>
+      <div id="app-splash-progress" aria-hidden="true">
+        <div id="app-splash-progress-bar"></div>
+      </div>
+    </div>
     <div id="root"></div>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script type="module" src="/src/main.tsx"></script>

@@ -33,6 +33,7 @@ function CardPreview({
       ? resolveCardMediaUrl(coverUrl, "image")
       : resolveMediaUrl(coverUrl)
   );
+  const [imageReady, setImageReady] = useState(!coverUrl || prompt.coverMediaType === "video");
 
   const sizeClass =
     variant === "desktop"
@@ -42,7 +43,8 @@ function CardPreview({
         : "prompt-card-preview--mobile";
 
   return (
-    <div className={`preview-4x5 ${sizeClass}`} aria-hidden>
+    <div className={`preview-4x5 ${sizeClass}${imageReady ? "" : " preview-4x5--loading"}`} aria-hidden>
+      {!imageReady ? <div className="preview-4x5-shimmer" aria-hidden /> : null}
       {prompt.coverMediaUrl ? (
         prompt.coverMediaType === "video" ? (
           <video src={resolveMediaUrl(prompt.coverMediaUrl)} muted playsInline preload="metadata" />
@@ -51,13 +53,17 @@ function CardPreview({
             src={imageSrc}
             alt=""
             draggable={false}
-            loading="lazy"
+            loading={imagePriority ? "eager" : "lazy"}
             decoding="async"
+            fetchPriority={imagePriority ? "high" : "auto"}
+            onLoad={() => setImageReady(true)}
             onError={() => {
               const fallback = resolveMediaUrl(coverUrl);
               if (imageSrc !== fallback) {
                 setImageSrc(fallback);
+                return;
               }
+              setImageReady(true);
             }}
           />
         )

@@ -132,42 +132,84 @@ export class PromptService {
     limit?: number;
     offset?: number;
     lite?: boolean;
+    includeTotal?: boolean;
     userId?: number;
   }) {
     const where = PromptService.buildListWhere(params);
     const includeExamples = params.lite !== true;
     const lite = params.lite === true;
     const useFavoriteJoin = Boolean(params.userId);
+    const includeTotal = params.includeTotal !== false;
     const orderBy = PromptService.listOrderBy(params.sort);
 
-    const [prompts, total, favoriteIds] = await Promise.all([
-      prisma.prompt.findMany({
-        where,
-        orderBy,
-        skip: params.offset ?? 0,
-        take: params.limit ?? 30,
-        include: {
-          category: true,
-          ...(!lite ? { keywords: { include: { keyword: true } } } : {}),
+    const listSelect = lite
+      ? {
+          id: true,
+          userId: true,
+          title: true,
+          content: true,
+          categoryId: true,
+          coverMediaUrl: true,
+          coverMediaType: true,
+          usageCount: true,
+          createdAt: true,
+          updatedAt: true,
+          category: {
+            select: {
+              id: true,
+              name: true,
+              slug: true,
+              icon: true,
+              color: true,
+              sortOrder: true
+            }
+          },
           ...(useFavoriteJoin
             ? { favorites: { where: { userId: params.userId! }, select: { id: true }, take: 1 } }
-            : {}),
-          ...(includeExamples ? { examples: true } : {})
+            : {})
         }
-      }),
-      prisma.prompt.count({ where }),
-      useFavoriteJoin ? Promise.resolve(new Set<number>()) : PromptService.favoritePromptIds(params.userId)
+      : undefined;
+
+    const findArgs = {
+      where,
+      orderBy,
+      skip: params.offset ?? 0,
+      take: params.limit ?? 30
+    };
+
+    const promptsPromise = lite
+      ? prisma.prompt.findMany({
+          ...findArgs,
+          select: listSelect!
+        })
+      : prisma.prompt.findMany({
+          ...findArgs,
+          include: {
+            category: true,
+            keywords: { include: { keyword: true } },
+            ...(useFavoriteJoin
+              ? { favorites: { where: { userId: params.userId! }, select: { id: true }, take: 1 } }
+              : {}),
+            ...(includeExamples ? { examples: true } : {})
+          }
+        });
+
+    const [prompts, total] = await Promise.all([
+      promptsPromise,
+      includeTotal ? prisma.prompt.count({ where }) : Promise.resolve(-1)
     ]);
+
+    const favoriteIds = useFavoriteJoin || lite ? new Set<number>() : await PromptService.favoritePromptIds(params.userId);
 
     const items = prompts.map((row) => {
       const { favorites, ...prompt } = row as typeof row & { favorites?: Array<{ id: number }> };
       const withFavorite = useFavoriteJoin
-        ? { ...prompt, isFavorite: (favorites?.length ?? 0) > 0, keywords: prompt.keywords ?? [] }
-        : PromptService.withFavorite({ ...prompt, keywords: prompt.keywords ?? [] }, favoriteIds);
+        ? { ...prompt, isFavorite: (favorites?.length ?? 0) > 0, keywords: (prompt as { keywords?: unknown[] }).keywords ?? [] }
+        : PromptService.withFavorite({ ...prompt, keywords: (prompt as { keywords?: unknown[] }).keywords ?? [] }, favoriteIds);
       return PromptService.toListResponse(withFavorite, new Set(), lite);
     });
 
-    return { items, total };
+    return { items, total: includeTotal ? total : items.length };
   }
 
   static async getById(id: number, userId?: number) {
