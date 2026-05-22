@@ -119,7 +119,7 @@
       window.__hideAppSplash = function () {
         var splash = document.getElementById("app-splash");
         if (!splash) return;
-        var delay = Math.max(0, 800 - (Date.now() - (window.__APP_SPLASH_AT || Date.now())));
+        var delay = Math.max(0, 300 - (Date.now() - (window.__APP_SPLASH_AT || Date.now())));
         window.setTimeout(function () {
           splash.remove();
           document.documentElement.classList.remove("app-booting");

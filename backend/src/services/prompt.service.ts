@@ -26,6 +26,20 @@ const promptInclude = {
 } as const;
 
 const LIST_EXCERPT_MAX = 320;
+const PROMPT_DETAIL_CACHE_MS = 120_000;
+const promptDetailCache = new Map<number | string, { value: unknown; expires: number }>();
+
+function invalidatePromptDetailCache(promptId?: number) {
+  if (typeof promptId !== "number") {
+    promptDetailCache.clear();
+    return;
+  }
+  for (const key of promptDetailCache.keys()) {
+    if (String(key).startsWith(`${promptId}:`)) {
+      promptDetailCache.delete(key);
+    }
+  }
+}
 
 export class PromptService {
   private static async favoritePromptIds(userId?: number): Promise<Set<number>> {
@@ -222,16 +236,32 @@ export class PromptService {
   }
 
   static async getById(id: number, userId?: number) {
-    const favoriteIds = await PromptService.favoritePromptIds(userId);
+    const cacheKey = `${id}:${userId ?? 0}`;
+    const cached = promptDetailCache.get(cacheKey);
+    if (cached && cached.expires > Date.now()) {
+      return cached.value;
+    }
+
     const prompt = await prisma.prompt.findUnique({
       where: { id },
       include: {
-        ...promptInclude,
-        user: true
+        category: true,
+        keywords: { include: { keyword: true } },
+        examples: true,
+        ...(userId
+          ? { favorites: { where: { userId }, select: { id: true }, take: 1 } }
+          : {})
       }
     });
     if (!prompt) return null;
-    return PromptService.withFavorite(prompt, favoriteIds);
+
+    const { favorites, ...rest } = prompt as typeof prompt & { favorites?: Array<{ id: number }> };
+    const result = {
+      ...rest,
+      isFavorite: (favorites?.length ?? 0) > 0
+    };
+    promptDetailCache.set(cacheKey, { value: result, expires: Date.now() + PROMPT_DETAIL_CACHE_MS });
+    return result;
   }
 
   static async create(input: PromptCreateInput) {
@@ -282,6 +312,7 @@ export class PromptService {
       where: { id },
       data
     });
+    invalidatePromptDetailCache(id);
 
     if (keywords) {
       await prisma.promptKeyword.deleteMany({ where: { promptId: id } });
@@ -296,6 +327,7 @@ export class PromptService {
   }
 
   static async remove(id: number) {
+    invalidatePromptDetailCache(id);
     return prisma.prompt.delete({ where: { id } });
   }
 
@@ -322,6 +354,7 @@ export class PromptService {
       });
     }
 
+    invalidatePromptDetailCache(promptId);
     return PromptService.getById(promptId, userId);
   }
 

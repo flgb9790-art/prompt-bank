@@ -5,7 +5,7 @@ declare global {
   }
 }
 
-const MIN_VISIBLE_MS = 800;
+const MIN_VISIBLE_MS = 300;
 
 export function markAppSplashVisible() {
   if (!window.__APP_SPLASH_AT) {

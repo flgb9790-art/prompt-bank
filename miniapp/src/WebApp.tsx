@@ -50,6 +50,7 @@ const storageKey = "prompt-bank-web-auth";
 const CATEGORIES_CACHE_KEY = "prompt-bank-categories";
 const TAGS_CACHE_KEY = "prompt-bank-tags";
 const PROMPTS_PER_PAGE = 12;
+const BOOTSTRAP_PROMPTS_LIMIT = 12;
 const PROMPTS_FETCH_LIMIT = 40;
 const FAVORITES_FETCH_LIMIT = 40;
 const SEARCH_DEBOUNCE_MS = 350;
@@ -246,25 +247,38 @@ export function WebApp() {
       setLoading(true);
       setError("");
       try {
-        const data = await api.bootstrap(PROMPTS_FETCH_LIMIT);
+        const data = await api.bootstrap(BOOTSTRAP_PROMPTS_LIMIT);
         if (cancelled) return;
-        const mapped = mapPromptsFromApi(data.prompts.items);
+        const mapped = mapPromptsFromApi(data.prompts.items).map(withPromptDetails);
         setPrompts(mapped);
         setPromptsTotal(data.prompts.total);
         setCategories(data.categories);
-        setTags(data.tags);
         writeReferenceCache(CATEGORIES_CACHE_KEY, data.categories);
-        writeReferenceCache(TAGS_CACHE_KEY, data.tags);
         setIsAdmin(Boolean(data.me.isAdmin));
         setDbUserId(data.me.user?.id ?? null);
-        setUserUsageTotal(data.me.usageTotal ?? 0);
-        const favorites = mapPromptsFromApi(data.favorites);
-        setFavoritePrompts(favorites);
-        writeFavoritesCache(favorites);
         bootstrappedRef.current = true;
         scheduleWebPrefetch(mapped.length, data.prompts.total);
+
+        const cachedFavorites = readFavoritesCache();
+        if (cachedFavorites) {
+          setFavoritePrompts(cachedFavorites);
+        }
+
         runDeferred(() => {
-          mapped.slice(0, 4).forEach((item) => api.prefetchPrompt(item.id));
+          void api
+            .getTags()
+            .then((tags) => {
+              setTags(tags);
+              writeReferenceCache(TAGS_CACHE_KEY, tags);
+            })
+            .catch(console.error);
+          void api
+            .getMe()
+            .then((me) => setUserUsageTotal(me.usageTotal ?? 0))
+            .catch(console.error);
+          if (!cachedFavorites) {
+            void refreshWebFavorites(false);
+          }
         });
       } catch (err) {
         if (!cancelled) {

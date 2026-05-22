@@ -41,6 +41,7 @@ const TAGS_CACHE_KEY = "prompt-bank-tags";
 const WebApp = lazy(() => import("./WebApp").then((module) => ({ default: module.WebApp })));
 
 const quickTags = ["beauty", "video", "logo", "telegram", "cursor", "ads", "react", "realistic"];
+const BOOTSTRAP_PROMPTS_LIMIT = 12;
 const MINI_PROMPTS_PAGE = 30;
 const HOME_RECENT_LIMIT = 8;
 const FAVORITES_FETCH_LIMIT = 40;
@@ -261,31 +262,45 @@ function MiniAppApp() {
     }
   }
 
+  async function loadDeferredBootstrapData() {
+    const cachedFavorites = readFavoritesCache();
+    if (cachedFavorites) {
+      setFavoritePrompts(cachedFavorites);
+    }
+
+    runDeferred(() => {
+      void api
+        .getTags()
+        .then((tags) => writeReferenceCache(TAGS_CACHE_KEY, tags))
+        .catch(() => undefined);
+      void api
+        .getMe()
+        .then((me) => setUserUsageTotal(me.usageTotal ?? 0))
+        .catch(() => undefined);
+      if (!cachedFavorites) {
+        void refreshFavoritesList(false);
+      }
+    });
+  }
+
   async function loadData() {
     setLoading(true);
     setPromptsListLoading(true);
     fullListLoadedRef.current = false;
     setError("");
     try {
-      const data = await api.bootstrap(MINI_PROMPTS_PAGE);
-      const mapped = mapPromptsFromApi(data.prompts.items);
+      const data = await api.bootstrap(BOOTSTRAP_PROMPTS_LIMIT);
+      const mapped = mapPromptsFromApi(data.prompts.items).map(withPromptDetails);
       setCategories(data.categories);
       writeReferenceCache(CATEGORIES_CACHE_KEY, data.categories);
-      writeReferenceCache(TAGS_CACHE_KEY, data.tags);
       setIsAdmin(data.me.isAdmin);
-      setUserUsageTotal(data.me.usageTotal ?? 0);
       setPrompts(mapped);
       setPromptsTotal(data.prompts.total);
       syncRecentFromPrompts(mapped);
-      const favorites = mapPromptsFromApi(data.favorites);
-      setFavoritePrompts(favorites);
-      writeFavoritesCache(favorites);
-      fullListLoadedRef.current = mapped.length >= MINI_PROMPTS_PAGE;
+      fullListLoadedRef.current = mapped.length >= BOOTSTRAP_PROMPTS_LIMIT;
       setPromptsListLoading(false);
       scheduleMiniPrefetch(mapped.length, data.prompts.total, listFiltersRef.current, activeTag);
-      runDeferred(() => {
-        mapped.slice(0, 4).forEach((item) => api.prefetchPrompt(item.id));
-      });
+      void loadDeferredBootstrapData();
     } catch {
       setError("Не удалось загрузить данные.");
       setPromptsListLoading(false);
