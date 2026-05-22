@@ -10,6 +10,7 @@ import categoriesRouter from "./routes/categories.routes";
 import uploadRouter from "./routes/upload.routes";
 import tagsRouter from "./routes/tags.routes";
 import bootstrapRouter from "./routes/bootstrap.routes";
+import meRouter from "./routes/me.routes";
 import { extractKeywords } from "./keywordExtractor";
 import { startBot } from "./bot";
 import { authRequired, isAdminRequest, readTelegramId } from "./auth";
@@ -40,25 +41,7 @@ app.get("/api/health", (_req, res) => {
 });
 
 app.use("/api/bootstrap", bootstrapRouter);
-
-app.get("/api/me", async (req, res, next) => {
-  try {
-    const telegramId = readTelegramId(req);
-    if (!telegramId) {
-      return res.json({ authenticated: false, isAdmin: false, user: null });
-    }
-    const user = await prisma.user.upsert({
-      where: { telegramId },
-      update: {},
-      create: { telegramId }
-    });
-    const usageTotal = await PromptService.getUserUsageTotal(user.id);
-
-    return res.json({ authenticated: true, isAdmin: isAdminRequest(req), user, usageTotal });
-  } catch (error) {
-    return next(error);
-  }
-});
+app.use("/api/me", meRouter);
 
 app.use("/api/prompts", promptsRouter);
 app.use("/api/categories", categoriesRouter);

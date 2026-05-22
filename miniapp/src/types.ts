@@ -95,13 +95,43 @@ export type MeResponse = {
   authenticated: boolean;
   isAdmin: boolean;
   usageTotal?: number;
+  stats?: UserStats;
+  settings?: UserSettings;
   user: {
     id: number;
     telegramId: string;
     username?: string | null;
     firstName?: string | null;
     lastName?: string | null;
+    createdAt?: string;
   } | null;
+};
+
+export type UserSettings = {
+  saveViewHistory: boolean;
+  saveCopyHistory: boolean;
+  createdAt?: string;
+};
+
+export type UserStats = {
+  favoritesCount: number;
+  copiedCount: number;
+  viewedCount: number;
+  createdPromptsCount: number;
+  usageCountTotal: number;
+};
+
+export type PromptHistoryItem = {
+  id: number;
+  viewedAt?: string;
+  copiedAt?: string;
+  source?: string;
+  prompt: Prompt | null;
+};
+
+export type PromptHistoryResponse = {
+  items: PromptHistoryItem[];
+  total: number;
 };
 
 export type TagStat = {

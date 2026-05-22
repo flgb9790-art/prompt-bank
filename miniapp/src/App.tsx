@@ -4,7 +4,10 @@ import { mergePromptUpdate } from "./utils/mergePrompt";
 import { normalizeTagName } from "./utils/tagFilter";
 import { countCategoriesWithPromptCount, countCategoriesWithPrompts } from "./utils/stats";
 import { api, invalidateReferenceCaches, setAuthTelegramId } from "./api";
-import type { Category, Prompt, PromptCreatePayload, TelegramUser } from "./types";
+import type { Category, MeResponse, Prompt, PromptCreatePayload, TelegramUser } from "./types";
+import { SettingsScreen } from "./components/settings/SettingsScreen";
+import { PromptHistoryScreen } from "./components/history/PromptHistoryScreen";
+import { recordPromptCopy, trackPromptView } from "./utils/promptTracking";
 import type { PromptEditPayload } from "./components/PromptDetailsModal";
 import { Layout } from "./components/Layout";
 import { BottomNav, type TabKey } from "./components/BottomNav";
@@ -12,7 +15,6 @@ import { HomePage } from "./pages/HomePage";
 import { PromptsPage } from "./pages/PromptsPage";
 import { AddPromptPage } from "./pages/AddPromptPage";
 import { FavoritesPage } from "./pages/FavoritesPage";
-import { ProfilePage } from "./pages/ProfilePage";
 import { SearchPage } from "./pages/SearchPage";
 import { BrandSplash } from "./components/BrandSplash";
 import { PromptDetailsModal } from "./components/PromptDetailsModal";
@@ -195,6 +197,8 @@ function MiniAppApp() {
   const [activeTag, setActiveTag] = useState<string>();
   const [isAdmin, setIsAdmin] = useState(false);
   const [userUsageTotal, setUserUsageTotal] = useState(0);
+  const [me, setMe] = useState<MeResponse | null>(null);
+  const [profileScreen, setProfileScreen] = useState<"copied" | "viewed" | null>(null);
   const [user, setUser] = useState<TelegramUser>(() => resolveTelegramUser() ?? mockTelegramUser);
   const [toastMessage, setToastMessage] = useState("");
   const [isMiniAppExpanded, setIsMiniAppExpanded] = useState(true);
@@ -220,9 +224,10 @@ function MiniAppApp() {
         tab,
         activeTag,
         searchQuery,
-        selectedPromptTitle: selectedPrompt?.title
+        selectedPromptTitle: selectedPrompt?.title,
+        profileScreen
       }),
-    [tab, activeTag, searchQuery, selectedPrompt?.title]
+    [tab, activeTag, searchQuery, selectedPrompt?.title, profileScreen]
   );
 
   useDocumentTitle(documentTitleSuffix);
@@ -289,7 +294,10 @@ function MiniAppApp() {
         .catch(() => undefined);
       void api
         .getMe()
-        .then((me) => setUserUsageTotal(me.usageTotal ?? 0))
+        .then((meResponse) => {
+          setMe(meResponse.authenticated ? meResponse : null);
+          setUserUsageTotal(meResponse.usageTotal ?? meResponse.stats?.usageCountTotal ?? 0);
+        })
         .catch(() => undefined);
       if (!cachedFavorites) {
         void refreshFavoritesList(false);
@@ -541,6 +549,7 @@ function MiniAppApp() {
     setSelectedPrompt({ ...prompt, examples: prompt.examples ?? [] });
     setPromptShareUrl(prompt.id, replaceUrl);
     if (hasFullPromptDetails(prompt)) {
+      trackPromptView(prompt.id, "miniapp", true);
       return;
     }
     try {
@@ -549,6 +558,7 @@ function MiniAppApp() {
       setSelectedPrompt(full);
       setPrompts((prev) => prev.map((item) => (item.id === full.id ? mergePromptUpdate(item, full) : item)));
       syncRecentPrompt(full);
+      trackPromptView(full.id, "miniapp", true);
     } catch {
       if (openPromptRequestRef.current !== requestId) return;
       closePromptModal();
@@ -596,7 +606,33 @@ function MiniAppApp() {
     void api.getCategories().then(setCategories).catch(() => undefined);
   }
 
+  async function refreshMe() {
+    try {
+      const next = await api.getMe();
+      setMe(next.authenticated ? next : null);
+      setUserUsageTotal(next.usageTotal ?? next.stats?.usageCountTotal ?? 0);
+    } catch {
+      // ignore
+    }
+  }
+
+  async function handleUpdateSettings(settings: Partial<{ saveViewHistory: boolean; saveCopyHistory: boolean }>) {
+    const updated = await api.updateSettings(settings);
+    setMe((current) =>
+      current
+        ? {
+            ...current,
+            settings: {
+              ...current.settings,
+              ...updated
+            }
+          }
+        : current
+    );
+  }
+
   function handleTabChange(nextTab: TabKey) {
+    setProfileScreen(null);
     setActiveTag(undefined);
     if (nextTab !== "search") {
       setSearchQuery("");
@@ -629,7 +665,7 @@ function MiniAppApp() {
         )
       );
       setUserUsageTotal((prev) => prev + 1);
-      void api.increaseUsage(prompt.id).catch(() => undefined);
+      void recordPromptCopy(prompt.id, "miniapp", true).then(() => refreshMe());
     } catch {
       setToastMessage("Не удалось скопировать промпт");
     }
@@ -722,9 +758,52 @@ function MiniAppApp() {
           onTagClick={handleSelectTag}
         />
       )}
-      {tab === "profile" && (
-        <ProfilePage user={user} promptsCount={prompts.length} favoritesCount={favorites.length} />
-      )}
+      {tab === "profile" && profileScreen === "copied" ? (
+        <PromptHistoryScreen
+          mode="copied"
+          variant="mini"
+          isAuthenticated
+          onBack={() => setProfileScreen(null)}
+          onLogin={() => undefined}
+          onOpenPrompt={openPrompt}
+          onCopyPrompt={handleCopyPrompt}
+          onToggleFavorite={handleToggleFavorite}
+          onNavigatePrompts={() => {
+            setProfileScreen(null);
+            handleTabChange("prompts");
+          }}
+        />
+      ) : null}
+      {tab === "profile" && profileScreen === "viewed" ? (
+        <PromptHistoryScreen
+          mode="viewed"
+          variant="mini"
+          isAuthenticated
+          onBack={() => setProfileScreen(null)}
+          onLogin={() => undefined}
+          onOpenPrompt={openPrompt}
+          onCopyPrompt={handleCopyPrompt}
+          onToggleFavorite={handleToggleFavorite}
+          onNavigatePrompts={() => {
+            setProfileScreen(null);
+            handleTabChange("prompts");
+          }}
+        />
+      ) : null}
+      {tab === "profile" && !profileScreen ? (
+        <SettingsScreen
+          user={user}
+          me={me}
+          isAuthenticated
+          variant="mini"
+          showLogout={false}
+          onNavigateCopied={() => setProfileScreen("copied")}
+          onNavigateViewed={() => setProfileScreen("viewed")}
+          onLogout={() => undefined}
+          onLogin={() => undefined}
+          onUpdateSettings={handleUpdateSettings}
+        />
+      ) : null}
       {tab === "add" && (
         <AddPromptPage
           categories={categories}

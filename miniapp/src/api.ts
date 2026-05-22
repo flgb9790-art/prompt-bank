@@ -3,10 +3,12 @@ import type {
   MeResponse,
   Prompt,
   PromptCreatePayload,
+  PromptHistoryResponse,
   PromptListResponse,
   PromptUpdatePayload,
   BootstrapResponse,
-  TagStat
+  TagStat,
+  UserSettings
 } from "./types";
 import { readReferenceCache, removeReferenceCache, writeReferenceCache } from "./utils/referenceCache";
 
@@ -152,6 +154,39 @@ export const api = {
   },
   increaseUsage(id: number) {
     return request<Prompt>(`/api/prompts/${id}/usage`, { method: "POST" });
+  },
+  recordView(id: number, source: "web" | "miniapp" = "web") {
+    return request<{ ok: boolean; recorded: boolean }>(`/api/prompts/${id}/view`, {
+      method: "POST",
+      body: JSON.stringify({ source })
+    });
+  },
+  recordCopy(id: number, source: "web" | "miniapp" = "web") {
+    return request<{ ok: boolean; recorded: boolean; prompt?: Prompt }>(`/api/prompts/${id}/copy`, {
+      method: "POST",
+      body: JSON.stringify({ source })
+    });
+  },
+  getUserStats() {
+    return request<NonNullable<MeResponse["stats"]>>("/api/me/stats");
+  },
+  getViewedPrompts(limit = 30, offset = 0) {
+    return request<PromptHistoryResponse>(`/api/me/viewed-prompts?limit=${limit}&offset=${offset}`);
+  },
+  getCopiedPrompts(limit = 30, offset = 0) {
+    return request<PromptHistoryResponse>(`/api/me/copied-prompts?limit=${limit}&offset=${offset}`);
+  },
+  clearViewedPrompts() {
+    return request<void>("/api/me/viewed-prompts", { method: "DELETE" });
+  },
+  clearCopiedPrompts() {
+    return request<void>("/api/me/copied-prompts", { method: "DELETE" });
+  },
+  updateSettings(payload: Partial<UserSettings>) {
+    return request<UserSettings>("/api/me/settings", {
+      method: "PATCH",
+      body: JSON.stringify(payload)
+    });
   },
   async getCategories() {
     const cached = readReferenceCache<Category[]>(CATEGORIES_CACHE_KEY);

@@ -1,7 +1,10 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { BarChart3, Heart, Layers, Sparkles, X } from "lucide-react";
 import { api, ApiError, invalidateReferenceCaches, setAuthTelegramId } from "./api";
-import type { Category, Prompt, PromptCreatePayload, TagStat, TelegramUser } from "./types";
+import type { Category, MeResponse, Prompt, PromptCreatePayload, TagStat, TelegramUser } from "./types";
+import { SettingsScreen } from "./components/settings/SettingsScreen";
+import { PromptHistoryScreen } from "./components/history/PromptHistoryScreen";
+import { recordPromptCopy, trackPromptView } from "./utils/promptTracking";
 import { BrandSplash } from "./components/BrandSplash";
 import { PromptDetailsModal, type PromptEditPayload } from "./components/PromptDetailsModal";
 const PromptForm = lazy(() => import("./components/PromptForm").then((module) => ({ default: module.PromptForm })));
@@ -48,7 +51,7 @@ import {
 
 type SortValue = "new" | "old" | "usage";
 type ViewMode = "grid" | "list";
-type RoutePath = "/" | "/prompts" | "/favorites" | "/categories" | "/tags" | "/recent" | "/settings";
+type RoutePath = "/" | "/prompts" | "/favorites" | "/categories" | "/tags" | "/recent" | "/settings" | "/copied" | "/viewed";
 
 const storageKey = "prompt-bank-web-auth";
 const CATEGORIES_CACHE_KEY = "prompt-bank-categories";
@@ -62,7 +65,7 @@ const telegramAuthUrl = (import.meta.env.VITE_TELEGRAM_AUTH_URL as string | unde
 const telegramBotUsernameFromEnv = (import.meta.env.VITE_TELEGRAM_BOT_USERNAME as string | undefined)?.trim();
 
 function getRoutePath(pathname: string): RoutePath {
-  const allowed: RoutePath[] = ["/", "/prompts", "/favorites", "/categories", "/tags", "/recent", "/settings"];
+  const allowed: RoutePath[] = ["/", "/prompts", "/favorites", "/categories", "/tags", "/recent", "/settings", "/copied", "/viewed"];
   return allowed.includes(pathname as RoutePath) ? (pathname as RoutePath) : "/";
 }
 
@@ -103,6 +106,7 @@ export function WebApp() {
   const [dbUserId, setDbUserId] = useState<number | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [userUsageTotal, setUserUsageTotal] = useState(0);
+  const [me, setMe] = useState<MeResponse | null>(null);
   const [page, setPage] = useState(1);
   const isAuthenticated = Boolean(user);
   const bootstrappedRef = useRef(false);
@@ -173,6 +177,18 @@ export function WebApp() {
     return prompts.filter((prompt) => prompt.userId === dbUserId).length;
   }, [dbUserId, prompts]);
 
+  async function refreshMe() {
+    try {
+      const next = await api.getMe();
+      setMe(next.authenticated ? next : null);
+      setIsAdmin(Boolean(next.isAdmin));
+      setDbUserId(next.user?.id ?? null);
+      setUserUsageTotal(next.usageTotal ?? next.stats?.usageCountTotal ?? 0);
+    } catch (error) {
+      console.error(error);
+    }
+  }
+
   async function loadBootstrap() {
     setLoading(true);
     setError("");
@@ -186,7 +202,8 @@ export function WebApp() {
       setTags(tagsData);
       setIsAdmin(Boolean(me.isAdmin));
       setDbUserId(me.user?.id ?? null);
-      setUserUsageTotal(me.usageTotal ?? 0);
+      setUserUsageTotal(me.usageTotal ?? me.stats?.usageCountTotal ?? 0);
+      setMe(me.authenticated ? me : null);
     } catch (err) {
       setError("Не удалось загрузить данные.");
       console.error(err);
@@ -293,7 +310,10 @@ export function WebApp() {
             .catch(console.error);
           void api
             .getMe()
-            .then((me) => setUserUsageTotal(me.usageTotal ?? 0))
+            .then((meResponse) => {
+              setMe(meResponse.authenticated ? meResponse : null);
+              setUserUsageTotal(meResponse.usageTotal ?? meResponse.stats?.usageCountTotal ?? 0);
+            })
             .catch(console.error);
           if (!cachedFavorites) {
             void refreshWebFavorites(false);
@@ -412,6 +432,7 @@ export function WebApp() {
     setSelectedPrompt({ ...prompt, examples: prompt.examples ?? [] });
     setPromptShareUrl(prompt.id, replaceUrl);
     if (hasFullPromptDetails(prompt)) {
+      trackPromptView(prompt.id, "web", isAuthenticated);
       return;
     }
     try {
@@ -419,6 +440,7 @@ export function WebApp() {
       if (openPromptRequestRef.current !== requestId) return;
       setSelectedPrompt(full);
       upsertPromptInList(full);
+      trackPromptView(full.id, "web", isAuthenticated);
     } catch (err) {
       if (openPromptRequestRef.current !== requestId) return;
       console.error(err);
@@ -509,8 +531,10 @@ export function WebApp() {
           item.id === ready.id ? mergePromptUpdate(item, { ...ready, usageCount: item.usageCount + 1 }) : item
         )
       );
-      setUserUsageTotal((prev) => prev + 1);
-      void api.increaseUsage(prompt.id).catch(console.error);
+      if (isAuthenticated) {
+        setUserUsageTotal((prev) => prev + 1);
+        void recordPromptCopy(prompt.id, "web", true).then(() => refreshMe());
+      }
     } catch {
       setToast("Не удалось скопировать промпт");
     }
@@ -645,8 +669,27 @@ export function WebApp() {
     setDbUserId(null);
     setIsAdmin(false);
     setUserUsageTotal(0);
+    setMe(null);
     setToast("Вы вышли");
+    if (path === "/copied" || path === "/viewed") {
+      navigate("/settings");
+    }
     void loadPrompts();
+  }
+
+  async function handleUpdateSettings(settings: Partial<{ saveViewHistory: boolean; saveCopyHistory: boolean }>) {
+    const updated = await api.updateSettings(settings);
+    setMe((current) =>
+      current
+        ? {
+            ...current,
+            settings: {
+              ...current.settings,
+              ...updated
+            }
+          }
+        : current
+    );
   }
 
   function handleSelectTag(tagName: string) {
@@ -840,20 +883,40 @@ export function WebApp() {
       {path === "/recent" ? renderPromptList(prompts) : null}
 
       {path === "/settings" ? (
-        isAuthenticated ? (
-          <div className="surface-card max-w-xl p-5">
-            <h2 className="text-lg font-semibold text-[var(--text)]">Настройки</h2>
-            <p className="mt-2 text-sm text-[var(--muted)]">Профиль Telegram: {user?.username ? `@${user.username}` : user?.first_name}</p>
-            <p className="text-sm text-[var(--muted)]">Добавленных промптов: {userPromptsCount}</p>
-            <button type="button" className="btn-secondary mt-4 text-[var(--red)]" onClick={logout}>
-              Выйти
-            </button>
-          </div>
-        ) : (
-          <div className="surface-card empty-state">
-            <p className="text-base font-medium text-[var(--text)]">Нужно войти для доступа к настройкам.</p>
-          </div>
-        )
+        <SettingsScreen
+          user={user}
+          me={me}
+          isAuthenticated={isAuthenticated}
+          onNavigateCopied={() => navigate("/copied")}
+          onNavigateViewed={() => navigate("/viewed")}
+          onLogout={logout}
+          onLogin={loginTelegram}
+          onUpdateSettings={handleUpdateSettings}
+        />
+      ) : null}
+
+      {path === "/copied" ? (
+        <PromptHistoryScreen
+          mode="copied"
+          isAuthenticated={isAuthenticated}
+          onLogin={loginTelegram}
+          onOpenPrompt={openPrompt}
+          onCopyPrompt={handleCopy}
+          onToggleFavorite={handleToggleFavorite}
+          onNavigatePrompts={() => navigate("/prompts")}
+        />
+      ) : null}
+
+      {path === "/viewed" ? (
+        <PromptHistoryScreen
+          mode="viewed"
+          isAuthenticated={isAuthenticated}
+          onLogin={loginTelegram}
+          onOpenPrompt={openPrompt}
+          onCopyPrompt={handleCopy}
+          onToggleFavorite={handleToggleFavorite}
+          onNavigatePrompts={() => navigate("/prompts")}
+        />
       ) : null}
     </>
   );
@@ -912,7 +975,7 @@ export function WebApp() {
         onAuthSuccess={(telegramUser) => {
           setUser(telegramUser);
           setToast("Успешный вход через Telegram");
-          void loadBootstrap().then(() => loadPrompts());
+          void refreshMe().then(() => loadPrompts());
         }}
       />
       {toast ? <div className="toast fixed bottom-24 right-4 z-[80] lg:bottom-8">{toast}</div> : null}

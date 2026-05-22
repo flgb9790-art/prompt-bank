@@ -9,16 +9,20 @@ datasource db {
 }
 
 model User {
-  id         Int           @id @default(autoincrement())
-  telegramId String        @unique
-  username   String?
-  firstName  String?
-  lastName   String?
-  prompts    Prompt[]
-  favorites  Favorite[]
-  usages     PromptUsage[]
-  createdAt  DateTime      @default(now())
-  updatedAt  DateTime      @updatedAt
+  id               Int           @id @default(autoincrement())
+  telegramId       String        @unique
+  username         String?
+  firstName        String?
+  lastName         String?
+  saveViewHistory  Boolean       @default(true)
+  saveCopyHistory  Boolean       @default(true)
+  prompts          Prompt[]
+  favorites        Favorite[]
+  usages           PromptUsage[]
+  views            PromptView[]
+  copies           PromptCopy[]
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
 }
 
 model Category {
@@ -49,11 +53,43 @@ model Prompt {
   examples       MediaExample[]
   favorites      Favorite[]
   usages         PromptUsage[]
+  views          PromptView[]
+  copies         PromptCopy[]
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
 
   @@index([createdAt(sort: Desc)])
   @@index([categoryId])
+}
+
+model PromptView {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  promptId  Int
+  source    String   @default("web")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  prompt    Prompt   @relation(fields: [promptId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([promptId])
+  @@index([createdAt(sort: Desc)])
+  @@index([userId, createdAt(sort: Desc)])
+}
+
+model PromptCopy {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  promptId  Int
+  source    String   @default("web")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  prompt    Prompt   @relation(fields: [promptId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([promptId])
+  @@index([createdAt(sort: Desc)])
+  @@index([userId, createdAt(sort: Desc)])
 }
 
 model PromptUsage {

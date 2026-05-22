@@ -2,7 +2,7 @@ import { Home, LayoutGrid, Plus, Search, Star, User } from "lucide-react";
 import type { ReactNode } from "react";
 import { BrandLogo } from "../BrandLogo";
 
-type RouteKey = "/" | "/prompts" | "/favorites" | "/recent" | "/tags" | "/categories" | "/settings";
+type RouteKey = "/" | "/prompts" | "/favorites" | "/recent" | "/tags" | "/categories" | "/settings" | "/copied" | "/viewed";
 
 type Props = {
   currentPath: RouteKey;

@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { prisma } from "../db";
 import { PromptService } from "../services/prompt.service";
+import { HistoryService } from "../services/history.service";
 import { authRequired, isAdminRequest, readTelegramId } from "../auth";
 import { resolveUserIdByTelegramId } from "../user";
 
@@ -135,6 +136,43 @@ router.post("/:id/favorite", authRequired, async (req, res, next) => {
       return res.status(404).json({ message: "Prompt not found" });
     }
     res.json(updated);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post("/:id/view", authRequired, async (req, res, next) => {
+  try {
+    const id = Number(req.params.id);
+    const telegramId = readTelegramId(req);
+    if (!telegramId) {
+      return res.status(401).json({ error: "AUTH_REQUIRED" });
+    }
+    const userId = await resolveUserIdByTelegramId(telegramId);
+    const result = await HistoryService.recordView(userId, id, req.body?.source);
+    if (result.notFound) {
+      return res.status(404).json({ message: "Prompt not found" });
+    }
+    res.json({ ok: true, recorded: result.recorded });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post("/:id/copy", authRequired, async (req, res, next) => {
+  try {
+    const id = Number(req.params.id);
+    const telegramId = readTelegramId(req);
+    if (!telegramId) {
+      return res.status(401).json({ error: "AUTH_REQUIRED" });
+    }
+    const userId = await resolveUserIdByTelegramId(telegramId);
+    const result = await HistoryService.recordCopy(userId, id, req.body?.source);
+    if (result.notFound) {
+      return res.status(404).json({ message: "Prompt not found" });
+    }
+    const updated = await PromptService.getById(id, userId);
+    res.json({ ok: true, recorded: result.recorded, prompt: updated });
   } catch (error) {
     next(error);
   }

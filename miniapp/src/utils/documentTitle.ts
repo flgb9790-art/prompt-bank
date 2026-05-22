@@ -38,6 +38,8 @@ export function webRouteDocumentTitle(input: {
   if (input.path === "/tags") return "Теги";
   if (input.path === "/recent") return "Последние";
   if (input.path === "/settings") return "Настройки";
+  if (input.path === "/copied") return "Скопированные промпты";
+  if (input.path === "/viewed") return "Просмотренные промпты";
   if (input.path === "/prompts") {
     if (input.activeTag) return `Тег: ${input.activeTag}`;
     if (input.activeCategory) {
@@ -55,10 +57,13 @@ export function miniRouteDocumentTitle(input: {
   activeTag?: string;
   searchQuery?: string;
   selectedPromptTitle?: string;
+  profileScreen?: "copied" | "viewed" | null;
 }) {
   if (input.selectedPromptTitle) {
     return input.selectedPromptTitle;
   }
+  if (input.profileScreen === "copied") return "Скопированные";
+  if (input.profileScreen === "viewed") return "Просмотренные";
   if (input.tab === "home") return "Главная";
   if (input.tab === "prompts") {
     return input.activeTag ? `Тег: ${input.activeTag}` : "Промпты";

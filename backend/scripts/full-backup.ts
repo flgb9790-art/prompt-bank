@@ -19,7 +19,9 @@ const TABLES = [
   "PromptKeyword",
   "MediaExample",
   "Favorite",
-  "PromptUsage"
+  "PromptUsage",
+  "PromptView",
+  "PromptCopy"
 ] as const;
 
 function timestamp() {
