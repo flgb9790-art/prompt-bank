@@ -20,6 +20,7 @@ import { AuthButton } from "./components/web/AuthButton";
 import { clearPromptShareUrl, parsePromptIdFromLocation, setPromptShareUrl } from "./utils/promptShare";
 import { mergePromptUpdate } from "./utils/mergePrompt";
 import { normalizeTagName, promptHasTag } from "./utils/tagFilter";
+import { countCategoriesWithPrompts } from "./utils/stats";
 
 type SortValue = "new" | "old" | "usage";
 type ViewMode = "grid" | "list";
@@ -70,6 +71,7 @@ export function WebApp() {
   const [user, setUser] = useState<TelegramUser | null>(parseSavedUser());
   const [dbUserId, setDbUserId] = useState<number | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [userUsageTotal, setUserUsageTotal] = useState(0);
   const [page, setPage] = useState(1);
   const isAuthenticated = Boolean(user);
   const bootstrappedRef = useRef(false);
@@ -137,10 +139,10 @@ export function WebApp() {
     () => ({
       total: prompts.length,
       favorites: prompts.filter((prompt) => prompt.isFavorite).length,
-      categories: categories.length,
-      usage: prompts.reduce((sum, prompt) => sum + prompt.usageCount, 0)
+      categories: countCategoriesWithPrompts(prompts),
+      usage: isAuthenticated ? userUsageTotal : 0
     }),
-    [categories.length, prompts]
+    [isAuthenticated, prompts, userUsageTotal]
   );
 
   const userPromptsCount = useMemo(() => {
@@ -161,6 +163,7 @@ export function WebApp() {
       setTags(tagsData);
       setIsAdmin(Boolean(me.isAdmin));
       setDbUserId(me.user?.id ?? null);
+      setUserUsageTotal(me.usageTotal ?? 0);
     } catch (err) {
       setError("Не удалось загрузить данные.");
       console.error(err);
@@ -315,6 +318,7 @@ export function WebApp() {
         item.id === prompt.id ? { ...item, usageCount: item.usageCount + 1 } : item
       )
     );
+    setUserUsageTotal((prev) => prev + 1);
     void api.increaseUsage(prompt.id).catch(console.error);
   }
 
@@ -436,6 +440,7 @@ export function WebApp() {
     setUser(null);
     setDbUserId(null);
     setIsAdmin(false);
+    setUserUsageTotal(0);
     setToast("Вы вышли");
     void loadPrompts();
   }

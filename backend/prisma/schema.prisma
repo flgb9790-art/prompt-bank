@@ -9,15 +9,16 @@ datasource db {
 }
 
 model User {
-  id         Int        @id @default(autoincrement())
-  telegramId String     @unique
+  id         Int           @id @default(autoincrement())
+  telegramId String        @unique
   username   String?
   firstName  String?
   lastName   String?
   prompts    Prompt[]
   favorites  Favorite[]
-  createdAt  DateTime   @default(now())
-  updatedAt  DateTime   @updatedAt
+  usages     PromptUsage[]
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
 }
 
 model Category {
@@ -47,8 +48,22 @@ model Prompt {
   keywords       PromptKeyword[]
   examples       MediaExample[]
   favorites      Favorite[]
+  usages         PromptUsage[]
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
+}
+
+model PromptUsage {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  promptId  Int
+  count     Int      @default(0)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  prompt    Prompt   @relation(fields: [promptId], references: [id], onDelete: Cascade)
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+
+  @@unique([userId, promptId])
 }
 
 model Keyword {

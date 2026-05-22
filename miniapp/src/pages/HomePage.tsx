@@ -53,7 +53,7 @@ export function HomePage({
         </div>
         <div className="stat-tile-mobile">
           <p className="stat-tile-value">{stats.usage}</p>
-          <p className="stat-tile-label">Использ.</p>
+          <p className="stat-tile-label stat-tile-label--usage">Использований</p>
         </div>
       </section>
 

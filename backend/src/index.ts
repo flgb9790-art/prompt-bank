@@ -12,6 +12,7 @@ import tagsRouter from "./routes/tags.routes";
 import { extractKeywords } from "./keywordExtractor";
 import { startBot } from "./bot";
 import { authRequired, isAdminRequest, readTelegramId } from "./auth";
+import { PromptService } from "./services/prompt.service";
 
 const app = express();
 
@@ -34,8 +35,14 @@ app.get("/api/me", async (req, res, next) => {
     if (!telegramId) {
       return res.json({ authenticated: false, isAdmin: false, user: null });
     }
-    const user = await prisma.user.findUnique({ where: { telegramId } });
-    return res.json({ authenticated: true, isAdmin: isAdminRequest(req), user });
+    const user = await prisma.user.upsert({
+      where: { telegramId },
+      update: {},
+      create: { telegramId }
+    });
+    const usageTotal = await PromptService.getUserUsageTotal(user.id);
+
+    return res.json({ authenticated: true, isAdmin: isAdminRequest(req), user, usageTotal });
   } catch (error) {
     return next(error);
   }

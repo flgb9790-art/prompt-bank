@@ -216,6 +216,32 @@ export class PromptService {
       where: { id },
       data: { usageCount: { increment: 1 } }
     });
+
+    if (userId) {
+      await prisma.promptUsage.upsert({
+        where: {
+          userId_promptId: {
+            userId,
+            promptId: id
+          }
+        },
+        update: { count: { increment: 1 } },
+        create: {
+          userId,
+          promptId: id,
+          count: 1
+        }
+      });
+    }
+
     return PromptService.getById(id, userId);
+  }
+
+  static async getUserUsageTotal(userId: number) {
+    const aggregate = await prisma.promptUsage.aggregate({
+      where: { userId },
+      _sum: { count: true }
+    });
+    return aggregate._sum.count ?? 0;
   }
 }

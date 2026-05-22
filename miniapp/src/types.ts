@@ -74,6 +74,7 @@ export type PromptUpdatePayload = {
 export type MeResponse = {
   authenticated: boolean;
   isAdmin: boolean;
+  usageTotal?: number;
   user: {
     id: number;
     telegramId: string;

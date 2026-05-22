@@ -34,6 +34,30 @@ function CardPreview({ prompt, variant }: { prompt: Prompt; variant: "desktop" |
   );
 }
 
+function CardTagsRow({
+  tags,
+  className,
+  onTagClick
+}: {
+  tags: Prompt["keywords"];
+  className: string;
+  onTagClick?: (tag: string) => void;
+}) {
+  if (!tags.length) return null;
+
+  return (
+    <div
+      className={className}
+      onClick={(event) => event.stopPropagation()}
+      onKeyDown={(event) => event.stopPropagation()}
+    >
+      {tags.map((item) => (
+        <TagPill key={item.keyword.id} name={item.keyword.name} onClick={onTagClick} />
+      ))}
+    </div>
+  );
+}
+
 function CardActions({
   prompt,
   onToggleFavorite,
@@ -79,6 +103,8 @@ export function PromptCard({ prompt, variant = "mobile", onOpen, onToggleFavorit
   const badgeClass = getCategoryBadgeClass(prompt.category.slug, prompt.category.name);
 
   if (variant === "list") {
+    const listTags = prompt.keywords.slice(0, 4);
+
     return (
       <article
         role="button"
@@ -89,18 +115,16 @@ export function PromptCard({ prompt, variant = "mobile", onOpen, onToggleFavorit
         }}
         className="prompt-card-list fade-up"
       >
-        <CardPreview prompt={prompt} variant="list" />
-        <div className="prompt-card-body prompt-card-body--list">
-          <h3 className="prompt-card-title prompt-card-title--list">{prompt.title}</h3>
-          <span className={`category-badge category-badge-mobile ${badgeClass}`}>{prompt.category.name}</span>
-          <p className="prompt-card-excerpt prompt-card-excerpt--list">{prompt.content}</p>
-          <div className="prompt-card-tags prompt-card-tags--list">
-            {prompt.keywords.slice(0, 4).map((item) => (
-              <TagPill key={item.keyword.id} name={item.keyword.name} onClick={onTagClick} />
-            ))}
+        <div className="prompt-card-list-layout">
+          <CardPreview prompt={prompt} variant="list" />
+          <div className="prompt-card-body prompt-card-body--list">
+            <h3 className="prompt-card-title prompt-card-title--list">{prompt.title}</h3>
+            <span className={`category-badge category-badge-mobile ${badgeClass}`}>{prompt.category.name}</span>
+            <p className="prompt-card-excerpt prompt-card-excerpt--list">{prompt.content}</p>
           </div>
+          <CardActions prompt={prompt} onToggleFavorite={onToggleFavorite} onCopy={onCopy} layout="stacked" />
+          <CardTagsRow tags={listTags} className="prompt-card-tags prompt-card-tags--span-content" onTagClick={onTagClick} />
         </div>
-        <CardActions prompt={prompt} onToggleFavorite={onToggleFavorite} onCopy={onCopy} />
       </article>
     );
   }
@@ -159,7 +183,7 @@ export function PromptCard({ prompt, variant = "mobile", onOpen, onToggleFavorit
 
   return (
     <article className="prompt-card-mobile fade-up">
-      <div className="prompt-card-mobile-row">
+      <div className="prompt-card-mobile-layout">
         <div
           role="button"
           tabIndex={0}
@@ -169,19 +193,7 @@ export function PromptCard({ prompt, variant = "mobile", onOpen, onToggleFavorit
             if (event.key === "Enter") onOpen(prompt);
           }}
         >
-          <div className="prompt-card-mobile-media">
-            <CardPreview prompt={prompt} variant="mobile" />
-            {mobileTags.length ? (
-              <div
-                className="prompt-card-tags prompt-card-tags--under-photo"
-                onClick={(event) => event.stopPropagation()}
-              >
-                {mobileTags.map((item) => (
-                  <TagPill key={item.keyword.id} name={item.keyword.name} onClick={onTagClick} />
-                ))}
-              </div>
-            ) : null}
-          </div>
+          <CardPreview prompt={prompt} variant="mobile" />
           <div className="prompt-card-body prompt-card-body--mobile">
             <h3 className="prompt-card-title prompt-card-title--mobile">{prompt.title}</h3>
             <span className={`category-badge category-badge-mobile ${badgeClass}`}>{prompt.category.name}</span>
@@ -189,6 +201,7 @@ export function PromptCard({ prompt, variant = "mobile", onOpen, onToggleFavorit
           </div>
         </div>
         <CardActions prompt={prompt} onToggleFavorite={onToggleFavorite} onCopy={onCopy} layout="stacked" />
+        <CardTagsRow tags={mobileTags} className="prompt-card-tags prompt-card-tags--span-content" onTagClick={onTagClick} />
       </div>
     </article>
   );

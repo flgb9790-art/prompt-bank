@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { clearPromptShareUrl, parsePromptIdFromLocation, setPromptShareUrl } from "./utils/promptShare";
 import { mergePromptUpdate } from "./utils/mergePrompt";
 import { normalizeTagName } from "./utils/tagFilter";
+import { countCategoriesWithPrompts } from "./utils/stats";
 import { api, setAuthTelegramId } from "./api";
 import type { Category, Prompt, PromptCreatePayload, TelegramUser } from "./types";
 import type { PromptEditPayload } from "./components/PromptDetailsModal";
@@ -102,6 +103,7 @@ function MiniAppApp() {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTag, setActiveTag] = useState<string>();
   const [isAdmin, setIsAdmin] = useState(false);
+  const [userUsageTotal, setUserUsageTotal] = useState(0);
   const [user, setUser] = useState<TelegramUser>(() => resolveTelegramUser() ?? mockTelegramUser);
   const [toastMessage, setToastMessage] = useState("");
   const [isMiniAppExpanded, setIsMiniAppExpanded] = useState(true);
@@ -112,10 +114,10 @@ function MiniAppApp() {
     () => ({
       total: prompts.length,
       favorites: favorites.length,
-      categories: categories.length,
-      usage: prompts.reduce((sum, item) => sum + item.usageCount, 0)
+      categories: countCategoriesWithPrompts(prompts),
+      usage: userUsageTotal
     }),
-    [prompts, favorites.length, categories.length]
+    [prompts, favorites.length, userUsageTotal]
   );
 
   const searchResults = useMemo(() => {
@@ -139,6 +141,7 @@ function MiniAppApp() {
       setPrompts(promptsData.map((prompt) => ({ ...prompt, examples: prompt.examples ?? [] })));
       setCategories(categoriesData);
       setIsAdmin(me.isAdmin);
+      setUserUsageTotal(me.usageTotal ?? 0);
     } catch {
       setError("Не удалось загрузить данные.");
     } finally {
@@ -347,6 +350,7 @@ function MiniAppApp() {
           item.id === prompt.id ? { ...item, usageCount: item.usageCount + 1 } : item
         )
       );
+      setUserUsageTotal((prev) => prev + 1);
       void api.increaseUsage(prompt.id).catch(() => undefined);
     } catch {
       setToastMessage("Не удалось скопировать промпт");
