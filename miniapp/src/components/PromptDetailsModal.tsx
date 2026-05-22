@@ -36,18 +36,21 @@ function MediaPreview({
   url,
   type,
   className,
-  onClick
+  onClick,
+  fit = "cover"
 }: {
   url: string;
   type: MediaType;
   className?: string;
   onClick?: () => void;
+  fit?: "cover" | "contain";
 }) {
   const clickable = Boolean(onClick);
+  const fitClass = fit === "contain" ? "preview-fit-contain" : "";
   return (
     <button
       type="button"
-      className={`preview-4x5 ${clickable ? "preview-clickable" : ""} ${className ?? ""}`}
+      className={`preview-4x5 ${fitClass} ${clickable ? "preview-clickable" : ""} ${className ?? ""}`}
       onClick={onClick}
       disabled={!clickable}
     >
@@ -174,7 +177,7 @@ export function PromptDetailsModal({
               <div className="surface-card-soft p-3">
                 <p className="mb-2 text-sm font-medium text-[var(--text)]">Заставка / превью</p>
                 {coverMedia ? (
-                  <MediaPreview url={coverMedia.url} type={coverMedia.type} className="mb-2 max-w-[200px]" />
+                  <MediaPreview url={coverMedia.url} type={coverMedia.type} fit="contain" className="mb-2 w-full max-w-[280px]" />
                 ) : (
                   <p className="mb-2 text-xs text-[var(--muted)]">Заставка не задана</p>
                 )}
@@ -194,7 +197,7 @@ export function PromptDetailsModal({
                   {visibleExamples.length ? (
                     visibleExamples.map((example) => (
                       <div key={example.id} className="relative">
-                        <MediaPreview url={example.url} type={example.type} className="w-full" />
+                        <MediaPreview url={example.url} type={example.type} fit="contain" className="w-full" />
                         <button
                           type="button"
                           onClick={() => {
@@ -287,6 +290,7 @@ export function PromptDetailsModal({
                       <MediaPreview
                         url={currentGallery.url}
                         type={currentGallery.type}
+                        fit="contain"
                         className="prompt-gallery-preview"
                         onClick={() => setLightboxOpen(true)}
                       />

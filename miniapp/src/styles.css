@@ -613,6 +613,10 @@ html.web-mode #root {
   box-sizing: border-box;
 }
 
+.prompt-card-mobile-layout.prompt-card-web-layout {
+  width: 100%;
+}
+
 .prompt-card-web-layout > .prompt-card-preview--desktop {
   grid-column: 1;
   grid-row: 1;
@@ -625,8 +629,15 @@ html.web-mode #root {
   width: 84px;
 }
 
+.prompt-card-web-layout > .prompt-card-preview--mobile {
+  grid-column: 1;
+  grid-row: 1;
+  width: 112px;
+}
+
 .prompt-card-web-layout > .prompt-card-body--desktop,
-.prompt-card-web-layout > .prompt-card-body--list {
+.prompt-card-web-layout > .prompt-card-body--list,
+.prompt-card-web-layout > .prompt-card-body--mobile {
   grid-column: 2;
   grid-row: 1;
   min-width: 0;
@@ -812,7 +823,8 @@ html.web-mode #root {
   font-size: 14px;
   line-height: 20px;
   display: -webkit-box;
-  -webkit-line-clamp: 3;
+  -webkit-line-clamp: 5;
+  line-clamp: 5;
   -webkit-box-orient: vertical;
 }
 
@@ -951,7 +963,8 @@ html.web-mode #root {
   font-size: 15px;
   line-height: 20px;
   padding-right: 0;
-  -webkit-line-clamp: 1;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
 }
 
 .prompt-card-body--list .category-badge {
@@ -963,7 +976,8 @@ html.web-mode #root {
   font-size: 13px;
   line-height: 18px;
   display: -webkit-box;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 4;
+  line-clamp: 4;
   -webkit-box-orient: vertical;
   flex: 0 1 auto;
   min-height: 0;
@@ -1521,10 +1535,38 @@ html.web-mode #root {
   gap: 8px;
 }
 
+.preview-fit-contain {
+  aspect-ratio: unset;
+  width: 100%;
+  height: auto;
+  min-height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f2f4f7;
+}
+
+.preview-fit-contain img,
+.preview-fit-contain video {
+  position: static;
+  inset: auto;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: min(52vh, 420px);
+  object-fit: contain;
+  object-position: center;
+}
+
 .prompt-gallery-preview {
   flex: 1 1 auto;
   min-width: 0;
-  max-width: 280px;
+  width: 100%;
+  max-width: 100%;
+}
+
+.prompt-gallery-preview.preview-fit-contain {
+  max-width: 100%;
 }
 
 .prompt-gallery-nav {
@@ -1566,7 +1608,8 @@ html.web-mode #root {
 .prompt-gallery-thumb video {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
+  background: #f2f4f7;
 }
 
 /* Fullscreen media lightbox */
@@ -1668,5 +1711,6 @@ html.web-mode #root {
 .media-lightbox-thumb video {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
+  background: #101828;
 }
