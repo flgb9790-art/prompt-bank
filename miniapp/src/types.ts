@@ -43,12 +43,39 @@ export type Prompt = {
   coverMediaType?: MediaType | null;
   isFavorite: boolean;
   usageCount: number;
+  telegramPublished?: boolean;
+  telegramPublication?: TelegramPublication | null;
   keywords: PromptKeyword[];
   examples?: MediaExample[];
   /** Клиентский флаг: полные данные (текст + примеры) уже загружены с API. */
   detailLoaded?: boolean;
   createdAt: string;
   updatedAt: string;
+};
+
+export type TelegramPublication = {
+  id: number;
+  promptId: number;
+  status: "pending" | "published" | "failed" | string;
+  telegramMessageId?: string | null;
+  telegramChatId?: string | null;
+  error?: string | null;
+  postText: string;
+  mediaType?: string | null;
+  createdAt: string;
+  publishedAt?: string | null;
+  updatedAt: string;
+};
+
+export type CreatePromptResponse = Prompt & {
+  telegramPublicationStatus?: "published" | "failed";
+  telegramPublicationError?: string;
+};
+
+export type PublishTelegramResponse = {
+  status: "published" | "failed";
+  error?: string;
+  telegramPublication?: TelegramPublication | null;
 };
 
 export type PromptListResponse = {
@@ -81,6 +108,7 @@ export type PromptCreatePayload = {
   coverMediaUrl?: string;
   coverMediaType?: MediaType;
   examples: Array<{ url: string; type: MediaType; originalName?: string }>;
+  publishToTelegram?: boolean;
 };
 
 export type PromptUpdatePayload = {

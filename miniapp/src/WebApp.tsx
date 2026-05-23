@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { BarChart3, Heart, Layers, Sparkles, X } from "lucide-react";
 import { api, ApiError, invalidateReferenceCaches, setAuthTelegramId } from "./api";
-import type { Category, MeResponse, Prompt, PromptCreatePayload, TagStat, TelegramUser } from "./types";
+import type { Category, MeResponse, Prompt, PromptCreatePayload, TagStat, TelegramUser, CreatePromptResponse } from "./types";
 import { SettingsScreen } from "./components/settings/SettingsScreen";
 import { PromptHistoryScreen } from "./components/history/PromptHistoryScreen";
 import { recordPromptCopy, trackPromptView } from "./utils/promptTracking";
@@ -639,17 +639,51 @@ export function WebApp() {
       return;
     }
     try {
-      const created = withPromptDetails(await api.createPrompt(payload));
+      const created = withPromptDetails(await api.createPrompt(payload)) as CreatePromptResponse;
       invalidateReferenceCaches();
       upsertPromptInList(created);
       setPromptsTotal((prev) => prev + 1);
-      setToast("Промпт сохранен");
+      if (created.telegramPublicationStatus === "failed") {
+        setToast(
+          created.telegramPublicationError ??
+            "Промпт сохранен, но публикация в Telegram не удалась. Проверьте настройки канала и права бота."
+        );
+      } else if (created.telegramPublicationStatus === "published") {
+        setToast("Промпт сохранен и опубликован в Telegram");
+      } else {
+        setToast("Промпт сохранен");
+      }
       setIsAddModalOpen(false);
       void Promise.all([api.getTags().then(setTags), api.getCategories().then(setCategories)]).catch(console.error);
     } catch (err) {
       if (!handleUnauthorized(err)) {
         setToast("Ошибка загрузки");
       }
+    }
+  }
+
+  async function handlePublishTelegram(promptId: number) {
+    if (!isAdmin) return;
+    try {
+      const result = await api.publishPromptToTelegram(promptId);
+      const fresh = withPromptDetails(await api.getPrompt(promptId));
+      upsertPromptInList(fresh);
+      if (selectedPrompt?.id === promptId) {
+        setSelectedPrompt(fresh);
+      }
+      if (result.status === "published") {
+        setToast("Опубликовано в Telegram");
+      } else {
+        setToast(
+          result.error ??
+            "Публикация в Telegram не удалась. Проверьте настройки канала и права бота."
+        );
+      }
+    } catch (err) {
+      if (!handleUnauthorized(err)) {
+        setToast("Публикация в Telegram не удалась");
+      }
+      throw err;
     }
   }
 
@@ -935,6 +969,7 @@ export function WebApp() {
         onToggleFavorite={handleToggleFavorite}
         onDelete={handleDeletePrompt}
         onEdit={handleEditPrompt}
+        onPublishTelegram={isAdmin ? handlePublishTelegram : undefined}
         onShareLinkCopied={() => setToast("Ссылка скопирована")}
         onTagClick={handleSelectTag}
       />
@@ -956,6 +991,7 @@ export function WebApp() {
               <PromptForm
                 categories={categories}
                 user={user!}
+                showTelegramPublish={isAdmin}
                 onSubmit={handleSavePrompt}
                 onCancel={() => setIsAddModalOpen(false)}
               />

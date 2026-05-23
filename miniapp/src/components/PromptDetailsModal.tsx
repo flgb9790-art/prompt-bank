@@ -5,6 +5,7 @@ import type { Category, MediaType, Prompt } from "../types";
 import { getCategoryBadgeClass } from "../utils/categoryStyle";
 import { hasFullPromptDetails } from "../utils/promptContent";
 import { buildPromptShareUrl } from "../utils/promptShare";
+import { telegramPublicationStatusLabel } from "../utils/telegramPost";
 import type { LightboxItem } from "./MediaLightbox";
 
 const MediaLightbox = lazy(() => import("./MediaLightbox").then((module) => ({ default: module.MediaLightbox })));
@@ -31,6 +32,7 @@ type Props = {
   onToggleFavorite: (id: number) => void;
   onDelete: (id: number) => void;
   onEdit: (promptId: number, data: PromptEditPayload) => Promise<void>;
+  onPublishTelegram?: (promptId: number) => Promise<void>;
   onShareLinkCopied?: () => void;
   onTagClick?: (tag: string) => void;
 };
@@ -112,6 +114,7 @@ export function PromptDetailsModal({
   onToggleFavorite,
   onDelete,
   onEdit,
+  onPublishTelegram,
   onShareLinkCopied,
   onTagClick
 }: Props) {
@@ -127,6 +130,7 @@ export function PromptDetailsModal({
   const [galleryIndex, setGalleryIndex] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [shareError, setShareError] = useState("");
+  const [telegramPublishing, setTelegramPublishing] = useState(false);
 
   const galleryItems = useMemo(() => (prompt ? buildGalleryItems(prompt) : []), [prompt]);
 
@@ -427,20 +431,55 @@ export function PromptDetailsModal({
                   </button>
                 </div>
                 {canManage ? (
-                  <div className="action-button-row mt-4">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        resetEditState(prompt);
-                        setIsEditing(true);
-                      }}
-                      className="btn-secondary"
-                    >
-                      Редактировать
-                    </button>
-                    <button type="button" onClick={() => onDelete(prompt.id)} className="btn-secondary text-[var(--red)]">
-                      Удалить
-                    </button>
+                  <div className="mt-4 space-y-3">
+                    <div className="surface-card-soft p-3">
+                      <p className="text-sm font-medium text-[var(--text)]">
+                        {telegramPublicationStatusLabel(prompt.telegramPublication?.status)}
+                      </p>
+                      {prompt.telegramPublication?.status === "failed" && prompt.telegramPublication.error ? (
+                        <p className="mt-2 text-xs text-[var(--red)]" title={prompt.telegramPublication.error}>
+                          {prompt.telegramPublication.error}
+                        </p>
+                      ) : null}
+                      {prompt.telegramPublication?.status === "published" ? (
+                        <p className="mt-2 text-xs text-[var(--muted)]">Опубликовано в Telegram ✅</p>
+                      ) : onPublishTelegram ? (
+                        <button
+                          type="button"
+                          disabled={telegramPublishing || prompt.telegramPublication?.status === "pending"}
+                          onClick={async () => {
+                            setTelegramPublishing(true);
+                            try {
+                              await onPublishTelegram(prompt.id);
+                            } finally {
+                              setTelegramPublishing(false);
+                            }
+                          }}
+                          className="btn-secondary mt-3 w-full justify-center"
+                        >
+                          {telegramPublishing
+                            ? "Публикуем..."
+                            : prompt.telegramPublication?.status === "failed"
+                              ? "Повторить публикацию"
+                              : "Опубликовать в Telegram"}
+                        </button>
+                      ) : null}
+                    </div>
+                    <div className="action-button-row">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          resetEditState(prompt);
+                          setIsEditing(true);
+                        }}
+                        className="btn-secondary"
+                      >
+                        Редактировать
+                      </button>
+                      <button type="button" onClick={() => onDelete(prompt.id)} className="btn-secondary text-[var(--red)]">
+                        Удалить
+                      </button>
+                    </div>
                   </div>
                 ) : null}
               </div>

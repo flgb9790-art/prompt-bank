@@ -1,5 +1,6 @@
 import type {
   Category,
+  CreatePromptResponse,
   MeResponse,
   Prompt,
   PromptCreatePayload,
@@ -7,6 +8,7 @@ import type {
   PromptListResponse,
   PromptUpdatePayload,
   BootstrapResponse,
+  PublishTelegramResponse,
   TagStat,
   UserSettings
 } from "./types";
@@ -134,9 +136,24 @@ export const api = {
     void api.getPrompt(id).catch(() => undefined);
   },
   createPrompt(payload: PromptCreatePayload) {
-    return request<Prompt>("/api/prompts", { method: "POST", body: JSON.stringify(payload) }).then((prompt) => {
+    return request<CreatePromptResponse>("/api/prompts", { method: "POST", body: JSON.stringify(payload) }).then((prompt) => {
       promptCache.set(prompt.id, prompt);
       return prompt;
+    });
+  },
+  publishPromptToTelegram(promptId: number) {
+    return request<PublishTelegramResponse>(`/api/admin/prompts/${promptId}/publish-telegram`, {
+      method: "POST"
+    }).then((result) => {
+      const cached = promptCache.get(promptId);
+      if (cached && result.telegramPublication) {
+        promptCache.set(promptId, {
+          ...cached,
+          telegramPublished: result.status === "published",
+          telegramPublication: result.telegramPublication
+        });
+      }
+      return result;
     });
   },
   updatePrompt(id: number, payload: PromptUpdatePayload) {

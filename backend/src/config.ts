@@ -27,8 +27,18 @@ function resolveWebAppUrl(): string {
 export const config = {
   port: Number(process.env.PORT ?? 3001),
   botToken: process.env.BOT_TOKEN ?? "",
+  telegramBotToken: process.env.TELEGRAM_BOT_TOKEN?.trim() || process.env.BOT_TOKEN?.trim() || "",
+  telegramChannelId: process.env.TELEGRAM_CHANNEL_ID?.trim() || "",
   webAppUrl: resolveWebAppUrl(),
   backendUrl: normalizeUrl(process.env.BACKEND_URL ?? "", "http://localhost:3001"),
+  publicSiteUrl: normalizeUrl(
+    process.env.PUBLIC_SITE_URL ?? process.env.WEBAPP_URL ?? "",
+    isProduction ? "https://diplomatic-communication-production-6b54.up.railway.app" : "http://localhost:5173"
+  ),
+  publicBackendUrl: normalizeUrl(
+    process.env.PUBLIC_BACKEND_URL ?? process.env.MEDIA_PUBLIC_URL ?? process.env.BACKEND_URL ?? "",
+    "http://localhost:3001"
+  ),
   seedDemoData: process.env.SEED_DEMO_DATA === "true",
   adminTelegramIds: (process.env.ADMIN_TELEGRAM_IDS ?? "")
     .split(",")
@@ -38,7 +48,7 @@ export const config = {
   supabaseServiceKey: process.env.SUPABASE_SERVICE_ROLE_KEY ?? "",
   supabaseStorageBucket: process.env.SUPABASE_STORAGE_BUCKET ?? "uploads",
   mediaPublicUrl: normalizeUrl(
-    process.env.MEDIA_PUBLIC_URL ?? process.env.VITE_MEDIA_CDN_URL ?? process.env.BACKEND_URL ?? "",
+    process.env.MEDIA_PUBLIC_URL ?? process.env.PUBLIC_BACKEND_URL ?? process.env.VITE_MEDIA_CDN_URL ?? process.env.BACKEND_URL ?? "",
     ""
   )
 };

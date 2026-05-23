@@ -11,6 +11,7 @@ import uploadRouter from "./routes/upload.routes";
 import tagsRouter from "./routes/tags.routes";
 import bootstrapRouter from "./routes/bootstrap.routes";
 import meRouter from "./routes/me.routes";
+import adminRouter from "./routes/admin.routes";
 import { extractKeywords } from "./keywordExtractor";
 import { startBot } from "./bot";
 import { authRequired, isAdminRequest, readTelegramId } from "./auth";
@@ -42,6 +43,7 @@ app.get("/api/health", (_req, res) => {
 
 app.use("/api/bootstrap", bootstrapRouter);
 app.use("/api/me", meRouter);
+app.use("/api/admin", adminRouter);
 
 app.use("/api/prompts", promptsRouter);
 app.use("/api/categories", categoriesRouter);

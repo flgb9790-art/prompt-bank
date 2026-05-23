@@ -2,6 +2,7 @@ import { Router } from "express";
 import { prisma } from "../db";
 import { PromptService } from "../services/prompt.service";
 import { HistoryService } from "../services/history.service";
+import { sendPromptToTelegram } from "../services/telegramPublisher.service";
 import { authRequired, isAdminRequest, readTelegramId } from "../auth";
 import { resolveUserIdByTelegramId } from "../user";
 
@@ -72,6 +73,24 @@ router.post("/", async (req, res, next) => {
           }))
         : []
     });
+
+    let telegramPublicationStatus: "published" | "failed" | undefined;
+    let telegramPublicationError: string | undefined;
+
+    if (Boolean(req.body.publishToTelegram) && isAdminRequest(req)) {
+      const publishResult = await sendPromptToTelegram(created.id);
+      telegramPublicationStatus = publishResult.status;
+      if (publishResult.status === "failed") {
+        telegramPublicationError = publishResult.error;
+      }
+      const refreshed = await PromptService.getById(created.id);
+      return res.status(201).json({
+        ...(refreshed ?? created),
+        telegramPublicationStatus,
+        telegramPublicationError
+      });
+    }
+
     res.status(201).json(created);
   } catch (error) {
     next(error);

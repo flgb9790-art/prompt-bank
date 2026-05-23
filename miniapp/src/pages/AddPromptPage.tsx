@@ -4,6 +4,7 @@ import { PromptForm } from "../components/PromptForm";
 type Props = {
   categories: Category[];
   user: TelegramUser;
+  showTelegramPublish?: boolean;
   onSave: (payload: PromptCreatePayload) => Promise<void>;
   onCancel: () => void;
   successPromptId?: number;
@@ -15,6 +16,7 @@ type Props = {
 export function AddPromptPage({
   categories,
   user,
+  showTelegramPublish = false,
   onSave,
   onCancel,
   successPromptId,
@@ -41,5 +43,5 @@ export function AddPromptPage({
     );
   }
 
-  return <PromptForm categories={categories} user={user} onSubmit={onSave} onCancel={onCancel} />;
+  return <PromptForm categories={categories} user={user} showTelegramPublish={showTelegramPublish} onSubmit={onSave} onCancel={onCancel} />;
 }

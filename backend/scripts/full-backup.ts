@@ -21,7 +21,8 @@ const TABLES = [
   "Favorite",
   "PromptUsage",
   "PromptView",
-  "PromptCopy"
+  "PromptCopy",
+  "TelegramPublication"
 ] as const;
 
 function timestamp() {

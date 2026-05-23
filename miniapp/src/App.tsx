@@ -4,7 +4,7 @@ import { mergePromptUpdate } from "./utils/mergePrompt";
 import { normalizeTagName } from "./utils/tagFilter";
 import { countCategoriesWithPromptCount, countCategoriesWithPrompts } from "./utils/stats";
 import { api, invalidateReferenceCaches, setAuthTelegramId } from "./api";
-import type { Category, MeResponse, Prompt, PromptCreatePayload, TelegramUser } from "./types";
+import type { Category, MeResponse, Prompt, PromptCreatePayload, TelegramUser, CreatePromptResponse } from "./types";
 import { SettingsScreen } from "./components/settings/SettingsScreen";
 import { PromptHistoryScreen } from "./components/history/PromptHistoryScreen";
 import { recordPromptCopy, trackPromptView } from "./utils/promptTracking";
@@ -505,13 +505,44 @@ function MiniAppApp() {
       setToastMessage("Добавлять промпты могут только администраторы");
       return;
     }
-    const created = withPromptDetails(await api.createPrompt(payload));
+    const created = withPromptDetails(await api.createPrompt(payload)) as CreatePromptResponse;
     invalidateReferenceCaches();
     setCreatedPromptId(created.id);
     setPrompts((prev) => [created, ...prev]);
     setRecentPrompts((prev) => [created, ...prev].slice(0, HOME_RECENT_LIMIT));
     setPromptsTotal((prev) => prev + 1);
+    if (created.telegramPublicationStatus === "failed") {
+      setToastMessage(
+        created.telegramPublicationError ??
+          "Промпт сохранен, но публикация в Telegram не удалась. Проверьте настройки канала и права бота."
+      );
+    } else if (created.telegramPublicationStatus === "published") {
+      setToastMessage("Промпт сохранен и опубликован в Telegram");
+    }
     void api.getCategories().then(setCategories).catch(() => undefined);
+  }
+
+  async function handlePublishTelegram(promptId: number) {
+    if (!isAdmin) return;
+    try {
+      const result = await api.publishPromptToTelegram(promptId);
+      const fresh = withPromptDetails(await api.getPrompt(promptId));
+      setPrompts((prev) => prev.map((item) => (item.id === promptId ? mergePromptUpdate(item, fresh) : item)));
+      syncRecentPrompt(fresh);
+      if (selectedPrompt?.id === promptId) {
+        setSelectedPrompt(fresh);
+      }
+      if (result.status === "published") {
+        setToastMessage("Опубликовано в Telegram");
+      } else {
+        setToastMessage(
+          result.error ?? "Публикация в Telegram не удалась. Проверьте настройки канала и права бота."
+        );
+      }
+    } catch {
+      setToastMessage("Публикация в Telegram не удалась");
+      throw new Error("telegram_publish_failed");
+    }
   }
 
   async function handleToggleFavorite(id: number) {
@@ -804,6 +835,7 @@ function MiniAppApp() {
         <AddPromptPage
           categories={categories}
           user={user}
+          showTelegramPublish={isAdmin}
           onSave={handleSavePrompt}
           onCancel={() => handleTabChange("home")}
           successPromptId={createdPromptId}
@@ -830,6 +862,7 @@ function MiniAppApp() {
         onToggleFavorite={handleToggleFavorite}
         onDelete={handleDeletePrompt}
         onEdit={handleEditPrompt}
+        onPublishTelegram={isAdmin ? handlePublishTelegram : undefined}
         onShareLinkCopied={() => setToastMessage("Ссылка скопирована")}
         onTagClick={handleSelectTag}
       />

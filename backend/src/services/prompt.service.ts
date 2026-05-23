@@ -256,12 +256,21 @@ export class PromptService {
     if (!prompt) return null;
 
     const { favorites, ...rest } = prompt as typeof prompt & { favorites?: Array<{ id: number }> };
+    const telegramPublication = await prisma.telegramPublication.findFirst({
+      where: { promptId: id },
+      orderBy: { createdAt: "desc" }
+    });
     const result = {
       ...rest,
-      isFavorite: (favorites?.length ?? 0) > 0
+      isFavorite: (favorites?.length ?? 0) > 0,
+      telegramPublication
     };
     promptDetailCache.set(cacheKey, { value: result, expires: Date.now() + PROMPT_DETAIL_CACHE_MS });
     return result;
+  }
+
+  static invalidateDetailCache(promptId?: number) {
+    invalidatePromptDetailCache(promptId);
   }
 
   static async create(input: PromptCreateInput) {

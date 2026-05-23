@@ -38,28 +38,47 @@ model Category {
 }
 
 model Prompt {
-  id             Int            @id @default(autoincrement())
-  userId         Int
-  title          String
-  content        String
-  note           String?
-  categoryId     Int
-  coverMediaUrl  String?
-  coverMediaType MediaType?
-  usageCount     Int            @default(0)
-  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  category       Category       @relation(fields: [categoryId], references: [id], onDelete: Restrict)
-  keywords       PromptKeyword[]
-  examples       MediaExample[]
-  favorites      Favorite[]
-  usages         PromptUsage[]
-  views          PromptView[]
-  copies         PromptCopy[]
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
+  id                  Int                   @id @default(autoincrement())
+  userId              Int
+  title               String
+  content             String
+  note                String?
+  categoryId          Int
+  coverMediaUrl       String?
+  coverMediaType      MediaType?
+  usageCount          Int                   @default(0)
+  telegramPublished   Boolean               @default(false)
+  user                User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category            Category              @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  keywords            PromptKeyword[]
+  examples            MediaExample[]
+  favorites           Favorite[]
+  usages              PromptUsage[]
+  views               PromptView[]
+  copies              PromptCopy[]
+  telegramPublications TelegramPublication[]
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
 
   @@index([createdAt(sort: Desc)])
   @@index([categoryId])
+}
+
+model TelegramPublication {
+  id                Int       @id @default(autoincrement())
+  promptId          Int
+  status            String
+  telegramMessageId String?
+  telegramChatId    String?
+  error             String?
+  postText          String
+  mediaType         String?
+  prompt            Prompt    @relation(fields: [promptId], references: [id], onDelete: Cascade)
+  createdAt         DateTime  @default(now())
+  publishedAt       DateTime?
+  updatedAt         DateTime  @updatedAt
+
+  @@index([promptId, createdAt(sort: Desc)])
 }
 
 model PromptView {

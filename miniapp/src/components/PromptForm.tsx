@@ -1,10 +1,12 @@
 import { useMemo, useState, type FormEvent } from "react";
 import type { Category, PromptCreatePayload, TelegramUser } from "../types";
+import { buildTelegramPostPreview } from "../utils/telegramPost";
 import { MediaUploader } from "./MediaUploader";
 
 type Props = {
   categories: Category[];
   user: TelegramUser;
+  showTelegramPublish?: boolean;
   onSubmit: (payload: PromptCreatePayload) => Promise<void>;
   onCancel: () => void;
 };
@@ -14,16 +16,27 @@ function previewKeywords(content: string) {
   return [...new Set(clean.split(/\s+/).filter((word) => word.length > 4))].slice(0, 8);
 }
 
-export function PromptForm({ categories, user, onSubmit, onCancel }: Props) {
+export function PromptForm({ categories, user, showTelegramPublish = false, onSubmit, onCancel }: Props) {
   const [title, setTitle] = useState("");
   const [categoryId, setCategoryId] = useState<number>(categories[0]?.id ?? 1);
   const [content, setContent] = useState("");
   const [note, setNote] = useState("");
+  const [publishToTelegram, setPublishToTelegram] = useState(false);
   const [coverMedia, setCoverMedia] = useState<{ url: string; type: "image" | "video" } | undefined>();
   const [examples, setExamples] = useState<Array<{ url: string; type: "image" | "video"; originalName?: string }>>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const keywordsPreview = useMemo(() => previewKeywords(content), [content]);
+  const selectedCategory = categories.find((category) => category.id === categoryId);
+  const telegramPreview = useMemo(
+    () =>
+      buildTelegramPostPreview({
+        title: title || "Название промпта",
+        categoryName: selectedCategory?.name ?? "Категория",
+        tagNames: keywordsPreview
+      }),
+    [title, selectedCategory?.name, keywordsPreview]
+  );
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -38,7 +51,8 @@ export function PromptForm({ categories, user, onSubmit, onCancel }: Props) {
         note: note || undefined,
         coverMediaUrl: coverMedia?.url,
         coverMediaType: coverMedia?.type,
-        examples
+        examples,
+        publishToTelegram: showTelegramPublish ? publishToTelegram : undefined
       });
     } catch {
       setError("Не удалось сохранить промпт.");
@@ -109,6 +123,33 @@ export function PromptForm({ categories, user, onSubmit, onCancel }: Props) {
         <label className="mb-2 block text-sm text-[var(--muted)]">Заметка (необязательно)</label>
         <textarea rows={2} value={note} onChange={(e) => setNote(e.target.value)} className="form-textarea min-h-[80px]" />
       </div>
+
+      {showTelegramPublish ? (
+        <div className="surface-card-soft space-y-3 p-4">
+          <p className="text-sm font-semibold text-[var(--text)]">Публикация</p>
+          <label className="flex items-start gap-3 text-sm text-[var(--text-soft)]">
+            <input
+              type="checkbox"
+              checked={publishToTelegram}
+              onChange={(event) => setPublishToTelegram(event.target.checked)}
+              className="mt-1 h-4 w-4 rounded border-[var(--border)]"
+            />
+            <span>
+              <span className="font-medium text-[var(--text)]">Опубликовать в Telegram-канале</span>
+              <span className="mt-1 block text-xs text-[var(--muted)]">
+                После сохранения промпт будет автоматически опубликован в Telegram-канал.
+              </span>
+            </span>
+          </label>
+          <div>
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">Превью Telegram-поста</p>
+            <pre className="whitespace-pre-wrap rounded-xl border border-[var(--border-soft)] bg-white p-3 text-xs leading-relaxed text-[var(--text-soft)]">
+              {telegramPreview}
+            </pre>
+          </div>
+        </div>
+      ) : null}
+
       {error ? <p className="text-xs text-[var(--red)]">{error}</p> : null}
       <div className="action-button-row">
         <button disabled={loading} type="submit" className="btn-primary justify-center">
