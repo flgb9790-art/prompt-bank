@@ -12,14 +12,38 @@ export default defineConfig(({ mode }) => {
     {
       name: "inject-backend-preconnect",
       transformIndexHtml(html) {
-        if (!backendUrl) return html;
-        try {
-          const origin = new URL(backendUrl).origin;
-          const tag = `<link rel="preconnect" href="${origin}" crossorigin />\n    `;
-          return html.replace("<head>", `<head>\n    ${tag}`);
-        } catch {
-          return html;
+        let next = html;
+        if (backendUrl) {
+          try {
+            const origin = new URL(backendUrl).origin;
+            const tag = `<link rel="preconnect" href="${origin}" crossorigin />\n    `;
+            next = next.replace("<head>", `<head>\n    ${tag}`);
+          } catch {
+            // ignore invalid backend URL
+          }
         }
+
+        const botUsername = env.VITE_TELEGRAM_BOT_USERNAME?.trim()?.replace(/^@/, "");
+        if (botUsername) {
+          const redirectScript = `
+    <script>
+      (function () {
+        try {
+          if (!/Telegram/i.test(navigator.userAgent || "")) return;
+          var params = new URLSearchParams(window.location.search);
+          if (params.has("tgWebAppData") || params.has("tgWebAppVersion")) return;
+          var prompt = params.get("prompt");
+          if (!prompt || !/^\\d+$/.test(prompt)) return;
+          window.location.replace(
+            "https://t.me/${botUsername}?startapp=" + encodeURIComponent("prompt_" + prompt)
+          );
+        } catch (e) {}
+      })();
+    </script>`;
+          next = next.replace("</head>", `${redirectScript}\n  </head>`);
+        }
+
+        return next;
       }
     },
     VitePWA({

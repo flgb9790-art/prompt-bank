@@ -21,7 +21,7 @@ export type TelegramWebApp = {
   offEvent?: (eventType: "viewportChanged", handler: TelegramViewportChangedHandler) => void;
   isExpanded?: boolean;
   initData?: string;
-  initDataUnsafe?: { user?: TelegramUser };
+  initDataUnsafe?: { user?: TelegramUser; start_param?: string };
 };
 
 declare global {
