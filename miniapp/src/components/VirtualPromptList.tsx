@@ -22,7 +22,7 @@ export function VirtualPromptList({
   prompts,
   variant,
   scrollSelector,
-  estimateSize = variant === "list" ? 132 : 168,
+  estimateSize = variant === "list" ? 132 : 184,
   footer,
   onOpenPrompt,
   onToggleFavorite,

@@ -880,6 +880,23 @@ button.brand-logo {
   min-height: 0;
 }
 
+@media (max-width: 767px) {
+  .prompt-card-mobile {
+    min-height: 204px;
+  }
+
+  .prompt-card-web-layout > .prompt-card-body--mobile {
+    overflow: visible;
+  }
+
+  .prompt-card-excerpt--mobile {
+    flex: 0 1 auto;
+    -webkit-line-clamp: 4;
+    line-clamp: 4;
+    line-height: 18px;
+  }
+}
+
 .prompt-card-tags {
   flex-shrink: 0;
   display: flex;
