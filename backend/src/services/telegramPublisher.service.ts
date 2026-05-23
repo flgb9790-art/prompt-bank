@@ -3,6 +3,7 @@ import { config } from "../config";
 import { PromptService } from "./prompt.service";
 
 const TELEGRAM_CAPTION_MAX = 1024;
+const TELEGRAM_MEDIA_GROUP_MAX = 10;
 const HASHTAG_MAX = 8;
 
 type PromptForPost = {
@@ -15,7 +16,9 @@ type PromptForPost = {
   examples: Array<{ url: string; type: string }>;
 };
 
-type TelegramApiResult = {
+type PostMediaItem = { url: string; type: "image" | "video" };
+
+type TelegramMessage = {
   message_id: number;
   chat: { id: number | string };
 };
@@ -43,6 +46,14 @@ export function buildPromptUrl(promptId: number): string {
   return `${base}/?prompt=${promptId}`;
 }
 
+function escapeHtml(text: string): string {
+  return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+function escapeHtmlAttr(text: string): string {
+  return text.replace(/&/g, "&amp;").replace(/"/g, "&quot;");
+}
+
 function truncateCaption(text: string): string {
   if (text.length <= TELEGRAM_CAPTION_MAX) return text;
   return `${text.slice(0, TELEGRAM_CAPTION_MAX - 1)}…`;
@@ -55,8 +66,19 @@ export function buildTelegramPost(prompt: PromptForPost): string {
 📂 ${prompt.category.name}
 🏷 ${hashtags}
 
-🔗 Открыть и скопировать:
+🔗 Открыть промпт:
 ${buildPromptUrl(prompt.id)}`);
+}
+
+export function buildTelegramPostHtml(prompt: PromptForPost): string {
+  const hashtags = buildHashtags(prompt.keywords);
+  const promptUrl = buildPromptUrl(prompt.id);
+  return truncateCaption(`✨ Новый промпт: ${escapeHtml(prompt.title)}
+
+📂 ${escapeHtml(prompt.category.name)}
+🏷 ${escapeHtml(hashtags)}
+
+🔗 <a href="${escapeHtmlAttr(promptUrl)}">Открыть промпт</a>`);
 }
 
 export function resolvePublicMediaUrl(url: string | null | undefined): string | null {
@@ -68,26 +90,33 @@ export function resolvePublicMediaUrl(url: string | null | undefined): string | 
   return `${base}${mediaPath}`;
 }
 
-function pickMedia(prompt: PromptForPost): { url: string; type: "image" | "video" } | null {
-  if (prompt.coverMediaUrl && prompt.coverMediaType === "image") {
-    const url = resolvePublicMediaUrl(prompt.coverMediaUrl);
-    if (url) return { url, type: "image" };
-  }
-  if (prompt.coverMediaUrl && prompt.coverMediaType === "video") {
-    const url = resolvePublicMediaUrl(prompt.coverMediaUrl);
-    if (url) return { url, type: "video" };
+export function collectPostMedia(prompt: PromptForPost): PostMediaItem[] {
+  const items: PostMediaItem[] = [];
+  const seen = new Set<string>();
+
+  function add(url: string | null | undefined, type: string | null | undefined) {
+    if (type !== "image" && type !== "video") return;
+    const resolved = resolvePublicMediaUrl(url);
+    if (!resolved || seen.has(resolved)) return;
+    seen.add(resolved);
+    items.push({ url: resolved, type });
   }
 
+  add(prompt.coverMediaUrl, prompt.coverMediaType);
   for (const example of prompt.examples) {
-    if (example.type !== "image" && example.type !== "video") continue;
-    const url = resolvePublicMediaUrl(example.url);
-    if (url) return { url, type: example.type as "image" | "video" };
+    add(example.url, example.type);
   }
 
-  return null;
+  return items.slice(0, TELEGRAM_MEDIA_GROUP_MAX);
 }
 
-async function callTelegramApi(method: string, payload: Record<string, unknown>): Promise<TelegramApiResult> {
+function resolvePublicationMediaType(items: PostMediaItem[]): string {
+  if (items.length === 0) return "text";
+  if (items.length > 1) return "media_group";
+  return items[0].type === "video" ? "video" : "photo";
+}
+
+async function callTelegramApi<T>(method: string, payload: Record<string, unknown>): Promise<T> {
   const token = config.telegramBotToken;
   if (!token) {
     throw new Error("TELEGRAM_BOT_TOKEN не указан");
@@ -99,18 +128,61 @@ async function callTelegramApi(method: string, payload: Record<string, unknown>)
     body: JSON.stringify(payload)
   });
 
-  let data: { ok: boolean; description?: string; result?: TelegramApiResult };
+  let data: { ok: boolean; description?: string; result?: T };
   try {
-    data = (await response.json()) as { ok: boolean; description?: string; result?: TelegramApiResult };
+    data = (await response.json()) as { ok: boolean; description?: string; result?: T };
   } catch {
     throw new Error(`Telegram API error (${method}): invalid response`);
   }
 
-  if (!response.ok || !data.ok || !data.result) {
-    throw new Error(data.description || `Telegram API error (${method})`);
+  if (!response.ok || !data.ok || data.result === undefined) {
+    throw new Error((data as { description?: string }).description || `Telegram API error (${method})`);
   }
 
   return data.result;
+}
+
+async function sendTelegramPost(chatId: string, postHtml: string, mediaItems: PostMediaItem[]): Promise<TelegramMessage> {
+  if (mediaItems.length === 0) {
+    return callTelegramApi<TelegramMessage>("sendMessage", {
+      chat_id: chatId,
+      text: postHtml,
+      parse_mode: "HTML",
+      disable_web_page_preview: true
+    });
+  }
+
+  if (mediaItems.length === 1) {
+    const [item] = mediaItems;
+    const method = item.type === "video" ? "sendVideo" : "sendPhoto";
+    const mediaKey = item.type === "video" ? "video" : "photo";
+    return callTelegramApi<TelegramMessage>(method, {
+      chat_id: chatId,
+      [mediaKey]: item.url,
+      caption: postHtml,
+      parse_mode: "HTML"
+    });
+  }
+
+  const messages = await callTelegramApi<TelegramMessage[]>("sendMediaGroup", {
+    chat_id: chatId,
+    media: mediaItems.map((item, index) => ({
+      type: item.type === "video" ? "video" : "photo",
+      media: item.url,
+      ...(index === 0
+        ? {
+            caption: postHtml,
+            parse_mode: "HTML"
+          }
+        : {})
+    }))
+  });
+
+  if (!messages.length) {
+    throw new Error("Telegram API error (sendMediaGroup): empty result");
+  }
+
+  return messages[0];
 }
 
 export async function getLatestTelegramPublication(promptId: number) {
@@ -139,8 +211,9 @@ export async function sendPromptToTelegram(promptId: number) {
   }
 
   const postText = buildTelegramPost(prompt);
-  const media = pickMedia(prompt);
-  const mediaType = media ? (media.type === "image" ? "photo" : "video") : "text";
+  const postHtml = buildTelegramPostHtml(prompt);
+  const mediaItems = collectPostMedia(prompt);
+  const mediaType = resolvePublicationMediaType(mediaItems);
 
   const publication = await prisma.telegramPublication.create({
     data: {
@@ -152,27 +225,7 @@ export async function sendPromptToTelegram(promptId: number) {
   });
 
   try {
-    const chatId = config.telegramChannelId;
-    let result: TelegramApiResult;
-
-    if (media?.type === "image") {
-      result = await callTelegramApi("sendPhoto", {
-        chat_id: chatId,
-        photo: media.url,
-        caption: postText
-      });
-    } else if (media?.type === "video") {
-      result = await callTelegramApi("sendVideo", {
-        chat_id: chatId,
-        video: media.url,
-        caption: postText
-      });
-    } else {
-      result = await callTelegramApi("sendMessage", {
-        chat_id: chatId,
-        text: postText
-      });
-    }
+    const result = await sendTelegramPost(config.telegramChannelId, postHtml, mediaItems);
 
     await prisma.$transaction([
       prisma.telegramPublication.update({

@@ -30,17 +30,13 @@ export function buildTelegramPostPreview(input: {
   siteOrigin?: string;
 }): string {
   const hashtags = buildHashtagsFromNames(input.tagNames);
-  const promptUrl = input.promptId
-    ? buildPromptPublicUrl(input.promptId, input.siteOrigin)
-    : `${(input.siteOrigin ?? window.location.origin).replace(/\/$/, "")}/?prompt=123`;
 
   return `✨ Новый промпт: ${input.title || "Название промпта"}
 
 📂 ${input.categoryName || "Категория"}
 🏷 ${hashtags}
 
-🔗 Открыть и скопировать:
-${promptUrl}`;
+🔗 Открыть промпт`;
 }
 
 export function telegramPublicationStatusLabel(status?: string | null): string {
