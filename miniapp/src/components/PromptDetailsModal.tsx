@@ -6,6 +6,7 @@ import { getCategoryBadgeClass } from "../utils/categoryStyle";
 import { hasFullPromptDetails } from "../utils/promptContent";
 import { buildPromptShareUrl } from "../utils/promptShare";
 import { telegramPublicationStatusLabel } from "../utils/telegramPost";
+import { pinterestPublicationStatusLabel } from "../utils/pinterestPost";
 import type { LightboxItem } from "./MediaLightbox";
 
 const MediaLightbox = lazy(() => import("./MediaLightbox").then((module) => ({ default: module.MediaLightbox })));
@@ -33,6 +34,7 @@ type Props = {
   onDelete: (id: number) => void;
   onEdit: (promptId: number, data: PromptEditPayload) => Promise<void>;
   onPublishTelegram?: (promptId: number) => Promise<void>;
+  onPublishPinterest?: (promptId: number) => Promise<void>;
   onShareLinkCopied?: () => void;
   onTagClick?: (tag: string) => void;
 };
@@ -115,6 +117,7 @@ export function PromptDetailsModal({
   onDelete,
   onEdit,
   onPublishTelegram,
+  onPublishPinterest,
   onShareLinkCopied,
   onTagClick
 }: Props) {
@@ -131,6 +134,7 @@ export function PromptDetailsModal({
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [shareError, setShareError] = useState("");
   const [telegramPublishing, setTelegramPublishing] = useState(false);
+  const [pinterestPublishing, setPinterestPublishing] = useState(false);
 
   const galleryItems = useMemo(() => (prompt ? buildGalleryItems(prompt) : []), [prompt]);
 
@@ -462,6 +466,46 @@ export function PromptDetailsModal({
                             : prompt.telegramPublication?.status === "failed"
                               ? "Повторить публикацию"
                               : "Опубликовать в Telegram"}
+                        </button>
+                      ) : null}
+                    </div>
+                    <div className="surface-card-soft p-3">
+                      <p className="text-sm font-medium text-[var(--text)]">
+                        {pinterestPublicationStatusLabel(prompt.pinterestPublication?.status)}
+                      </p>
+                      {prompt.pinterestPublication?.status === "failed" && prompt.pinterestPublication.error ? (
+                        <p className="mt-2 text-xs text-[var(--red)]" title={prompt.pinterestPublication.error}>
+                          {prompt.pinterestPublication.error}
+                        </p>
+                      ) : null}
+                      {prompt.pinterestPublication?.status === "published" && prompt.pinterestPublication.publishedUrl ? (
+                        <a
+                          href={prompt.pinterestPublication.publishedUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="btn-secondary mt-3 inline-flex w-full justify-center"
+                        >
+                          Открыть Pin
+                        </a>
+                      ) : onPublishPinterest ? (
+                        <button
+                          type="button"
+                          disabled={pinterestPublishing || prompt.pinterestPublication?.status === "pending"}
+                          onClick={async () => {
+                            setPinterestPublishing(true);
+                            try {
+                              await onPublishPinterest(prompt.id);
+                            } finally {
+                              setPinterestPublishing(false);
+                            }
+                          }}
+                          className="btn-secondary mt-3 w-full justify-center"
+                        >
+                          {pinterestPublishing
+                            ? "Публикуем..."
+                            : prompt.pinterestPublication?.status === "failed"
+                              ? "Повторить публикацию"
+                              : "Опубликовать в Pinterest"}
                         </button>
                       ) : null}
                     </div>

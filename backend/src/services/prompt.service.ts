@@ -260,10 +260,15 @@ export class PromptService {
       where: { promptId: id },
       orderBy: { createdAt: "desc" }
     });
+    const pinterestPublication = await prisma.pinterestPublication.findFirst({
+      where: { promptId: id },
+      orderBy: { createdAt: "desc" }
+    });
     const result = {
       ...rest,
       isFavorite: (favorites?.length ?? 0) > 0,
-      telegramPublication
+      telegramPublication,
+      pinterestPublication
     };
     promptDetailCache.set(cacheKey, { value: result, expires: Date.now() + PROMPT_DETAIL_CACHE_MS });
     return result;

@@ -45,6 +45,8 @@ export type Prompt = {
   usageCount: number;
   telegramPublished?: boolean;
   telegramPublication?: TelegramPublication | null;
+  pinterestPublished?: boolean;
+  pinterestPublication?: PinterestPublication | null;
   keywords: PromptKeyword[];
   examples?: MediaExample[];
   /** Клиентский флаг: полные данные (текст + примеры) уже загружены с API. */
@@ -67,15 +69,41 @@ export type TelegramPublication = {
   updatedAt: string;
 };
 
+export type PinterestPublication = {
+  id: number;
+  promptId: number;
+  status: "pending" | "published" | "failed" | string;
+  pinterestPinId?: string | null;
+  pinterestBoardId?: string | null;
+  publishedUrl?: string | null;
+  error?: string | null;
+  title: string;
+  description: string;
+  destinationLink: string;
+  mediaType?: string | null;
+  mediaUrl?: string | null;
+  createdAt: string;
+  publishedAt?: string | null;
+  updatedAt: string;
+};
+
 export type CreatePromptResponse = Prompt & {
   telegramPublicationStatus?: "published" | "failed";
   telegramPublicationError?: string;
+  pinterestPublicationStatus?: "published" | "failed";
+  pinterestPublicationError?: string;
 };
 
 export type PublishTelegramResponse = {
   status: "published" | "failed";
   error?: string;
   telegramPublication?: TelegramPublication | null;
+};
+
+export type PublishPinterestResponse = {
+  status: "published" | "failed";
+  error?: string;
+  pinterestPublication?: PinterestPublication | null;
 };
 
 export type PromptListResponse = {
@@ -109,6 +137,7 @@ export type PromptCreatePayload = {
   coverMediaType?: MediaType;
   examples: Array<{ url: string; type: MediaType; originalName?: string }>;
   publishToTelegram?: boolean;
+  publishToPinterest?: boolean;
 };
 
 export type PromptUpdatePayload = {

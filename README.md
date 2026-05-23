@@ -110,7 +110,41 @@ npm run dev
 - В деталях промпта админ может вручную опубликовать или повторить публикацию:
   `POST /api/admin/prompts/:id/publish-telegram`
 
-## 11) Структура проекта
+## 11) Pinterest Publishing
+
+Админ может автоматически публиковать новый промпт в Pinterest при сохранении. Пин ведёт в Telegram-канал (не на сайт).
+
+### Настройка
+
+1. Создайте приложение в [Pinterest Developers](https://developers.pinterest.com/).
+2. Получите access token с правами на создание pins.
+3. Получите `board_id` нужной доски Pinterest.
+4. Заполните в `.env`:
+   - `PINTEREST_ACCESS_TOKEN`
+   - `PINTEREST_BOARD_ID`
+   - `PINTEREST_API_BASE_URL` (по умолчанию `https://api.pinterest.com/v5`)
+   - `TELEGRAM_CHANNEL_URL` — публичная ссылка на канал, например `https://t.me/promptbank_channel`
+   - `PUBLIC_BACKEND_URL` — публичный URL для изображений (`/uploads/...`), если отличается от `BACKEND_URL`
+5. Убедитесь, что изображения доступны по публичному HTTPS URL.
+6. Примените миграцию схемы:
+   ```bash
+   npm --prefix backend run prisma:push
+   ```
+7. Перезапустите backend.
+
+Для preview Pinterest-публикации в miniapp можно указать `VITE_TELEGRAM_CHANNEL_URL` в `miniapp/.env`.
+
+### Использование
+
+- У админа в форме добавления промпта есть checkbox **«Опубликовать в Pinterest»**.
+- После сохранения backend создаёт image pin с title, description и destination link на Telegram-канал.
+- Для Pinterest используется cover image или первый example image. Video pins в MVP не поддерживаются.
+- Если публикация не удалась, промпт всё равно сохраняется; ошибка видна админу в деталях промпта.
+- Telegram и Pinterest публикуются независимо друг от друга.
+- Ручная публикация или повтор после ошибки:
+  `POST /api/admin/prompts/:id/publish-pinterest`
+
+## 12) Структура проекта
 
 ```text
 prompt-bank-telegram-miniapp/

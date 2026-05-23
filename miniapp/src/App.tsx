@@ -36,6 +36,7 @@ import {
 import { hideAppSplash } from "./utils/appSplash";
 import { miniRouteDocumentTitle, useDocumentTitle } from "./utils/documentTitle";
 import { writeReferenceCache } from "./utils/referenceCache";
+import { buildCreatePromptToastMessage } from "./utils/pinterestPost";
 import { createPromptLoadingShell } from "./utils/promptShell";
 
 const CATEGORIES_CACHE_KEY = "prompt-bank-categories";
@@ -511,14 +512,14 @@ function MiniAppApp() {
     setPrompts((prev) => [created, ...prev]);
     setRecentPrompts((prev) => [created, ...prev].slice(0, HOME_RECENT_LIMIT));
     setPromptsTotal((prev) => prev + 1);
-    if (created.telegramPublicationStatus === "failed") {
-      setToastMessage(
-        created.telegramPublicationError ??
-          "Промпт сохранен, но публикация в Telegram не удалась. Проверьте настройки канала и права бота."
-      );
-    } else if (created.telegramPublicationStatus === "published") {
-      setToastMessage("Промпт сохранен и опубликован в Telegram");
-    }
+    setToastMessage(
+      buildCreatePromptToastMessage({
+        telegramPublicationStatus: created.telegramPublicationStatus,
+        telegramPublicationError: created.telegramPublicationError,
+        pinterestPublicationStatus: created.pinterestPublicationStatus,
+        pinterestPublicationError: created.pinterestPublicationError
+      })
+    );
     void api.getCategories().then(setCategories).catch(() => undefined);
   }
 
@@ -542,6 +543,30 @@ function MiniAppApp() {
     } catch {
       setToastMessage("Публикация в Telegram не удалась");
       throw new Error("telegram_publish_failed");
+    }
+  }
+
+  async function handlePublishPinterest(promptId: number) {
+    if (!isAdmin) return;
+    try {
+      const result = await api.publishPromptToPinterest(promptId);
+      const fresh = withPromptDetails(await api.getPrompt(promptId));
+      setPrompts((prev) => prev.map((item) => (item.id === promptId ? mergePromptUpdate(item, fresh) : item)));
+      syncRecentPrompt(fresh);
+      if (selectedPrompt?.id === promptId) {
+        setSelectedPrompt(fresh);
+      }
+      if (result.status === "published") {
+        setToastMessage("Опубликовано в Pinterest");
+      } else {
+        setToastMessage(
+          result.error ??
+            "Публикация в Pinterest не удалась. Проверьте access token, board id и доступность изображения."
+        );
+      }
+    } catch {
+      setToastMessage("Публикация в Pinterest не удалась");
+      throw new Error("pinterest_publish_failed");
     }
   }
 
@@ -863,6 +888,7 @@ function MiniAppApp() {
         onDelete={handleDeletePrompt}
         onEdit={handleEditPrompt}
         onPublishTelegram={isAdmin ? handlePublishTelegram : undefined}
+        onPublishPinterest={isAdmin ? handlePublishPinterest : undefined}
         onShareLinkCopied={() => setToastMessage("Ссылка скопирована")}
         onTagClick={handleSelectTag}
       />

@@ -48,6 +48,7 @@ model Prompt {
   coverMediaType      MediaType?
   usageCount          Int                   @default(0)
   telegramPublished   Boolean               @default(false)
+  pinterestPublished  Boolean               @default(false)
   user                User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
   category            Category              @relation(fields: [categoryId], references: [id], onDelete: Restrict)
   keywords            PromptKeyword[]
@@ -57,6 +58,7 @@ model Prompt {
   views               PromptView[]
   copies              PromptCopy[]
   telegramPublications TelegramPublication[]
+  pinterestPublications PinterestPublication[]
   createdAt           DateTime              @default(now())
   updatedAt           DateTime              @updatedAt
 
@@ -77,6 +79,27 @@ model TelegramPublication {
   createdAt         DateTime  @default(now())
   publishedAt       DateTime?
   updatedAt         DateTime  @updatedAt
+
+  @@index([promptId, createdAt(sort: Desc)])
+}
+
+model PinterestPublication {
+  id               Int       @id @default(autoincrement())
+  promptId         Int
+  status           String
+  pinterestPinId   String?
+  pinterestBoardId String?
+  publishedUrl     String?
+  error            String?
+  title            String
+  description      String
+  destinationLink  String
+  mediaType        String?
+  mediaUrl         String?
+  prompt           Prompt    @relation(fields: [promptId], references: [id], onDelete: Cascade)
+  createdAt        DateTime  @default(now())
+  publishedAt      DateTime?
+  updatedAt        DateTime  @updatedAt
 
   @@index([promptId, createdAt(sort: Desc)])
 }

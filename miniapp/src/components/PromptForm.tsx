@@ -1,6 +1,7 @@
 import { useMemo, useState, type FormEvent } from "react";
 import type { Category, PromptCreatePayload, TelegramUser } from "../types";
 import { buildTelegramPostPreview } from "../utils/telegramPost";
+import { buildPinterestPinPreview } from "../utils/pinterestPost";
 import { MediaUploader } from "./MediaUploader";
 
 type Props = {
@@ -22,6 +23,7 @@ export function PromptForm({ categories, user, showTelegramPublish = false, onSu
   const [content, setContent] = useState("");
   const [note, setNote] = useState("");
   const [publishToTelegram, setPublishToTelegram] = useState(false);
+  const [publishToPinterest, setPublishToPinterest] = useState(false);
   const [coverMedia, setCoverMedia] = useState<{ url: string; type: "image" | "video" } | undefined>();
   const [examples, setExamples] = useState<Array<{ url: string; type: "image" | "video"; originalName?: string }>>([]);
   const [loading, setLoading] = useState(false);
@@ -36,6 +38,14 @@ export function PromptForm({ categories, user, showTelegramPublish = false, onSu
         tagNames: keywordsPreview
       }),
     [title, selectedCategory?.name, keywordsPreview]
+  );
+  const pinterestPreview = useMemo(
+    () =>
+      buildPinterestPinPreview({
+        title: title || "Название промпта",
+        categoryName: selectedCategory?.name ?? "Категория"
+      }),
+    [title, selectedCategory?.name]
   );
 
   async function handleSubmit(event: FormEvent) {
@@ -52,7 +62,8 @@ export function PromptForm({ categories, user, showTelegramPublish = false, onSu
         coverMediaUrl: coverMedia?.url,
         coverMediaType: coverMedia?.type,
         examples,
-        publishToTelegram: showTelegramPublish ? publishToTelegram : undefined
+        publishToTelegram: showTelegramPublish ? publishToTelegram : undefined,
+        publishToPinterest: showTelegramPublish ? publishToPinterest : undefined
       });
     } catch {
       setError("Не удалось сохранить промпт.");
@@ -141,10 +152,30 @@ export function PromptForm({ categories, user, showTelegramPublish = false, onSu
               </span>
             </span>
           </label>
+          <label className="flex items-start gap-3 text-sm text-[var(--text-soft)]">
+            <input
+              type="checkbox"
+              checked={publishToPinterest}
+              onChange={(event) => setPublishToPinterest(event.target.checked)}
+              className="mt-1 h-4 w-4 rounded border-[var(--border)]"
+            />
+            <span>
+              <span className="font-medium text-[var(--text)]">Опубликовать в Pinterest</span>
+              <span className="mt-1 block text-xs text-[var(--muted)]">
+                После сохранения промпт будет автоматически опубликован в Pinterest. Пин будет вести в Telegram-канал.
+              </span>
+            </span>
+          </label>
           <div>
             <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">Превью Telegram-поста</p>
             <pre className="whitespace-pre-wrap rounded-xl border border-[var(--border-soft)] bg-white p-3 text-xs leading-relaxed text-[var(--text-soft)]">
               {telegramPreview}
+            </pre>
+          </div>
+          <div>
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">Превью Pinterest-публикации</p>
+            <pre className="whitespace-pre-wrap rounded-xl border border-[var(--border-soft)] bg-white p-3 text-xs leading-relaxed text-[var(--text-soft)]">
+              {pinterestPreview}
             </pre>
           </div>
         </div>

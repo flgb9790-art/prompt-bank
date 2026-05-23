@@ -3,6 +3,7 @@ import { prisma } from "../db";
 import { PromptService } from "../services/prompt.service";
 import { HistoryService } from "../services/history.service";
 import { sendPromptToTelegram } from "../services/telegramPublisher.service";
+import { sendPromptToPinterest } from "../services/pinterestPublisher.service";
 import { authRequired, isAdminRequest, readTelegramId } from "../auth";
 import { resolveUserIdByTelegramId } from "../user";
 
@@ -76,6 +77,8 @@ router.post("/", async (req, res, next) => {
 
     let telegramPublicationStatus: "published" | "failed" | undefined;
     let telegramPublicationError: string | undefined;
+    let pinterestPublicationStatus: "published" | "failed" | undefined;
+    let pinterestPublicationError: string | undefined;
 
     if (Boolean(req.body.publishToTelegram) && isAdminRequest(req)) {
       const publishResult = await sendPromptToTelegram(created.id);
@@ -83,11 +86,24 @@ router.post("/", async (req, res, next) => {
       if (publishResult.status === "failed") {
         telegramPublicationError = publishResult.error;
       }
+    }
+
+    if (Boolean(req.body.publishToPinterest) && isAdminRequest(req)) {
+      const publishResult = await sendPromptToPinterest(created.id);
+      pinterestPublicationStatus = publishResult.status;
+      if (publishResult.status === "failed") {
+        pinterestPublicationError = publishResult.error;
+      }
+    }
+
+    if (telegramPublicationStatus || pinterestPublicationStatus) {
       const refreshed = await PromptService.getById(created.id);
       return res.status(201).json({
         ...(refreshed ?? created),
         telegramPublicationStatus,
-        telegramPublicationError
+        telegramPublicationError,
+        pinterestPublicationStatus,
+        pinterestPublicationError
       });
     }
 

@@ -9,6 +9,7 @@ import type {
   PromptUpdatePayload,
   BootstrapResponse,
   PublishTelegramResponse,
+  PublishPinterestResponse,
   TagStat,
   UserSettings
 } from "./types";
@@ -151,6 +152,21 @@ export const api = {
           ...cached,
           telegramPublished: result.status === "published",
           telegramPublication: result.telegramPublication
+        });
+      }
+      return result;
+    });
+  },
+  publishPromptToPinterest(promptId: number) {
+    return request<PublishPinterestResponse>(`/api/admin/prompts/${promptId}/publish-pinterest`, {
+      method: "POST"
+    }).then((result) => {
+      const cached = promptCache.get(promptId);
+      if (cached && result.pinterestPublication) {
+        promptCache.set(promptId, {
+          ...cached,
+          pinterestPublished: result.status === "published",
+          pinterestPublication: result.pinterestPublication
         });
       }
       return result;

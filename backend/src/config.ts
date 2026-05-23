@@ -29,6 +29,13 @@ export const config = {
   botToken: process.env.BOT_TOKEN ?? "",
   telegramBotToken: process.env.TELEGRAM_BOT_TOKEN?.trim() || process.env.BOT_TOKEN?.trim() || "",
   telegramChannelId: process.env.TELEGRAM_CHANNEL_ID?.trim() || "",
+  telegramChannelUrl: process.env.TELEGRAM_CHANNEL_URL?.trim() || "",
+  pinterestAccessToken: process.env.PINTEREST_ACCESS_TOKEN?.trim() || "",
+  pinterestBoardId: process.env.PINTEREST_BOARD_ID?.trim() || "",
+  pinterestApiBaseUrl: normalizeUrl(
+    process.env.PINTEREST_API_BASE_URL ?? "",
+    "https://api.pinterest.com/v5"
+  ).replace(/\/$/, ""),
   webAppUrl: resolveWebAppUrl(),
   backendUrl: normalizeUrl(process.env.BACKEND_URL ?? "", "http://localhost:3001"),
   publicSiteUrl: normalizeUrl(
