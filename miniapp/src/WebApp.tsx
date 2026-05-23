@@ -3,6 +3,7 @@ import { BarChart3, Heart, Layers, Sparkles, X } from "lucide-react";
 import { api, ApiError, invalidateReferenceCaches, setAuthTelegramId } from "./api";
 import type { Category, MeResponse, Prompt, PromptCreatePayload, TagStat, TelegramUser, CreatePromptResponse } from "./types";
 import { SettingsScreen } from "./components/settings/SettingsScreen";
+import { PrivacyPolicyPage } from "./pages/PrivacyPolicyPage";
 import { PromptHistoryScreen } from "./components/history/PromptHistoryScreen";
 import { recordPromptCopy, trackPromptView } from "./utils/promptTracking";
 import { BrandSplash } from "./components/BrandSplash";
@@ -52,7 +53,7 @@ import {
 
 type SortValue = "new" | "old" | "usage";
 type ViewMode = "grid" | "list";
-type RoutePath = "/" | "/prompts" | "/favorites" | "/categories" | "/tags" | "/recent" | "/settings" | "/copied" | "/viewed";
+type RoutePath = "/" | "/prompts" | "/favorites" | "/categories" | "/tags" | "/recent" | "/settings" | "/copied" | "/viewed" | "/privacy";
 
 const storageKey = "prompt-bank-web-auth";
 const CATEGORIES_CACHE_KEY = "prompt-bank-categories";
@@ -66,7 +67,7 @@ const telegramAuthUrl = (import.meta.env.VITE_TELEGRAM_AUTH_URL as string | unde
 const telegramBotUsernameFromEnv = (import.meta.env.VITE_TELEGRAM_BOT_USERNAME as string | undefined)?.trim();
 
 function getRoutePath(pathname: string): RoutePath {
-  const allowed: RoutePath[] = ["/", "/prompts", "/favorites", "/categories", "/tags", "/recent", "/settings", "/copied", "/viewed"];
+  const allowed: RoutePath[] = ["/", "/prompts", "/favorites", "/categories", "/tags", "/recent", "/settings", "/copied", "/viewed", "/privacy"];
   return allowed.includes(pathname as RoutePath) ? (pathname as RoutePath) : "/";
 }
 
@@ -946,8 +947,11 @@ export function WebApp() {
           onLogout={logout}
           onLogin={loginTelegram}
           onUpdateSettings={handleUpdateSettings}
+          onOpenPrivacyPolicy={() => navigate("/privacy")}
         />
       ) : null}
+
+      {path === "/privacy" ? <PrivacyPolicyPage onBack={() => navigate("/settings")} /> : null}
 
       {path === "/copied" ? (
         <PromptHistoryScreen
@@ -1082,7 +1086,7 @@ export function WebApp() {
       </div>
 
       <MobileWebShell
-        currentPath={path}
+        currentPath={path === "/privacy" ? "/settings" : path}
         search={search}
         onSearchChange={setSearch}
         onNavigate={navigate}

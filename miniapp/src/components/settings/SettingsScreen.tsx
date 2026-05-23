@@ -16,6 +16,7 @@ type Props = {
   onLogin: () => void;
   onUpdateSettings: (settings: Partial<UserSettings>) => Promise<void>;
   showLogout?: boolean;
+  onOpenPrivacyPolicy?: () => void;
 };
 
 function displayName(user: TelegramUser | null, me: MeResponse | null) {
@@ -39,7 +40,8 @@ export function SettingsScreen({
   onLogout,
   onLogin,
   onUpdateSettings,
-  showLogout = true
+  showLogout = true,
+  onOpenPrivacyPolicy
 }: Props) {
   const stats = me?.stats;
   const settings = me?.settings;
@@ -71,6 +73,22 @@ export function SettingsScreen({
     }
   }
 
+  const privacyFooter =
+    !isMini && onOpenPrivacyPolicy ? (
+      <footer className="settings-legal-footer">
+        <a
+          href="/privacy"
+          className="settings-legal-link"
+          onClick={(event) => {
+            event.preventDefault();
+            onOpenPrivacyPolicy();
+          }}
+        >
+          Политика конфиденциальности
+        </a>
+      </footer>
+    ) : null;
+
   if (!isAuthenticated) {
     return (
       <div className={isMini ? "settings-page settings-page--mini" : "settings-page"}>
@@ -84,6 +102,7 @@ export function SettingsScreen({
             Войти через Telegram
           </button>
         </div>
+        {privacyFooter}
       </div>
     );
   }
@@ -244,6 +263,7 @@ export function SettingsScreen({
         {actionCards}
         {privacyCard}
       </div>
+      {privacyFooter}
     </div>
   );
 }

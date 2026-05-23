@@ -38,6 +38,7 @@ export function webRouteDocumentTitle(input: {
   if (input.path === "/tags") return "Теги";
   if (input.path === "/recent") return "Последние";
   if (input.path === "/settings") return "Настройки";
+  if (input.path === "/privacy") return "Политика конфиденциальности";
   if (input.path === "/copied") return "Скопированные промпты";
   if (input.path === "/viewed") return "Просмотренные промпты";
   if (input.path === "/prompts") {
