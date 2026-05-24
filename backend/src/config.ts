@@ -28,6 +28,7 @@ export const config = {
   port: Number(process.env.PORT ?? 3001),
   botToken: process.env.BOT_TOKEN ?? "",
   telegramBotToken: process.env.TELEGRAM_BOT_TOKEN?.trim() || process.env.BOT_TOKEN?.trim() || "",
+  telegramBotUsername: (process.env.TELEGRAM_BOT_USERNAME ?? "prmtb_bot").trim().replace(/^@/, ""),
   telegramChannelId: process.env.TELEGRAM_CHANNEL_ID?.trim() || "",
   telegramChannelUrl: process.env.TELEGRAM_CHANNEL_URL?.trim() || "",
   pinterestAccessToken: process.env.PINTEREST_ACCESS_TOKEN?.trim() || "",

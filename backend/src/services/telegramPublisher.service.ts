@@ -41,9 +41,19 @@ export function buildHashtags(keywords: Array<{ keyword: { name: string } }>): s
   return tags.length ? tags.join(" ") : "#prompt";
 }
 
+function buildPromptStartParam(promptId: number): string {
+  return `prompt_${promptId}`;
+}
+
 export function buildPromptUrl(promptId: number): string {
-  const base = (config.publicSiteUrl || config.webAppUrl).replace(/\/$/, "");
-  return `${base}/?prompt=${promptId}`;
+  const username = config.telegramBotUsername.trim();
+  if (!username) {
+    const base = (config.publicSiteUrl || config.webAppUrl).replace(/\/$/, "");
+    return `${base}/?prompt=${promptId}`;
+  }
+
+  const startParam = buildPromptStartParam(promptId);
+  return `https://t.me/${username}?startapp=${encodeURIComponent(startParam)}`;
 }
 
 function escapeHtml(text: string): string {

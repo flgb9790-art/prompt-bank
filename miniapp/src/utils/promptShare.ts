@@ -1,6 +1,18 @@
+import { isTelegramMiniAppContext } from "../telegram";
+
 const PROMPT_START_PARAM_PREFIX = "prompt_";
 
+function resolveTelegramBotUsername(): string | null {
+  const fromEnv = (import.meta.env.VITE_TELEGRAM_BOT_USERNAME as string | undefined)?.trim().replace(/^@/, "");
+  return fromEnv || null;
+}
+
 export function buildPromptShareUrl(promptId: number): string {
+  const botUsername = resolveTelegramBotUsername();
+  if (botUsername && (isTelegramMiniAppContext() || isTelegramInAppBrowser())) {
+    return buildTelegramMiniAppPromptLink(promptId, botUsername);
+  }
+
   const url = new URL(window.location.href);
   url.searchParams.set("prompt", String(promptId));
   return url.toString();
