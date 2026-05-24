@@ -1,5 +1,6 @@
 import fs from "fs";
 import path from "path";
+import { execSync } from "child_process";
 import { Client } from "pg";
 
 const DATABASE_URL = process.env.DATABASE_URL ?? process.env.DATABASE_PUBLIC_URL;
@@ -22,7 +23,8 @@ const TABLES = [
   "PromptUsage",
   "PromptView",
   "PromptCopy",
-  "TelegramPublication"
+  "TelegramPublication",
+  "PinterestPublication"
 ] as const;
 
 function timestamp() {
@@ -88,7 +90,17 @@ async function exportDatabase(client: Client, outDir: string) {
     sqlLines.push("");
   }
 
-  for (const table of ["User", "Category", "Keyword", "Prompt", "MediaExample", "Favorite", "PromptUsage"]) {
+  for (const table of [
+    "User",
+    "Category",
+    "Keyword",
+    "Prompt",
+    "MediaExample",
+    "Favorite",
+    "PromptUsage",
+    "TelegramPublication",
+    "PinterestPublication"
+  ]) {
     sqlLines.push(`
 SELECT setval(
   pg_get_serial_sequence('"${table}"', 'id'),
@@ -184,6 +196,110 @@ async function downloadMedia(client: Client, outDir: string) {
   return { downloaded, failed };
 }
 
+function exportGitState(outDir: string) {
+  const repoDir = path.join(outDir, "repo");
+  ensureDir(repoDir);
+
+  const writeText = (name: string, command: string) => {
+    try {
+      const value = execSync(command, { cwd: path.resolve(process.cwd(), ".."), encoding: "utf8" }).trim();
+      fs.writeFileSync(path.join(repoDir, name), `${value}\n`, "utf8");
+    } catch {
+      fs.writeFileSync(path.join(repoDir, name), "unknown\n", "utf8");
+    }
+  };
+
+  writeText("git-commit.txt", "git rev-parse HEAD");
+  writeText("git-branch.txt", "git rev-parse --abbrev-ref HEAD");
+  writeText("git-remote.txt", "git remote get-url origin");
+  writeText("git-log-head.txt", "git log -1 --format=%H%n%s%n%an%n%ae");
+
+  try {
+    const logHead = fs.readFileSync(path.join(repoDir, "git-log-head.txt"), "utf8").trim().split("\n");
+    return {
+      commit: logHead[0] ?? "unknown",
+      branch: fs.readFileSync(path.join(repoDir, "git-branch.txt"), "utf8").trim(),
+      remote: fs.readFileSync(path.join(repoDir, "git-remote.txt"), "utf8").trim(),
+      message: logHead[1] ?? ""
+    };
+  } catch {
+    return { commit: "unknown", branch: "unknown", remote: "unknown", message: "" };
+  }
+}
+
+function exportRailwayConfig(outDir: string) {
+  const configDir = path.join(outDir, "config");
+  ensureDir(configDir);
+
+  const services = [
+    { file: "railway-prompt-bank.json", service: "prompt-bank" },
+    { file: "railway-postgres.json", service: "Postgres" },
+    { file: "railway-miniapp.json", service: "diplomatic-communication" }
+  ];
+
+  for (const item of services) {
+    try {
+      const json = execSync(`railway variables --json --service ${item.service}`, {
+        cwd: path.resolve(process.cwd(), ".."),
+        encoding: "utf8"
+      });
+      fs.writeFileSync(path.join(configDir, item.file), `${json.trim()}\n`, "utf8");
+    } catch (error) {
+      writeJson(path.join(configDir, item.file), {
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
+  }
+}
+
+function copySchema(outDir: string) {
+  const schemaPath = path.join(process.cwd(), "prisma", "schema.prisma");
+  const targetPath = path.join(outDir, "database", "schema.prisma");
+  ensureDir(path.dirname(targetPath));
+  fs.copyFileSync(schemaPath, targetPath);
+}
+
+function writeRestoreGuide(outDir: string, git: { commit: string; branch: string }) {
+  const text = `Prompt Bank — full backup
+Created: ${new Date().toISOString()}
+Git commit: ${git.commit.slice(0, 7)} (${git.branch})
+
+WHAT IS INSIDE
+- database/          JSON per table + restore.sql + schema.prisma
+- media/images/      originals + thumbs (webp)
+- config/            Railway env vars (prompt-bank, Postgres, miniapp) — SECRET
+- repo/              git commit + last commit metadata
+- manifest.json      summary counts
+
+RESTORE DATABASE
+1. Create/use Railway Postgres (or local Postgres).
+2. Run schema: npx prisma db push (from repo at commit ${git.commit.slice(0, 7)}).
+3. Apply data: psql "$DATABASE_URL" -f database/restore.sql
+
+RESTORE MEDIA
+1. Mount Railway volume at /data/uploads on prompt-bank service.
+2. Copy media/images/* -> /data/uploads/images/
+3. Copy media/images/thumbs/* -> /data/uploads/images/thumbs/
+4. Set UPLOADS_DIR=/data/uploads and MEDIA_PUBLIC_URL=https://prompt-bank-production.up.railway.app
+
+RESTORE RAILWAY CONFIG
+1. Recreate variables from config/railway-*.json in Railway dashboard/CLI.
+2. Redeploy prompt-bank and diplomatic-communication services.
+
+RE-RUN BACKUP LATER
+cd backend
+set DATABASE_URL=<Railway DATABASE_PUBLIC_URL>
+set BACKEND_URL=https://prompt-bank-production.up.railway.app
+npm run backup:full
+
+SECURITY
+This folder contains BOT_TOKEN, DB passwords, and other secrets.
+Do not commit to git. Store offline or in encrypted storage only.
+`;
+
+  fs.writeFileSync(path.join(outDir, "RESTORE.txt"), text, "utf8");
+}
+
 async function main() {
   if (!DATABASE_URL) {
     console.error("Set DATABASE_URL or DATABASE_PUBLIC_URL");
@@ -207,25 +323,35 @@ async function main() {
 
   await client.end();
 
+  copySchema(BACKUP_ROOT);
+  const git = exportGitState(BACKUP_ROOT);
+  exportRailwayConfig(BACKUP_ROOT);
+  writeRestoreGuide(BACKUP_ROOT, git);
+
   const manifest = {
     createdAt: new Date().toISOString(),
     project: "prompt-bank-telegram-miniapp",
     backendUrl: BACKEND_URL,
+    miniappUrl: "https://diplomatic-communication-production-6b54.up.railway.app",
+    railwayProject: "exemplary-emotion",
+    git,
     database: counts,
     media: {
       downloaded: media.downloaded.length,
       failed: media.failed
     },
-    contents: {
-      database: "database/*.json + database/restore.sql",
-      media: "media/uploads mirror",
-      config: "config/railway-*.json (create separately via Railway CLI)",
-      repo: "repo/git-state.json"
+    paths: {
+      database: "database/*.json, database/restore.sql, database/schema.prisma",
+      media: "media/images/",
+      config: "config/railway-prompt-bank.json, config/railway-postgres.json, config/railway-miniapp.json",
+      repo: "repo/git-commit.txt, repo/git-log-head.txt",
+      restoreGuide: "RESTORE.txt"
     }
   };
 
   writeJson(path.join(BACKUP_ROOT, "manifest.json"), manifest);
   console.log("Backup complete.");
+  console.log(`Archive folder: ${BACKUP_ROOT}`);
 }
 
 main().catch((error) => {
