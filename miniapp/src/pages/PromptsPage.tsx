@@ -137,7 +137,7 @@ export function PromptsPage({
       {loading ? (
         <div className="space-y-3">
           {Array.from({ length: 4 }).map((_, idx) => (
-            <div key={idx} className="skeleton h-36" />
+            <div key={idx} className="mobile-post-card skeleton mobile-post-card-skeleton" />
           ))}
         </div>
       ) : error ? (

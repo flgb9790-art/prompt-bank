@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Copy, Eye, ExternalLink, Star } from "lucide-react";
+import { ArrowLeft, Copy, Eye } from "lucide-react";
 import { api, resolveCardMediaUrl } from "../../api";
 import type { Prompt, PromptHistoryItem } from "../../types";
 import { AuthRequiredState } from "../AuthRequiredState";
+import { MobilePromptFeed } from "../MobilePromptFeed";
+import { MobilePromptPostCard } from "../MobilePromptPostCard";
 import { formatRelativeTime } from "../../utils/formatRelativeTime";
 import { getPromptExcerpt } from "../../utils/promptContent";
 
@@ -90,6 +92,77 @@ export function PromptHistoryScreen({
     }
   }
 
+  function renderHistoryFeed(className = "") {
+    return (
+      <MobilePromptFeed className={className}>
+        {filtered.map((item) => {
+          const prompt = item.prompt;
+          if (!prompt) return null;
+          const when = eventTime(item, mode);
+          const metaLabel = `${mode === "copied" ? "Скопировано" : "Просмотрено"}${when ? ` ${formatRelativeTime(when)}` : ""}`;
+          return (
+            <MobilePromptPostCard
+              key={item.id}
+              prompt={prompt}
+              metaLabel={metaLabel}
+              onOpen={onOpenPrompt}
+              onCopy={onCopyPrompt}
+              onToggleFavorite={onToggleFavorite}
+            />
+          );
+        })}
+      </MobilePromptFeed>
+    );
+  }
+
+  function renderDesktopHistoryList() {
+    return (
+      <div className="history-list">
+        {filtered.map((item) => {
+          const prompt = item.prompt;
+          if (!prompt) return null;
+          const when = eventTime(item, mode);
+          const mediaType = prompt.coverMediaType ?? "image";
+          const coverUrl = prompt.coverMediaUrl
+            ? resolveCardMediaUrl(prompt.coverMediaUrl, mediaType === "video" ? "video" : "image")
+            : null;
+          return (
+            <article key={item.id} className="history-item">
+              <div className="history-item-preview">
+                {coverUrl ? <img src={coverUrl} alt="" loading="lazy" /> : <div className="history-item-preview-fallback" />}
+              </div>
+              <div className="history-item-content">
+                <h3 className="history-item-title">{prompt.title}</h3>
+                <p className="history-item-meta">
+                  {mode === "copied" ? "Скопировано" : "Просмотрено"} {when ? formatRelativeTime(when) : ""}
+                </p>
+                <p className="history-item-excerpt">{getPromptExcerpt(prompt)}</p>
+                <div className="history-item-tags">
+                  {prompt.keywords?.slice(0, 3).map((entry: { keyword: { id: number; name: string } }) => (
+                    <span key={entry.keyword.id} className="history-item-tag">
+                      {entry.keyword.name}
+                    </span>
+                  ))}
+                </div>
+              </div>
+              <div className="history-item-actions">
+                {mode === "copied" ? (
+                  <button type="button" className="history-action-primary" onClick={() => onCopyPrompt(prompt)}>
+                    Скопировать снова
+                  </button>
+                ) : (
+                  <button type="button" className="history-action-primary" onClick={() => onOpenPrompt(prompt)}>
+                    Открыть
+                  </button>
+                )}
+              </div>
+            </article>
+          );
+        })}
+      </div>
+    );
+  }
+
   if (!isAuthenticated) {
     return (
       <div className={isMini ? "history-page history-page--mini" : "history-page"}>
@@ -130,66 +203,20 @@ export function PromptHistoryScreen({
       </div>
 
       {loading ? (
-        <div className="history-list">
+        <div className="mobile-prompt-feed">
           {Array.from({ length: 3 }).map((_, index) => (
-            <div key={index} className="history-item skeleton h-[112px]" />
+            <div key={index} className="mobile-post-card skeleton mobile-post-card-skeleton" />
           ))}
         </div>
       ) : filtered.length ? (
-        <div className="history-list">
-          {filtered.map((item) => {
-            const prompt = item.prompt;
-            if (!prompt) return null;
-            const mediaType = prompt.coverMediaType ?? "image";
-            const coverUrl = prompt.coverMediaUrl
-              ? resolveCardMediaUrl(prompt.coverMediaUrl, mediaType === "video" ? "video" : "image")
-              : null;
-            const when = eventTime(item, mode);
-            return (
-              <article key={item.id} className="history-item">
-                <div className="history-item-preview">
-                  {coverUrl ? <img src={coverUrl} alt="" loading="lazy" /> : <div className="history-item-preview-fallback" />}
-                </div>
-                <div className="history-item-content">
-                  <h3 className="history-item-title">{prompt.title}</h3>
-                  <p className="history-item-meta">
-                    {mode === "copied" ? "Скопировано" : "Просмотрено"} {when ? formatRelativeTime(when) : ""}
-                  </p>
-                  <p className="history-item-excerpt">{getPromptExcerpt(prompt)}</p>
-                  <div className="history-item-tags">
-                    {prompt.keywords?.slice(0, 3).map((entry: { keyword: { id: number; name: string } }) => (
-                      <span key={entry.keyword.id} className="history-item-tag">
-                        {entry.keyword.name}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-                <div className="history-item-actions">
-                  {mode === "copied" ? (
-                    <button type="button" className="history-action-primary" onClick={() => onCopyPrompt(prompt)}>
-                      Скопировать снова
-                    </button>
-                  ) : (
-                    <button type="button" className="history-action-primary" onClick={() => onOpenPrompt(prompt)}>
-                      Открыть
-                    </button>
-                  )}
-                  <button type="button" className="history-action-icon" onClick={() => onOpenPrompt(prompt)} aria-label="Открыть">
-                    {mode === "copied" ? <ExternalLink size={16} /> : <Copy size={16} />}
-                  </button>
-                  <button
-                    type="button"
-                    className={`history-action-icon ${prompt.isFavorite ? "active" : ""}`}
-                    onClick={() => onToggleFavorite(prompt.id)}
-                    aria-label="В избранное"
-                  >
-                    <Star size={16} />
-                  </button>
-                </div>
-              </article>
-            );
-          })}
-        </div>
+        isMini ? (
+          renderHistoryFeed()
+        ) : (
+          <>
+            <div className="hidden md:block">{renderDesktopHistoryList()}</div>
+            <div className="md:hidden">{renderHistoryFeed()}</div>
+          </>
+        )
       ) : (
         <div className="history-empty-card">
           <div className="history-empty-icon" aria-hidden>

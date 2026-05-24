@@ -1,6 +1,7 @@
 import { BarChart3, Heart, Layers, Plus, Sparkles } from "lucide-react";
 import type { Prompt } from "../types";
-import { PromptCard } from "../components/PromptCard";
+import { MobilePromptFeed } from "../components/MobilePromptFeed";
+import { MobilePromptPostCard } from "../components/MobilePromptPostCard";
 
 type Props = {
   recentPrompts: Prompt[];
@@ -71,16 +72,15 @@ export function HomePage({
         {recentLoading ? (
           <div className="mt-4 space-y-3">
             {Array.from({ length: 3 }).map((_, idx) => (
-              <div key={idx} className="skeleton h-36" />
+              <div key={idx} className="mobile-post-card skeleton mobile-post-card-skeleton" />
             ))}
           </div>
         ) : recentPrompts.length ? (
-          <div className="mt-4 flex flex-col gap-3">
+          <MobilePromptFeed className="mt-4">
             {recentPrompts.map((prompt, index) => (
-              <PromptCard
+              <MobilePromptPostCard
                 key={prompt.id}
                 prompt={prompt}
-                variant="mobile"
                 imagePriority={index < 3}
                 onOpen={onOpenPrompt}
                 onCopy={onCopyPrompt}
@@ -88,7 +88,7 @@ export function HomePage({
                 onTagClick={onTagClick}
               />
             ))}
-          </div>
+          </MobilePromptFeed>
         ) : (
           <div className="surface-card empty-state mt-4">
             <p className="text-base font-medium text-[var(--text)]">Пока нет промптов</p>

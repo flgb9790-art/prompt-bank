@@ -4,6 +4,11 @@ export function getCategoryBadgeClass(slug: string, name: string): string {
   if (key.includes("image") || key.includes("photo")) return "badge-image";
   if (key.includes("cursor") || key.includes("codex")) return "badge-cursor";
   if (key.includes("telegram") || key.includes("bot")) return "badge-bot";
+  if (key.includes("beauty") || key.includes("cosmet")) return "badge-beauty";
+  if (key.includes("logo") || key.includes("brand")) return "badge-logo";
+  if (key.includes("landing")) return "badge-landing";
+  if (key.includes("ads") || key.includes("marketing")) return "badge-ads";
+  if (key.includes("sketch")) return "badge-sketch";
   return "badge-default";
 }
 
