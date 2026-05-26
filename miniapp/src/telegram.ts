@@ -48,25 +48,31 @@ function parseUserFromInitData(rawInitData?: string): TelegramUser | null {
   return null;
 }
 
-export function isTelegramMiniAppContext(): boolean {
-  const webApp = window.Telegram?.WebApp;
-  if (!webApp) {
-    const params = new URLSearchParams(window.location.search);
-    const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
-    return (
-      params.has("tgWebAppData") ||
-      params.has("tgWebAppVersion") ||
-      hashParams.has("tgWebAppData") ||
-      hashParams.has("tgWebAppVersion")
-    );
-  }
-
-  if (webApp.initData?.trim()) return true;
-  if (webApp.initDataUnsafe?.user?.id) return true;
-
+function hasTelegramWebAppUrlHints(): boolean {
   const params = new URLSearchParams(window.location.search);
   const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
-  return params.has("tgWebAppData") || params.has("tgWebAppVersion") || hashParams.has("tgWebAppData");
+  return (
+    params.has("tgWebAppData") ||
+    params.has("tgWebAppVersion") ||
+    params.has("tgWebAppStartParam") ||
+    hashParams.has("tgWebAppData") ||
+    hashParams.has("tgWebAppVersion") ||
+    hashParams.has("tgWebAppStartParam")
+  );
+}
+
+export function isTelegramMiniAppContext(): boolean {
+  const webApp = window.Telegram?.WebApp;
+  if (webApp) {
+    if (webApp.initData?.trim()) return true;
+    if (webApp.initDataUnsafe?.user?.id) return true;
+    if (webApp.initDataUnsafe?.start_param?.trim()) return true;
+
+    const platform = (webApp as { platform?: string }).platform;
+    if (platform && platform !== "unknown" && platform !== "web") return true;
+  }
+
+  return hasTelegramWebAppUrlHints();
 }
 
 export function resolveTelegramUser(): TelegramUser | null {

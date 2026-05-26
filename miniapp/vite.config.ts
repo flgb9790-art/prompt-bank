@@ -23,15 +23,28 @@ export default defineConfig(({ mode }) => {
           }
         }
 
-        const botUsername = env.VITE_TELEGRAM_BOT_USERNAME?.trim()?.replace(/^@/, "");
-        if (botUsername) {
-          const redirectScript = `
+        const botUsername =
+          env.VITE_TELEGRAM_BOT_USERNAME?.trim()?.replace(/^@/, "") || "prmtb_bot";
+        const redirectScript = `
     <script>
       (function () {
         try {
+          var webApp = window.Telegram && window.Telegram.WebApp;
+          if (webApp && (webApp.initData || webApp.initDataUnsafe && webApp.initDataUnsafe.start_param)) return;
+          if (webApp && webApp.platform && webApp.platform !== "unknown" && webApp.platform !== "web") return;
           if (!/Telegram/i.test(navigator.userAgent || "")) return;
           var params = new URLSearchParams(window.location.search);
-          if (params.has("tgWebAppData") || params.has("tgWebAppVersion")) return;
+          var hashParams = new URLSearchParams((window.location.hash || "").replace(/^#/, ""));
+          if (
+            params.has("tgWebAppData") ||
+            params.has("tgWebAppVersion") ||
+            params.has("tgWebAppStartParam") ||
+            hashParams.has("tgWebAppData") ||
+            hashParams.has("tgWebAppVersion") ||
+            hashParams.has("tgWebAppStartParam")
+          ) {
+            return;
+          }
           var prompt = params.get("prompt");
           if (!prompt || !/^\\d+$/.test(prompt)) return;
           window.location.replace(
@@ -40,8 +53,7 @@ export default defineConfig(({ mode }) => {
         } catch (e) {}
       })();
     </script>`;
-          next = next.replace("</head>", `${redirectScript}\n  </head>`);
-        }
+        next = next.replace("</head>", `${redirectScript}\n  </head>`);
 
         return next;
       }

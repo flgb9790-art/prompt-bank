@@ -1,16 +1,16 @@
 import { isTelegramMiniAppContext } from "../telegram";
 
 const PROMPT_START_PARAM_PREFIX = "prompt_";
+const DEFAULT_TELEGRAM_BOT_USERNAME = "prmtb_bot";
 
-function resolveTelegramBotUsername(): string | null {
+function resolveTelegramBotUsername(): string {
   const fromEnv = (import.meta.env.VITE_TELEGRAM_BOT_USERNAME as string | undefined)?.trim().replace(/^@/, "");
-  return fromEnv || null;
+  return fromEnv || DEFAULT_TELEGRAM_BOT_USERNAME;
 }
 
 export function buildPromptShareUrl(promptId: number): string {
-  const botUsername = resolveTelegramBotUsername();
-  if (botUsername && (isTelegramMiniAppContext() || isTelegramInAppBrowser())) {
-    return buildTelegramMiniAppPromptLink(promptId, botUsername);
+  if (isTelegramMiniAppContext() || isTelegramInAppBrowser()) {
+    return buildTelegramMiniAppPromptLink(promptId, resolveTelegramBotUsername());
   }
 
   const url = new URL(window.location.href);
@@ -53,29 +53,17 @@ export function buildTelegramMiniAppPromptLink(promptId: number, botUsername: st
 
 export function isTelegramInAppBrowser(): boolean {
   if (typeof navigator === "undefined") return false;
-  if (window.Telegram?.WebApp?.initData?.trim()) return false;
-
-  const params = new URLSearchParams(window.location.search);
-  const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
-  if (
-    params.has("tgWebAppData") ||
-    params.has("tgWebAppVersion") ||
-    hashParams.has("tgWebAppData") ||
-    hashParams.has("tgWebAppVersion")
-  ) {
-    return false;
-  }
-
+  if (isTelegramMiniAppContext()) return false;
   return /Telegram/i.test(navigator.userAgent);
 }
 
 export function maybeRedirectTelegramBrowserToMiniApp(botUsername?: string | null): boolean {
-  const username = botUsername?.replace(/^@/, "").trim();
-  if (!username) return false;
+  if (isTelegramMiniAppContext()) return false;
 
   const promptId = parsePromptIdFromLocation();
   if (!promptId || !isTelegramInAppBrowser()) return false;
 
+  const username = botUsername?.replace(/^@/, "").trim() || resolveTelegramBotUsername();
   window.location.replace(buildTelegramMiniAppPromptLink(promptId, username));
   return true;
 }

@@ -108,8 +108,10 @@ function hasTelegramUrlHints(): boolean {
   return (
     params.has("tgWebAppData") ||
     params.has("tgWebAppVersion") ||
+    params.has("tgWebAppStartParam") ||
     hashParams.has("tgWebAppData") ||
-    hashParams.has("tgWebAppVersion")
+    hashParams.has("tgWebAppVersion") ||
+    hashParams.has("tgWebAppStartParam")
   );
 }
 
