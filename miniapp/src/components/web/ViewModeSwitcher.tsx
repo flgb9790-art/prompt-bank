@@ -5,9 +5,10 @@ type Props = {
   value: ViewMode;
   onChange: (value: ViewMode) => void;
   className?: string;
+  hidePinterest?: boolean;
 };
 
-export function ViewModeSwitcher({ value, onChange, className = "" }: Props) {
+export function ViewModeSwitcher({ value, onChange, className = "", hidePinterest = false }: Props) {
   return (
     <div className={`view-mode-switcher ${className}`.trim()} role="group" aria-label="Режим отображения">
       <button
@@ -30,16 +31,18 @@ export function ViewModeSwitcher({ value, onChange, className = "" }: Props) {
       >
         <List size={20} strokeWidth={2} />
       </button>
-      <button
-        type="button"
-        title="Pinterest"
-        aria-label="Pinterest"
-        aria-pressed={value === "pinterest"}
-        className={`view-mode-switcher-btn ${value === "pinterest" ? "active" : ""}`}
-        onClick={() => onChange("pinterest")}
-      >
-        <Columns3 size={20} strokeWidth={2} />
-      </button>
+      {!hidePinterest ? (
+        <button
+          type="button"
+          title="Pinterest"
+          aria-label="Pinterest"
+          aria-pressed={value === "pinterest"}
+          className={`view-mode-switcher-btn ${value === "pinterest" ? "active" : ""}`}
+          onClick={() => onChange("pinterest")}
+        >
+          <Columns3 size={20} strokeWidth={2} />
+        </button>
+      ) : null}
     </div>
   );
 }

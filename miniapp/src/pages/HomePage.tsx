@@ -1,9 +1,8 @@
 import { BarChart3, Heart, Layers, Plus, Sparkles } from "lucide-react";
 import type { Prompt } from "../types";
-import type { ViewMode } from "../utils/viewMode";
+import type { MiniAppViewMode, ViewMode } from "../utils/viewMode";
 import { MobilePromptFeed } from "../components/MobilePromptFeed";
 import { MobilePromptPostCard } from "../components/MobilePromptPostCard";
-import { PinterestMasonryGrid } from "../components/PinterestMasonryGrid";
 import { VirtualPromptList } from "../components/VirtualPromptList";
 import { ViewModeSwitcher } from "../components/web/ViewModeSwitcher";
 
@@ -11,7 +10,7 @@ type Props = {
   recentPrompts: Prompt[];
   recentLoading?: boolean;
   stats: { total: number; favorites: number; categories: number; usage: number };
-  viewMode: ViewMode;
+  viewMode: MiniAppViewMode;
   onViewModeChange: (mode: ViewMode) => void;
   onOpenPrompt: (prompt: Prompt) => void;
   onCopyPrompt: (prompt: Prompt) => void;
@@ -58,22 +57,6 @@ export function HomePage({
         <div className="surface-card empty-state mt-4">
           <p className="text-base font-medium text-[var(--text)]">Пока нет промптов</p>
           <p className="mt-1 text-sm text-[var(--muted)]">Создайте первый промпт кнопкой ниже.</p>
-        </div>
-      );
-    }
-
-    if (viewMode === "pinterest") {
-      return (
-        <div className="mt-4">
-          <PinterestMasonryGrid
-            prompts={recentPrompts}
-            miniAppSingleColumn
-            onOpen={onOpenPrompt}
-            onCopy={onCopyPrompt}
-            onToggleFavorite={onToggleFavorite}
-            onTagClick={onTagClick}
-            skeletonCount={3}
-          />
         </div>
       );
     }
@@ -147,7 +130,7 @@ export function HomePage({
                 Все
               </button>
             ) : null}
-            <ViewModeSwitcher value={viewMode} onChange={onViewModeChange} />
+            <ViewModeSwitcher value={viewMode} onChange={onViewModeChange} hidePinterest />
           </div>
         </div>
         {renderRecentPrompts()}

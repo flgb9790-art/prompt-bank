@@ -1,9 +1,8 @@
 import { VirtualPromptList } from "../components/VirtualPromptList";
 import { SearchBar } from "../components/SearchBar";
-import { PinterestMasonryGrid } from "../components/PinterestMasonryGrid";
 import { ViewModeSwitcher } from "../components/web/ViewModeSwitcher";
 import type { Prompt } from "../types";
-import type { ViewMode } from "../utils/viewMode";
+import type { MiniAppViewMode, ViewMode } from "../utils/viewMode";
 
 type Props = {
   query: string;
@@ -11,7 +10,7 @@ type Props = {
   quickTags: string[];
   results: Prompt[];
   loading: boolean;
-  viewMode: ViewMode;
+  viewMode: MiniAppViewMode;
   onViewModeChange: (mode: ViewMode) => void;
   onOpenPrompt: (prompt: Prompt) => void;
   onCopyPrompt: (prompt: Prompt) => void;
@@ -38,7 +37,7 @@ export function SearchPage({
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-3">
         <h2 className="text-base font-semibold text-[var(--text)]">Поиск</h2>
-        <ViewModeSwitcher value={viewMode} onChange={onViewModeChange} />
+        <ViewModeSwitcher value={viewMode} onChange={onViewModeChange} hidePinterest />
       </div>
 
       <SearchBar value={query} onChange={onQueryChange} placeholder="Введите слово, тег или часть названия..." />
@@ -63,15 +62,6 @@ export function SearchPage({
           <p className="text-base font-medium text-[var(--text)]">Ничего не найдено</p>
           <p className="mt-1 text-sm text-[var(--muted)]">Попробуйте другое слово или тег.</p>
         </div>
-      ) : viewMode === "pinterest" ? (
-        <PinterestMasonryGrid
-          prompts={results}
-          miniAppSingleColumn
-          onOpen={onOpenPrompt}
-          onCopy={onCopyPrompt}
-          onToggleFavorite={onToggleFavorite}
-          onTagClick={onTagClick}
-        />
       ) : viewMode === "list" ? (
         <VirtualPromptList
           prompts={results}

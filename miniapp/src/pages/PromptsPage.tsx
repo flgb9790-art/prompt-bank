@@ -1,12 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useLoadMoreOnScroll } from "../hooks/useLoadMoreOnScroll";
 import type { Category, Prompt } from "../types";
-import type { ViewMode } from "../utils/viewMode";
+import type { MiniAppViewMode, ViewMode } from "../utils/viewMode";
 import { SearchBar } from "../components/SearchBar";
 import { CategoryTabs } from "../components/CategoryTabs";
 import { VirtualPromptList } from "../components/VirtualPromptList";
-import { PinterestMasonryGrid } from "../components/PinterestMasonryGrid";
 import { ViewModeSwitcher } from "../components/web/ViewModeSwitcher";
+import { Pagination } from "../components/web/Pagination";
 import { promptHasTag } from "../utils/tagFilter";
 import { getPromptSearchText } from "../utils/promptContent";
 
@@ -22,12 +21,13 @@ type Props = {
   prompts: Prompt[];
   categories: Category[];
   loading: boolean;
-  loadingMore?: boolean;
-  hasMore?: boolean;
-  onLoadMore?: () => void;
   error: string;
-  viewMode: ViewMode;
+  viewMode: MiniAppViewMode;
   onViewModeChange: (mode: ViewMode) => void;
+  page: number;
+  totalItems: number;
+  pageSize: number;
+  onPageChange: (page: number) => void;
   onOpenPrompt: (prompt: Prompt) => void;
   onToggleFavorite: (id: number) => void;
   onCopyPrompt: (prompt: Prompt) => void;
@@ -42,12 +42,13 @@ export function PromptsPage({
   prompts,
   categories,
   loading,
-  loadingMore = false,
-  hasMore = false,
-  onLoadMore,
   error,
   viewMode,
   onViewModeChange,
+  page,
+  totalItems,
+  pageSize,
+  onPageChange,
   onOpenPrompt,
   onToggleFavorite,
   onCopyPrompt,
@@ -62,6 +63,7 @@ export function PromptsPage({
   const [sort, setSort] = useState<SortMode>("new");
   const serverFilters = Boolean(onFiltersChange);
   const filtersBootstrappedRef = useRef(false);
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
 
   useEffect(() => {
     if (!activeTag) return;
@@ -111,20 +113,11 @@ export function PromptsPage({
     return list;
   }, [prompts, query, category, sort, activeTag, serverFilters]);
 
-  const loadMoreRef = useLoadMoreOnScroll({
-    enabled: viewMode !== "pinterest" && !loading && !error && filtered.length > 0,
-    loading: Boolean(loadingMore),
-    hasMore: Boolean(hasMore && onLoadMore),
-    onLoadMore: () => onLoadMore?.(),
-    scrollRootSelector: ".mobile-frame",
-    itemCount: filtered.length
-  });
-
   function renderPrompts() {
     if (loading) {
       return (
         <div className="space-y-3">
-          {Array.from({ length: viewMode === "pinterest" ? 6 : 4 }).map((_, idx) => (
+          {Array.from({ length: 4 }).map((_, idx) => (
             <div key={idx} className="mobile-post-card skeleton mobile-post-card-skeleton" />
           ))}
         </div>
@@ -144,24 +137,6 @@ export function PromptsPage({
       );
     }
 
-    if (viewMode === "pinterest") {
-      return (
-        <PinterestMasonryGrid
-          prompts={filtered}
-          loading={loading}
-          loadingMore={loadingMore}
-          hasMore={hasMore}
-          onLoadMore={onLoadMore}
-          scrollRootSelector=".mobile-frame"
-          miniAppSingleColumn
-          onOpen={onOpenPrompt}
-          onCopy={onCopyPrompt}
-          onToggleFavorite={onToggleFavorite}
-          onTagClick={onTagClick}
-        />
-      );
-    }
-
     if (viewMode === "list") {
       return (
         <VirtualPromptList
@@ -172,11 +147,6 @@ export function PromptsPage({
           onToggleFavorite={onToggleFavorite}
           onCopyPrompt={onCopyPrompt}
           onTagClick={onTagClick}
-          footer={
-            <div ref={loadMoreRef} className="flex min-h-8 items-center justify-center py-2">
-              {loadingMore ? <span className="text-xs text-[var(--muted)]">Загрузка...</span> : null}
-            </div>
-          }
         />
       );
     }
@@ -190,11 +160,6 @@ export function PromptsPage({
         onToggleFavorite={onToggleFavorite}
         onCopyPrompt={onCopyPrompt}
         onTagClick={onTagClick}
-        footer={
-          <div ref={loadMoreRef} className="flex min-h-8 items-center justify-center py-2">
-            {loadingMore ? <span className="text-xs text-[var(--muted)]">Загрузка...</span> : null}
-          </div>
-        }
       />
     );
   }
@@ -203,14 +168,14 @@ export function PromptsPage({
     <div className="space-y-3 pb-1">
       <div className="flex items-center justify-between gap-3">
         <h2 className="text-base font-semibold text-[var(--text)]">Все промпты</h2>
-        <ViewModeSwitcher value={viewMode} onChange={onViewModeChange} />
+        <ViewModeSwitcher value={viewMode} onChange={onViewModeChange} hidePinterest />
       </div>
 
       {activeTag ? (
         <div className="space-y-2">
           <h3 className="text-sm font-semibold text-[var(--text)]">
             Тег: {activeTag}
-            <span className="ml-2 text-sm font-normal text-[var(--muted)]">({filtered.length})</span>
+            <span className="ml-2 text-sm font-normal text-[var(--muted)]">({totalItems})</span>
           </h3>
           <button type="button" className="chip active" onClick={onClearTag}>
             Сбросить фильтр ×
@@ -228,6 +193,16 @@ export function PromptsPage({
       </select>
 
       {renderPrompts()}
+
+      {!loading && !error && totalItems > 0 ? (
+        <Pagination
+          page={page}
+          totalPages={totalPages}
+          totalItems={totalItems}
+          pageSize={pageSize}
+          onPageChange={onPageChange}
+        />
+      ) : null}
     </div>
   );
 }
