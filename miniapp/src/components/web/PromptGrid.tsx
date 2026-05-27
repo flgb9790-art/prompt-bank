@@ -47,6 +47,7 @@ export function PromptGrid({
           loadingMore={pinterestLoadingMore}
           hasMore={pinterestHasMore}
           onLoadMore={onPinterestLoadMore}
+          scrollRootSelector=".prompt-scroll-root"
           onOpen={onOpenPrompt}
           onCopy={onCopyPrompt}
           onToggleFavorite={onToggleFavorite}

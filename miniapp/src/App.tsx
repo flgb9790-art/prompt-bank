@@ -507,12 +507,12 @@ function MiniAppApp() {
   useEffect(() => {
     if (tab !== "favorites") return;
     const cached = readFavoritesCache();
-    if (cached) {
+    if (cached && viewMode !== "pinterest") {
       setFavoritePrompts(cached);
       return;
     }
     void refreshFavoritesList(true);
-  }, [tab]);
+  }, [tab, viewMode]);
 
   useEffect(() => {
     if (tab === "profile" && !profileScreen) {

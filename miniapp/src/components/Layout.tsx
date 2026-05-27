@@ -8,7 +8,7 @@ type Props = {
 export function Layout({ children, freezeScroll = false }: Props) {
   return (
     <div className="app-shell">
-      <div className={`mobile-frame ${freezeScroll ? "sheet-collapsed" : ""}`}>{children}</div>
+      <div className={`mobile-frame prompt-scroll-root ${freezeScroll ? "sheet-collapsed" : ""}`}>{children}</div>
     </div>
   );
 }

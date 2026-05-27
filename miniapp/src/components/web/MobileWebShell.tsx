@@ -48,7 +48,7 @@ export function MobileWebShell({
         />
       </header>
 
-      <main className="flex-1 overflow-y-auto px-4 pb-28 pt-4">{children}</main>
+      <main className="prompt-scroll-root flex-1 overflow-y-auto px-4 pb-28 pt-4">{children}</main>
 
       {canCreate && currentPath !== "/settings" ? (
         <button type="button" onClick={onCreatePrompt} className="cta-button mx-0 mb-[88px]">

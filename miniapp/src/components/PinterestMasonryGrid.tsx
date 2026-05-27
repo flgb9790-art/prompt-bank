@@ -52,6 +52,7 @@ export function PinterestMasonryGrid({
   onCopy,
   onToggleFavorite,
   onTagClick,
+  scrollRootSelector = ".prompt-scroll-root",
   miniAppSingleColumn = false,
   emptyState,
   skeletonCount = 8
@@ -61,7 +62,8 @@ export function PinterestMasonryGrid({
     loading: Boolean(loadingMore),
     hasMore: Boolean(hasMore && onLoadMore),
     onLoadMore: () => onLoadMore?.(),
-    rootMargin: "600px"
+    rootMargin: "600px",
+    scrollRootSelector
   });
 
   if (loading && !prompts.length) {

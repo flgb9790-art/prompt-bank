@@ -256,7 +256,8 @@ export function WebApp() {
     enabled: viewMode !== "pinterest" && !loading && prompts.length > 0,
     loading: loadingMoreRemote || promptsLoading,
     hasMore: hasMoreRemote,
-    onLoadMore: () => void loadMoreRemotePrompts()
+    onLoadMore: () => void loadMoreRemotePrompts(),
+    scrollRootSelector: ".prompt-scroll-root"
   });
 
   async function loadMoreRemotePrompts() {
@@ -418,12 +419,12 @@ export function WebApp() {
   useEffect(() => {
     if (path !== "/favorites" || !isAuthenticated) return;
     const cached = readFavoritesCache();
-    if (cached) {
+    if (cached && viewMode !== "pinterest") {
       setFavoritePrompts(cached);
       return;
     }
     void refreshWebFavorites(true);
-  }, [path, isAuthenticated, sort]);
+  }, [path, isAuthenticated, sort, viewMode]);
 
   function syncFavoritePrompts(next: Prompt) {
     setFavoritePrompts((prev) => {
