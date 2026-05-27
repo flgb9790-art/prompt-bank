@@ -50,7 +50,7 @@ import {
   mapPromptsFromApi,
   withPromptDetails
 } from "./utils/promptContent";
-import { PINTEREST_PAGE_SIZE, readViewMode, saveViewMode, type ViewMode } from "./utils/viewMode";
+import { PINTEREST_PAGE_SIZE, readViewMode, saveViewMode, computePagedHasMore, type ViewMode } from "./utils/viewMode";
 
 type SortValue = "new" | "old" | "usage";
 type RoutePath = "/" | "/prompts" | "/favorites" | "/categories" | "/tags" | "/recent" | "/settings" | "/copied" | "/viewed" | "/privacy";
@@ -118,6 +118,8 @@ export function WebApp() {
   const deepLinkHandledRef = useRef(false);
   const openPromptRequestRef = useRef(0);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [lastPromptBatchSize, setLastPromptBatchSize] = useState(0);
+  const [lastFavoriteBatchSize, setLastFavoriteBatchSize] = useState(0);
 
   useEffect(() => {
     document.documentElement.classList.add("web-mode");
@@ -222,8 +224,14 @@ export function WebApp() {
     }
   }
 
-  const hasMoreRemote = prompts.length < promptsTotal;
-  const hasMoreFavorites = favoritePrompts.length < favoritesTotal;
+  const hasMoreRemote =
+    viewMode === "pinterest"
+      ? computePagedHasMore(prompts.length, promptsTotal, lastPromptBatchSize, PINTEREST_PAGE_SIZE)
+      : prompts.length < promptsTotal;
+  const hasMoreFavorites =
+    viewMode === "pinterest"
+      ? computePagedHasMore(favoritePrompts.length, favoritesTotal, lastFavoriteBatchSize, PINTEREST_PAGE_SIZE)
+      : favoritePrompts.length < favoritesTotal;
 
   function handleViewModeChange(next: ViewMode) {
     setViewMode(next);
@@ -257,7 +265,8 @@ export function WebApp() {
     loading: loadingMoreRemote || promptsLoading,
     hasMore: hasMoreRemote,
     onLoadMore: () => void loadMoreRemotePrompts(),
-    scrollRootSelector: ".prompt-scroll-root"
+    scrollRootSelector: ".prompt-scroll-root",
+    itemCount: prompts.length
   });
 
   async function loadMoreRemotePrompts() {
@@ -267,8 +276,10 @@ export function WebApp() {
     try {
       const cached = await takePrefetchedPromptsPage(query);
       const promptsData = cached ?? (await api.getPrompts(query));
+      const mapped = mapPromptsFromApi(promptsData.items);
+      setLastPromptBatchSize(mapped.length);
       setPrompts((prev) => {
-        const merged = [...prev, ...mapPromptsFromApi(promptsData.items)];
+        const merged = [...prev, ...mapped];
         scheduleWebPrefetch(merged.length, promptsData.total);
         return merged;
       });
@@ -288,6 +299,7 @@ export function WebApp() {
       const mapped = mapPromptsFromApi(promptsData.items);
       setPrompts(mapped);
       setPromptsTotal(promptsData.total);
+      setLastPromptBatchSize(mapped.length);
       scheduleWebPrefetch(mapped.length, promptsData.total);
     } catch (err) {
       setError("Не удалось загрузить промпты.");
@@ -314,7 +326,11 @@ export function WebApp() {
         setIsAdmin(Boolean(data.me.isAdmin));
         setDbUserId(data.me.user?.id ?? null);
         bootstrappedRef.current = true;
-        scheduleWebPrefetch(mapped.length, data.prompts.total);
+        if (viewMode === "pinterest") {
+          void loadPrompts();
+        } else {
+          scheduleWebPrefetch(mapped.length, data.prompts.total);
+        }
 
         const cachedFavorites = readFavoritesCache();
         if (cachedFavorites) {
@@ -400,6 +416,7 @@ export function WebApp() {
       const data = await api.getPrompts({ favorite: true, limit, offset, lite: true, sort });
       const mapped = mapPromptsFromApi(data.items);
       setFavoritesTotal(data.total);
+      setLastFavoriteBatchSize(mapped.length);
       setFavoritePrompts((prev) => (append ? [...prev, ...mapped] : mapped));
       if (!append) writeFavoritesCache(mapped);
     } catch (err) {

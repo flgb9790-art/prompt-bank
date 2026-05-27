@@ -115,7 +115,9 @@ export function PromptsPage({
     enabled: viewMode !== "pinterest" && !loading && !error && filtered.length > 0,
     loading: Boolean(loadingMore),
     hasMore: Boolean(hasMore && onLoadMore),
-    onLoadMore: () => onLoadMore?.()
+    onLoadMore: () => onLoadMore?.(),
+    scrollRootSelector: ".mobile-frame",
+    itemCount: filtered.length
   });
 
   function renderPrompts() {
@@ -150,6 +152,7 @@ export function PromptsPage({
           loadingMore={loadingMore}
           hasMore={hasMore}
           onLoadMore={onLoadMore}
+          scrollRootSelector=".mobile-frame"
           miniAppSingleColumn
           onOpen={onOpenPrompt}
           onCopy={onCopyPrompt}

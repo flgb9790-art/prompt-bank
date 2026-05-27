@@ -62,8 +62,9 @@ export function PinterestMasonryGrid({
     loading: Boolean(loadingMore),
     hasMore: Boolean(hasMore && onLoadMore),
     onLoadMore: () => onLoadMore?.(),
-    rootMargin: "600px",
-    scrollRootSelector
+    rootMargin: "1200px",
+    scrollRootSelector,
+    itemCount: prompts.length
   });
 
   if (loading && !prompts.length) {
@@ -106,8 +107,10 @@ export function PinterestMasonryGrid({
       </div>
 
       {hasMore && onLoadMore ? (
-        <div ref={sentinelRef} className="pinterest-sentinel" aria-hidden>
-          {loadingMore ? <span className="pinterest-loading-more">Загружаем ещё...</span> : null}
+        <div ref={sentinelRef} className="pinterest-sentinel-wrap" aria-hidden>
+          <div className="pinterest-sentinel">
+            {loadingMore ? <span className="pinterest-loading-more">Загружаем ещё...</span> : null}
+          </div>
         </div>
       ) : null}
 

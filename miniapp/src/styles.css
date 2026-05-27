@@ -3303,9 +3303,17 @@ button.brand-logo {
   text-align: center;
 }
 
+.pinterest-sentinel-wrap {
+  width: 100%;
+  clear: both;
+  margin-top: 4px;
+}
+
 .pinterest-sentinel {
-  min-height: 48px;
-  margin-top: 8px;
+  min-height: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .pinterest-loading-more {

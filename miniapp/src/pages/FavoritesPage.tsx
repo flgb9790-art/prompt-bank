@@ -68,6 +68,7 @@ export function FavoritesPage({
           loadingMore={loadingMore}
           hasMore={hasMore}
           onLoadMore={onLoadMore}
+          scrollRootSelector=".mobile-frame"
           miniAppSingleColumn
           onOpen={onOpenPrompt}
           onCopy={onCopyPrompt}

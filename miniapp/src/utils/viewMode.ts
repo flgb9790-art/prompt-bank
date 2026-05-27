@@ -26,3 +26,13 @@ export function saveViewMode(mode: ViewMode): void {
     // ignore storage errors
   }
 }
+
+export function computePagedHasMore(
+  loadedCount: number,
+  total: number,
+  lastBatchSize: number,
+  pageSize: number
+): boolean {
+  if (loadedCount < total) return true;
+  return lastBatchSize >= pageSize;
+}
