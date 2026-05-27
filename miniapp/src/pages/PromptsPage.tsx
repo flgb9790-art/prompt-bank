@@ -1,9 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLoadMoreOnScroll } from "../hooks/useLoadMoreOnScroll";
 import type { Category, Prompt } from "../types";
+import type { ViewMode } from "../utils/viewMode";
 import { SearchBar } from "../components/SearchBar";
 import { CategoryTabs } from "../components/CategoryTabs";
 import { VirtualPromptList } from "../components/VirtualPromptList";
+import { PinterestMasonryGrid } from "../components/PinterestMasonryGrid";
+import { ViewModeSwitcher } from "../components/web/ViewModeSwitcher";
 import { promptHasTag } from "../utils/tagFilter";
 import { getPromptSearchText } from "../utils/promptContent";
 
@@ -23,6 +26,8 @@ type Props = {
   hasMore?: boolean;
   onLoadMore?: () => void;
   error: string;
+  viewMode: ViewMode;
+  onViewModeChange: (mode: ViewMode) => void;
   onOpenPrompt: (prompt: Prompt) => void;
   onToggleFavorite: (id: number) => void;
   onCopyPrompt: (prompt: Prompt) => void;
@@ -41,6 +46,8 @@ export function PromptsPage({
   hasMore = false,
   onLoadMore,
   error,
+  viewMode,
+  onViewModeChange,
   onOpenPrompt,
   onToggleFavorite,
   onCopyPrompt,
@@ -105,20 +112,103 @@ export function PromptsPage({
   }, [prompts, query, category, sort, activeTag, serverFilters]);
 
   const loadMoreRef = useLoadMoreOnScroll({
-    enabled: !loading && !error && filtered.length > 0,
+    enabled: viewMode !== "pinterest" && !loading && !error && filtered.length > 0,
     loading: Boolean(loadingMore),
     hasMore: Boolean(hasMore && onLoadMore),
     onLoadMore: () => onLoadMore?.()
   });
 
+  function renderPrompts() {
+    if (loading) {
+      return (
+        <div className="space-y-3">
+          {Array.from({ length: viewMode === "pinterest" ? 6 : 4 }).map((_, idx) => (
+            <div key={idx} className="mobile-post-card skeleton mobile-post-card-skeleton" />
+          ))}
+        </div>
+      );
+    }
+
+    if (error) {
+      return <p className="text-sm text-[var(--red)]">{error}</p>;
+    }
+
+    if (!filtered.length) {
+      return (
+        <div className="surface-card empty-state">
+          <p className="text-base font-medium text-[var(--text)]">Ничего не найдено</p>
+          <p className="mt-1 text-sm text-[var(--muted)]">Попробуйте другой запрос или категорию.</p>
+        </div>
+      );
+    }
+
+    if (viewMode === "pinterest") {
+      return (
+        <PinterestMasonryGrid
+          prompts={filtered}
+          loading={loading}
+          loadingMore={loadingMore}
+          hasMore={hasMore}
+          onLoadMore={onLoadMore}
+          miniAppSingleColumn
+          onOpen={onOpenPrompt}
+          onCopy={onCopyPrompt}
+          onToggleFavorite={onToggleFavorite}
+          onTagClick={onTagClick}
+        />
+      );
+    }
+
+    if (viewMode === "list") {
+      return (
+        <VirtualPromptList
+          prompts={filtered}
+          variant="list"
+          scrollSelector=".mobile-frame"
+          onOpenPrompt={onOpenPrompt}
+          onToggleFavorite={onToggleFavorite}
+          onCopyPrompt={onCopyPrompt}
+          onTagClick={onTagClick}
+          footer={
+            <div ref={loadMoreRef} className="flex min-h-8 items-center justify-center py-2">
+              {loadingMore ? <span className="text-xs text-[var(--muted)]">Загрузка...</span> : null}
+            </div>
+          }
+        />
+      );
+    }
+
+    return (
+      <VirtualPromptList
+        prompts={filtered}
+        variant="mobile"
+        scrollSelector=".mobile-frame"
+        onOpenPrompt={onOpenPrompt}
+        onToggleFavorite={onToggleFavorite}
+        onCopyPrompt={onCopyPrompt}
+        onTagClick={onTagClick}
+        footer={
+          <div ref={loadMoreRef} className="flex min-h-8 items-center justify-center py-2">
+            {loadingMore ? <span className="text-xs text-[var(--muted)]">Загрузка...</span> : null}
+          </div>
+        }
+      />
+    );
+  }
+
   return (
     <div className="space-y-3 pb-1">
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="text-base font-semibold text-[var(--text)]">Все промпты</h2>
+        <ViewModeSwitcher value={viewMode} onChange={onViewModeChange} />
+      </div>
+
       {activeTag ? (
         <div className="space-y-2">
-          <h2 className="text-base font-semibold text-[var(--text)]">
+          <h3 className="text-sm font-semibold text-[var(--text)]">
             Тег: {activeTag}
             <span className="ml-2 text-sm font-normal text-[var(--muted)]">({filtered.length})</span>
-          </h2>
+          </h3>
           <button type="button" className="chip active" onClick={onClearTag}>
             Сбросить фильтр ×
           </button>
@@ -134,35 +224,7 @@ export function PromptsPage({
         <option value="favorites">Избранные</option>
       </select>
 
-      {loading ? (
-        <div className="space-y-3">
-          {Array.from({ length: 4 }).map((_, idx) => (
-            <div key={idx} className="mobile-post-card skeleton mobile-post-card-skeleton" />
-          ))}
-        </div>
-      ) : error ? (
-        <p className="text-sm text-[var(--red)]">{error}</p>
-      ) : !filtered.length ? (
-        <div className="surface-card empty-state">
-          <p className="text-base font-medium text-[var(--text)]">Ничего не найдено</p>
-          <p className="mt-1 text-sm text-[var(--muted)]">Попробуйте другой запрос или категорию.</p>
-        </div>
-      ) : (
-        <VirtualPromptList
-          prompts={filtered}
-          variant="mobile"
-          scrollSelector=".mobile-frame"
-          onOpenPrompt={onOpenPrompt}
-          onToggleFavorite={onToggleFavorite}
-          onCopyPrompt={onCopyPrompt}
-          onTagClick={onTagClick}
-          footer={
-            <div ref={loadMoreRef} className="flex min-h-8 items-center justify-center py-2">
-              {loadingMore ? <span className="text-xs text-[var(--muted)]">Загрузка...</span> : null}
-            </div>
-          }
-        />
-      )}
+      {renderPrompts()}
     </div>
   );
 }

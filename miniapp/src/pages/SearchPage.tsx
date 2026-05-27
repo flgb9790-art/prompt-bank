@@ -1,6 +1,9 @@
 import { VirtualPromptList } from "../components/VirtualPromptList";
 import { SearchBar } from "../components/SearchBar";
+import { PinterestMasonryGrid } from "../components/PinterestMasonryGrid";
+import { ViewModeSwitcher } from "../components/web/ViewModeSwitcher";
 import type { Prompt } from "../types";
+import type { ViewMode } from "../utils/viewMode";
 
 type Props = {
   query: string;
@@ -8,6 +11,8 @@ type Props = {
   quickTags: string[];
   results: Prompt[];
   loading: boolean;
+  viewMode: ViewMode;
+  onViewModeChange: (mode: ViewMode) => void;
   onOpenPrompt: (prompt: Prompt) => void;
   onCopyPrompt: (prompt: Prompt) => void;
   onToggleFavorite: (id: number) => void;
@@ -20,6 +25,8 @@ export function SearchPage({
   quickTags,
   results,
   loading,
+  viewMode,
+  onViewModeChange,
   onOpenPrompt,
   onCopyPrompt,
   onToggleFavorite,
@@ -29,6 +36,11 @@ export function SearchPage({
 
   return (
     <div className="space-y-3">
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="text-base font-semibold text-[var(--text)]">Поиск</h2>
+        <ViewModeSwitcher value={viewMode} onChange={onViewModeChange} />
+      </div>
+
       <SearchBar value={query} onChange={onQueryChange} placeholder="Введите слово, тег или часть названия..." />
       <div className="flex flex-wrap gap-2">
         {quickTags.map((tag) => (
@@ -51,6 +63,25 @@ export function SearchPage({
           <p className="text-base font-medium text-[var(--text)]">Ничего не найдено</p>
           <p className="mt-1 text-sm text-[var(--muted)]">Попробуйте другое слово или тег.</p>
         </div>
+      ) : viewMode === "pinterest" ? (
+        <PinterestMasonryGrid
+          prompts={results}
+          miniAppSingleColumn
+          onOpen={onOpenPrompt}
+          onCopy={onCopyPrompt}
+          onToggleFavorite={onToggleFavorite}
+          onTagClick={onTagClick}
+        />
+      ) : viewMode === "list" ? (
+        <VirtualPromptList
+          prompts={results}
+          variant="list"
+          scrollSelector=".mobile-frame"
+          onOpenPrompt={onOpenPrompt}
+          onToggleFavorite={onToggleFavorite}
+          onCopyPrompt={onCopyPrompt}
+          onTagClick={onTagClick}
+        />
       ) : (
         <VirtualPromptList
           prompts={results}

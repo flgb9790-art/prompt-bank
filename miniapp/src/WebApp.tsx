@@ -28,7 +28,7 @@ import { StatsCard } from "./components/web/StatsCard";
 import { TelegramAuthModal } from "./components/web/TelegramAuthModal";
 import { Topbar } from "./components/web/Topbar";
 import { Pagination } from "./components/web/Pagination";
-import { ViewToggle } from "./components/web/ViewToggle";
+import { ViewModeSwitcher } from "./components/web/ViewModeSwitcher";
 import { WebLayout } from "./components/web/WebLayout";
 import { MobileWebShell } from "./components/web/MobileWebShell";
 import { AuthButton } from "./components/web/AuthButton";
@@ -50,9 +50,9 @@ import {
   mapPromptsFromApi,
   withPromptDetails
 } from "./utils/promptContent";
+import { PINTEREST_PAGE_SIZE, readViewMode, saveViewMode, type ViewMode } from "./utils/viewMode";
 
 type SortValue = "new" | "old" | "usage";
-type ViewMode = "grid" | "list";
 type RoutePath = "/" | "/prompts" | "/favorites" | "/categories" | "/tags" | "/recent" | "/settings" | "/copied" | "/viewed" | "/privacy";
 
 const storageKey = "prompt-bank-web-auth";
@@ -88,7 +88,7 @@ export function WebApp() {
   const [activeCategory, setActiveCategory] = useState<string>();
   const [activeTag, setActiveTag] = useState<string>();
   const [sort, setSort] = useState<SortValue>("new");
-  const [viewMode, setViewMode] = useState<ViewMode>("grid");
+  const [viewMode, setViewMode] = useState<ViewMode>(() => readViewMode("grid"));
   const [prompts, setPrompts] = useState<Prompt[]>([]);
   const [promptsTotal, setPromptsTotal] = useState(0);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -97,6 +97,8 @@ export function WebApp() {
   const [promptsLoading, setPromptsLoading] = useState(false);
   const [loadingMoreRemote, setLoadingMoreRemote] = useState(false);
   const [favoritePrompts, setFavoritePrompts] = useState<Prompt[]>([]);
+  const [favoritesTotal, setFavoritesTotal] = useState(0);
+  const [loadingMoreFavorites, setLoadingMoreFavorites] = useState(false);
   const [favoritesLoading, setFavoritesLoading] = useState(false);
   const [error, setError] = useState("");
   const [toast, setToast] = useState("");
@@ -221,11 +223,21 @@ export function WebApp() {
   }
 
   const hasMoreRemote = prompts.length < promptsTotal;
+  const hasMoreFavorites = favoritePrompts.length < favoritesTotal;
+
+  function handleViewModeChange(next: ViewMode) {
+    setViewMode(next);
+    saveViewMode(next);
+  }
+
+  function getFetchLimit() {
+    return viewMode === "pinterest" ? PINTEREST_PAGE_SIZE : PROMPTS_FETCH_LIMIT;
+  }
 
   function buildPromptsQuery(offset: number): GetPromptsParams {
     const query = search.trim();
     return {
-      limit: PROMPTS_FETCH_LIMIT,
+      limit: getFetchLimit(),
       offset,
       search: query || undefined,
       category: activeCategory,
@@ -241,7 +253,7 @@ export function WebApp() {
   }
 
   const loadMoreRef = useLoadMoreOnScroll({
-    enabled: !loading && prompts.length > 0,
+    enabled: viewMode !== "pinterest" && !loading && prompts.length > 0,
     loading: loadingMoreRemote || promptsLoading,
     hasMore: hasMoreRemote,
     onLoadMore: () => void loadMoreRemotePrompts()
@@ -358,6 +370,18 @@ export function WebApp() {
   }, [search, activeCategory, activeTag, sort]);
 
   useEffect(() => {
+    if (!bootstrappedRef.current) return;
+    setPage(1);
+    if (path === "/favorites" && isAuthenticated) {
+      void refreshWebFavorites(true);
+      return;
+    }
+    if (path === "/" || path === "/prompts" || path === "/recent") {
+      void loadPrompts();
+    }
+  }, [viewMode]);
+
+  useEffect(() => {
     if (!bootstrappedRef.current || path !== "/recent") return;
     setActiveCategory(undefined);
     setActiveTag(undefined);
@@ -365,20 +389,30 @@ export function WebApp() {
     setSort("new");
   }, [path]);
 
-  async function refreshWebFavorites(showSpinner: boolean) {
+  async function refreshWebFavorites(showSpinner: boolean, append = false) {
     if (!isAuthenticated) return;
-    if (showSpinner) setFavoritesLoading(true);
+    if (showSpinner && !append) setFavoritesLoading(true);
+    if (append) setLoadingMoreFavorites(true);
+    const limit = viewMode === "pinterest" ? PINTEREST_PAGE_SIZE : FAVORITES_FETCH_LIMIT;
+    const offset = append ? favoritePrompts.length : 0;
     try {
-      const data = await api.getPrompts({ favorite: true, limit: FAVORITES_FETCH_LIMIT, lite: true, sort });
+      const data = await api.getPrompts({ favorite: true, limit, offset, lite: true, sort });
       const mapped = mapPromptsFromApi(data.items);
-      setFavoritePrompts(mapped);
-      writeFavoritesCache(mapped);
+      setFavoritesTotal(data.total);
+      setFavoritePrompts((prev) => (append ? [...prev, ...mapped] : mapped));
+      if (!append) writeFavoritesCache(mapped);
     } catch (err) {
       console.error(err);
       if (showSpinner) setToast("Не удалось загрузить избранное");
     } finally {
-      if (showSpinner) setFavoritesLoading(false);
+      if (showSpinner && !append) setFavoritesLoading(false);
+      if (append) setLoadingMoreFavorites(false);
     }
+  }
+
+  async function loadMoreFavoritesPinterest() {
+    if (loadingMoreFavorites || !hasMoreFavorites) return;
+    await refreshWebFavorites(false, true);
   }
 
   useEffect(() => {
@@ -759,7 +793,32 @@ export function WebApp() {
     navigate("/prompts", { keepTag: true });
   }
 
-  function renderPromptList(list: Prompt[]) {
+  function renderPromptList(list: Prompt[], options?: { favorites?: boolean }) {
+    const isFavorites = Boolean(options?.favorites);
+
+    if (viewMode === "pinterest") {
+      return (
+        <PromptGrid
+          prompts={list}
+          view="pinterest"
+          pinterestLoading={isFavorites ? favoritesLoading : promptsLoading}
+          pinterestLoadingMore={isFavorites ? loadingMoreFavorites : loadingMoreRemote}
+          pinterestHasMore={isFavorites ? hasMoreFavorites : hasMoreRemote}
+          onPinterestLoadMore={() => {
+            if (isFavorites) {
+              void loadMoreFavoritesPinterest();
+              return;
+            }
+            void loadMoreRemotePrompts();
+          }}
+          onOpenPrompt={openPrompt}
+          onCopyPrompt={handleCopy}
+          onToggleFavorite={handleToggleFavorite}
+          onTagClick={handleSelectTag}
+        />
+      );
+    }
+
     const listTotalPages = Math.max(1, Math.ceil(list.length / PROMPTS_PER_PAGE));
     const listPage = Math.min(page, listTotalPages);
     const start = (listPage - 1) * PROMPTS_PER_PAGE;
@@ -835,9 +894,9 @@ export function WebApp() {
                   </button>
                 ))}
               </div>
-              <div className="hidden items-center gap-3 lg:flex">
+              <div className="flex items-center gap-3">
                 <SortSelect value={sort} onChange={setSort} />
-                <ViewToggle value={viewMode} onChange={setViewMode} />
+                <ViewModeSwitcher value={viewMode} onChange={handleViewModeChange} />
               </div>
             </div>
           </div>
@@ -860,7 +919,7 @@ export function WebApp() {
             <h2 className="section-title">{activeTag ? "Промпты по тегу" : "Все промпты"}</h2>
             <div className="flex items-center gap-2">
               <SortSelect value={sort} onChange={setSort} />
-              <ViewToggle value={viewMode} onChange={setViewMode} />
+              <ViewModeSwitcher value={viewMode} onChange={handleViewModeChange} />
             </div>
           </div>
           <div className="mt-3 flex flex-wrap gap-2">
@@ -889,15 +948,20 @@ export function WebApp() {
 
       {path === "/favorites" ? (
         isAuthenticated ? (
-          favoritesLoading && !favoritePrompts.length ? (
+          <>
+            <div className="mb-4 flex items-center justify-end">
+              <ViewModeSwitcher value={viewMode} onChange={handleViewModeChange} />
+            </div>
+            {favoritesLoading && !favoritePrompts.length ? (
             <div className="mt-4 space-y-3">
               {Array.from({ length: 4 }).map((_, idx) => (
                 <div key={idx} className="skeleton h-36" />
               ))}
             </div>
           ) : (
-            renderPromptList(favoritePrompts)
-          )
+            renderPromptList(favoritePrompts, { favorites: true })
+          )}
+          </>
         ) : (
           <div className="surface-card empty-state mt-5">
             <p className="text-base font-medium text-[var(--text)]">Войдите через Telegram, чтобы сохранять промпты в избранное.</p>
@@ -935,7 +999,14 @@ export function WebApp() {
         </div>
       ) : null}
 
-      {path === "/recent" ? renderPromptList(prompts) : null}
+      {path === "/recent" ? (
+        <div>
+          <div className="mb-4 flex items-center justify-end">
+            <ViewModeSwitcher value={viewMode} onChange={handleViewModeChange} />
+          </div>
+          {renderPromptList(prompts)}
+        </div>
+      ) : null}
 
       {path === "/settings" ? (
         <SettingsScreen
@@ -957,6 +1028,8 @@ export function WebApp() {
         <PromptHistoryScreen
           mode="copied"
           isAuthenticated={isAuthenticated}
+          viewMode={viewMode}
+          onViewModeChange={handleViewModeChange}
           onLogin={loginTelegram}
           onOpenPrompt={openPrompt}
           onCopyPrompt={handleCopy}
@@ -969,6 +1042,8 @@ export function WebApp() {
         <PromptHistoryScreen
           mode="viewed"
           isAuthenticated={isAuthenticated}
+          viewMode={viewMode}
+          onViewModeChange={handleViewModeChange}
           onLogin={loginTelegram}
           onOpenPrompt={openPrompt}
           onCopyPrompt={handleCopy}

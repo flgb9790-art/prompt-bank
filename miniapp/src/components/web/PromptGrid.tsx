@@ -1,22 +1,57 @@
 import { VirtualPromptGrid } from "../VirtualPromptGrid";
 import { VirtualPromptList } from "../VirtualPromptList";
+import { PinterestMasonryGrid } from "../PinterestMasonryGrid";
 import type { Prompt } from "../../types";
+import type { ViewMode } from "../../utils/viewMode";
 
 type Props = {
   prompts: Prompt[];
-  view: "grid" | "list";
+  view: ViewMode;
   onOpenPrompt: (prompt: Prompt) => void;
   onCopyPrompt: (prompt: Prompt) => void;
   onToggleFavorite: (id: number) => void;
   onTagClick?: (tag: string) => void;
+  pinterestLoading?: boolean;
+  pinterestLoadingMore?: boolean;
+  pinterestHasMore?: boolean;
+  onPinterestLoadMore?: () => void;
 };
 
-export function PromptGrid({ prompts, view, onOpenPrompt, onCopyPrompt, onToggleFavorite, onTagClick }: Props) {
-  if (!prompts.length) {
+export function PromptGrid({
+  prompts,
+  view,
+  onOpenPrompt,
+  onCopyPrompt,
+  onToggleFavorite,
+  onTagClick,
+  pinterestLoading = false,
+  pinterestLoadingMore = false,
+  pinterestHasMore = false,
+  onPinterestLoadMore
+}: Props) {
+  if (!prompts.length && view !== "pinterest") {
     return (
       <div className="surface-card empty-state mt-5">
         <p className="text-base font-medium text-[var(--text)]">Промпты не найдены</p>
         <p className="mt-1 text-sm text-[var(--muted)]">Измените фильтры или добавьте новый промпт.</p>
+      </div>
+    );
+  }
+
+  if (view === "pinterest") {
+    return (
+      <div className="mt-4">
+        <PinterestMasonryGrid
+          prompts={prompts}
+          loading={pinterestLoading}
+          loadingMore={pinterestLoadingMore}
+          hasMore={pinterestHasMore}
+          onLoadMore={onPinterestLoadMore}
+          onOpen={onOpenPrompt}
+          onCopy={onCopyPrompt}
+          onToggleFavorite={onToggleFavorite}
+          onTagClick={onTagClick}
+        />
       </div>
     );
   }

@@ -38,6 +38,7 @@ import { miniRouteDocumentTitle, useDocumentTitle } from "./utils/documentTitle"
 import { writeReferenceCache } from "./utils/referenceCache";
 import { buildCreatePromptToastMessage } from "./utils/pinterestPost";
 import { createPromptLoadingShell } from "./utils/promptShell";
+import { PINTEREST_PAGE_SIZE, readViewMode, saveViewMode, type ViewMode } from "./utils/viewMode";
 
 const CATEGORIES_CACHE_KEY = "prompt-bank-categories";
 const TAGS_CACHE_KEY = "prompt-bank-tags";
@@ -56,12 +57,13 @@ type ListSortMode = "new" | "old" | "usage" | "favorites";
 function miniPromptsQuery(
   offset: number,
   filters: { search: string; category?: string; sort: ListSortMode },
-  tag?: string
+  tag?: string,
+  pageSize = MINI_PROMPTS_PAGE
 ) {
   const normalizedTag = tag ? normalizeTagName(tag) : undefined;
   if (filters.sort === "favorites") {
     return {
-      limit: MINI_PROMPTS_PAGE,
+      limit: pageSize,
       offset,
       favorite: true as const,
       lite: true as const,
@@ -69,7 +71,7 @@ function miniPromptsQuery(
     };
   }
   return {
-    limit: MINI_PROMPTS_PAGE,
+    limit: pageSize,
     offset,
     lite: true as const,
     search: filters.search.trim() || undefined,
@@ -90,10 +92,11 @@ function scheduleMiniPrefetch(
   loadedCount: number,
   total: number,
   filters: { search: string; category?: string; sort: ListSortMode },
-  tag?: string
+  tag?: string,
+  pageSize = MINI_PROMPTS_PAGE
 ) {
   if (loadedCount >= total) return;
-  runDeferred(() => prefetchPromptsPage(miniPromptsQuery(loadedCount, filters, tag)));
+  runDeferred(() => prefetchPromptsPage(miniPromptsQuery(loadedCount, filters, tag, pageSize)));
 }
 
 function AppLoadingScreen() {
@@ -175,6 +178,7 @@ export default function App() {
 
 function MiniAppApp() {
   const [tab, setTab] = useState<TabKey>("home");
+  const [viewMode, setViewMode] = useState<ViewMode>(() => readViewMode("grid"));
   const [prompts, setPrompts] = useState<Prompt[]>([]);
   const [recentPrompts, setRecentPrompts] = useState<Prompt[]>([]);
   const [promptsTotal, setPromptsTotal] = useState(0);
@@ -185,6 +189,8 @@ function MiniAppApp() {
     sort: "new"
   });
   const [favoritePrompts, setFavoritePrompts] = useState<Prompt[]>([]);
+  const [favoritesTotal, setFavoritesTotal] = useState(0);
+  const [loadingMoreFavorites, setLoadingMoreFavorites] = useState(false);
   const [favoritesLoading, setFavoritesLoading] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
@@ -210,6 +216,27 @@ function MiniAppApp() {
   const favorites = useMemo(() => prompts.filter((item) => item.isFavorite), [prompts]);
   const favoritesForView = tab === "favorites" ? favoritePrompts : favorites;
   const hasMorePrompts = prompts.length < promptsTotal;
+  const hasMoreFavorites = favoritePrompts.length < favoritesTotal;
+  const promptsPageSize = viewMode === "pinterest" ? PINTEREST_PAGE_SIZE : MINI_PROMPTS_PAGE;
+
+  function handleViewModeChange(next: ViewMode) {
+    setViewMode(next);
+    saveViewMode(next);
+  }
+
+  useEffect(() => {
+    document.documentElement.classList.add("telegram-mini-app");
+    return () => document.documentElement.classList.remove("telegram-mini-app");
+  }, []);
+
+  useEffect(() => {
+    if (tab === "prompts") {
+      void reloadPromptsList();
+    }
+    if (tab === "favorites") {
+      void refreshFavoritesList(true);
+    }
+  }, [viewMode]);
 
   const stats = useMemo(
     () => ({
@@ -270,18 +297,28 @@ function MiniAppApp() {
     });
   }
 
-  async function refreshFavoritesList(showSpinner: boolean) {
-    if (showSpinner) setFavoritesLoading(true);
+  async function refreshFavoritesList(showSpinner: boolean, append = false) {
+    if (showSpinner && !append) setFavoritesLoading(true);
+    if (append) setLoadingMoreFavorites(true);
+    const limit = viewMode === "pinterest" ? PINTEREST_PAGE_SIZE : FAVORITES_FETCH_LIMIT;
+    const offset = append ? favoritePrompts.length : 0;
     try {
-      const data = await api.getPrompts({ favorite: true, limit: FAVORITES_FETCH_LIMIT, lite: true });
+      const data = await api.getPrompts({ favorite: true, limit, offset, lite: true });
       const mapped = mapPromptsFromApi(data.items);
-      setFavoritePrompts(mapped);
-      writeFavoritesCache(mapped);
+      setFavoritesTotal(data.total);
+      setFavoritePrompts((prev) => (append ? [...prev, ...mapped] : mapped));
+      if (!append) writeFavoritesCache(mapped);
     } catch {
       if (showSpinner) setToastMessage("Не удалось загрузить избранное");
     } finally {
-      if (showSpinner) setFavoritesLoading(false);
+      if (showSpinner && !append) setFavoritesLoading(false);
+      if (append) setLoadingMoreFavorites(false);
     }
+  }
+
+  async function loadMoreFavorites() {
+    if (loadingMoreFavorites || !hasMoreFavorites) return;
+    await refreshFavoritesList(false, true);
   }
 
   async function loadDeferredBootstrapData() {
@@ -324,7 +361,7 @@ function MiniAppApp() {
       syncRecentFromPrompts(mapped);
       fullListLoadedRef.current = mapped.length >= BOOTSTRAP_PROMPTS_LIMIT;
       setPromptsListLoading(false);
-      scheduleMiniPrefetch(mapped.length, data.prompts.total, listFiltersRef.current, activeTag);
+      scheduleMiniPrefetch(mapped.length, data.prompts.total, listFiltersRef.current, activeTag, promptsPageSize);
       void loadDeferredBootstrapData();
     } catch {
       setError("Не удалось загрузить данные.");
@@ -339,7 +376,7 @@ function MiniAppApp() {
     setListReloading(true);
     setError("");
     try {
-      const query = miniPromptsQuery(0, listFiltersRef.current, activeTag);
+      const query = miniPromptsQuery(0, listFiltersRef.current, activeTag, promptsPageSize);
       const promptsData = await api.getPrompts(query);
       const mapped = mapPromptsFromApi(promptsData.items);
       setPrompts(mapped);
@@ -347,7 +384,7 @@ function MiniAppApp() {
       if (isDefaultPromptsList(listFiltersRef.current, activeTag)) {
         syncRecentFromPrompts(mapped);
       }
-      scheduleMiniPrefetch(mapped.length, promptsData.total, listFiltersRef.current, activeTag);
+      scheduleMiniPrefetch(mapped.length, promptsData.total, listFiltersRef.current, activeTag, promptsPageSize);
     } catch {
       setError("Не удалось загрузить промпты.");
     } finally {
@@ -358,13 +395,13 @@ function MiniAppApp() {
   async function loadMorePrompts() {
     if (loadingMore || !hasMorePrompts) return;
     setLoadingMore(true);
-    const query = miniPromptsQuery(prompts.length, listFiltersRef.current, activeTag);
+    const query = miniPromptsQuery(prompts.length, listFiltersRef.current, activeTag, promptsPageSize);
     try {
       const cached = await takePrefetchedPromptsPage(query);
       const promptsData = cached ?? (await api.getPrompts(query));
       setPrompts((prev) => {
         const merged = [...prev, ...mapPromptsFromApi(promptsData.items)];
-        scheduleMiniPrefetch(merged.length, promptsData.total, listFiltersRef.current, activeTag);
+        scheduleMiniPrefetch(merged.length, promptsData.total, listFiltersRef.current, activeTag, promptsPageSize);
         return merged;
       });
       setPromptsTotal(promptsData.total);
@@ -756,6 +793,8 @@ function MiniAppApp() {
           recentPrompts={recentPrompts}
           recentLoading={loading}
           stats={stats}
+          viewMode={viewMode}
+          onViewModeChange={handleViewModeChange}
           onOpenPrompt={openPrompt}
           onCopyPrompt={handleCopyPrompt}
           onToggleFavorite={handleToggleFavorite}
@@ -776,6 +815,8 @@ function MiniAppApp() {
           hasMore={hasMorePrompts}
           onLoadMore={loadMorePrompts}
           error={error}
+          viewMode={viewMode}
+          onViewModeChange={handleViewModeChange}
           onOpenPrompt={openPrompt}
           onToggleFavorite={handleToggleFavorite}
           onCopyPrompt={handleCopyPrompt}
@@ -796,6 +837,8 @@ function MiniAppApp() {
           quickTags={quickTags}
           results={searchPrompts}
           loading={searchLoading}
+          viewMode={viewMode}
+          onViewModeChange={handleViewModeChange}
           onOpenPrompt={openPrompt}
           onCopyPrompt={handleCopyPrompt}
           onToggleFavorite={handleToggleFavorite}
@@ -806,6 +849,11 @@ function MiniAppApp() {
         <FavoritesPage
           prompts={favoritesForView}
           loading={favoritesLoading && !favoritePrompts.length}
+          loadingMore={loadingMoreFavorites}
+          hasMore={viewMode === "pinterest" ? hasMoreFavorites : false}
+          onLoadMore={viewMode === "pinterest" ? loadMoreFavorites : undefined}
+          viewMode={viewMode}
+          onViewModeChange={handleViewModeChange}
           onOpenPrompt={openPrompt}
           onCopyPrompt={handleCopyPrompt}
           onToggleFavorite={handleToggleFavorite}
@@ -817,6 +865,8 @@ function MiniAppApp() {
           mode="copied"
           variant="mini"
           isAuthenticated
+          viewMode={viewMode}
+          onViewModeChange={handleViewModeChange}
           onBack={() => setProfileScreen(null)}
           onLogin={() => undefined}
           onOpenPrompt={openPrompt}
@@ -833,6 +883,8 @@ function MiniAppApp() {
           mode="viewed"
           variant="mini"
           isAuthenticated
+          viewMode={viewMode}
+          onViewModeChange={handleViewModeChange}
           onBack={() => setProfileScreen(null)}
           onLogin={() => undefined}
           onOpenPrompt={openPrompt}
