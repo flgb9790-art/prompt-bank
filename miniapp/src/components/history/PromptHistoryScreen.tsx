@@ -203,14 +203,14 @@ export function PromptHistoryScreen({
       </div>
 
       {loading ? (
-        <div className="mobile-prompt-feed">
+        <div className={`mobile-prompt-feed ${isMini ? "history-feed--mini" : ""}`.trim()}>
           {Array.from({ length: 3 }).map((_, index) => (
             <div key={index} className="mobile-post-card skeleton mobile-post-card-skeleton" />
           ))}
         </div>
       ) : filtered.length ? (
         isMini ? (
-          renderHistoryFeed()
+          renderHistoryFeed("history-feed--mini")
         ) : (
           <>
             <div className="hidden md:block">{renderDesktopHistoryList()}</div>

@@ -2808,6 +2808,10 @@ button.brand-logo {
   max-width: 480px;
 }
 
+.history-page--mini .history-feed--mini {
+  margin-top: 16px;
+}
+
 .history-page-header {
   display: flex;
   align-items: flex-start;

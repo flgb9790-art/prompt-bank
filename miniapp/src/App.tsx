@@ -531,7 +531,8 @@ function MiniAppApp() {
 
   useEffect(() => {
     if (tab !== "home") return;
-    void reloadHomePrompts(homePage);
+    setHomePage(1);
+    void reloadHomePrompts(1);
   }, [tab]);
 
   useEffect(() => {
@@ -757,6 +758,9 @@ function MiniAppApp() {
     setActiveTag(undefined);
     if (nextTab !== "search") {
       setSearchQuery("");
+    }
+    if (nextTab === "home") {
+      setHomePage(1);
     }
     setTab(nextTab);
   }

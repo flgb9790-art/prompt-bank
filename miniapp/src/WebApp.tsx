@@ -39,6 +39,7 @@ import { countCategoriesWithPromptCount, countCategoriesWithPrompts } from "./ut
 import type { GetPromptsParams } from "./api";
 import { useLoadMoreOnScroll } from "./hooks/useLoadMoreOnScroll";
 import { prefetchPromptsPage, takePrefetchedPromptsPage } from "./utils/promptsPrefetch";
+import { mergePromptPages } from "./utils/mergePromptPages";
 import {
   useDocumentTitle,
   webRouteDocumentTitle
@@ -120,6 +121,7 @@ export function WebApp() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [lastPromptBatchSize, setLastPromptBatchSize] = useState(0);
   const [lastFavoriteBatchSize, setLastFavoriteBatchSize] = useState(0);
+  const loadMoreOffsetRef = useRef<number | null>(null);
 
   useEffect(() => {
     document.documentElement.classList.add("web-mode");
@@ -271,15 +273,19 @@ export function WebApp() {
 
   async function loadMoreRemotePrompts() {
     if (loadingMoreRemote || !hasMoreRemote) return;
+    const offset = prompts.length;
+    if (loadMoreOffsetRef.current === offset) return;
+
+    loadMoreOffsetRef.current = offset;
     setLoadingMoreRemote(true);
-    const query = buildPromptsQuery(prompts.length);
+    const query = buildPromptsQuery(offset);
     try {
       const cached = await takePrefetchedPromptsPage(query);
       const promptsData = cached ?? (await api.getPrompts(query));
       const mapped = mapPromptsFromApi(promptsData.items);
       setLastPromptBatchSize(mapped.length);
       setPrompts((prev) => {
-        const merged = [...prev, ...mapped];
+        const merged = mergePromptPages(prev, mapped);
         scheduleWebPrefetch(merged.length, promptsData.total);
         return merged;
       });
@@ -288,11 +294,13 @@ export function WebApp() {
       console.error(err);
       setToast("Не удалось загрузить ещё промпты");
     } finally {
+      loadMoreOffsetRef.current = null;
       setLoadingMoreRemote(false);
     }
   }
 
   async function loadPrompts() {
+    loadMoreOffsetRef.current = null;
     setPromptsLoading(true);
     try {
       const promptsData = await api.getPrompts(buildPromptsQuery(0));
@@ -396,7 +404,7 @@ export function WebApp() {
     if (path === "/" || path === "/prompts" || path === "/recent") {
       void loadPrompts();
     }
-  }, [viewMode]);
+  }, [path, viewMode]);
 
   useEffect(() => {
     if (!bootstrappedRef.current || path !== "/recent") return;
@@ -417,7 +425,7 @@ export function WebApp() {
       const mapped = mapPromptsFromApi(data.items);
       setFavoritesTotal(data.total);
       setLastFavoriteBatchSize(mapped.length);
-      setFavoritePrompts((prev) => (append ? [...prev, ...mapped] : mapped));
+      setFavoritePrompts((prev) => (append ? mergePromptPages(prev, mapped) : mapped));
       if (!append) writeFavoritesCache(mapped);
     } catch (err) {
       console.error(err);
