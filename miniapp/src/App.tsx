@@ -193,6 +193,7 @@ function MiniAppApp() {
   const [promptsListLoading, setPromptsListLoading] = useState(true);
   const [error, setError] = useState("");
   const bootstrapStartedRef = useRef(false);
+  const tabRef = useRef<TabKey>(tab);
   const [selectedPrompt, setSelectedPrompt] = useState<Prompt>();
   const [createdPromptId, setCreatedPromptId] = useState<number>();
   const [searchQuery, setSearchQuery] = useState("");
@@ -373,12 +374,17 @@ function MiniAppApp() {
       }
       setHomePrompts(mapped);
       syncRecentFromPrompts(mapped);
-      setPromptsListLoading(false);
       void loadDeferredBootstrapData();
     } catch {
       setError("Не удалось загрузить данные.");
-      setPromptsListLoading(false);
+    }
+
+    try {
+      await reloadHomePrompts(1);
+    } catch {
+      // reloadHomePrompts already surfaces errors via toast
     } finally {
+      setPromptsListLoading(false);
       setLoading(false);
       hideAppSplash();
     }
@@ -532,7 +538,9 @@ function MiniAppApp() {
   }, []);
 
   useEffect(() => {
-    if (tab !== "home") return;
+    const previousTab = tabRef.current;
+    tabRef.current = tab;
+    if (tab !== "home" || previousTab === tab) return;
     setHomePage(1);
     scrollMiniAppToTop();
     void reloadHomePrompts(1);
@@ -831,7 +839,7 @@ function MiniAppApp() {
           prompts={homePrompts}
           loading={homeLoading}
           page={homePage}
-          totalItems={Math.max(homeTotal, promptsTotal, homePrompts.length)}
+          totalItems={homeTotal || promptsTotal}
           pageSize={MINI_APP_PAGE_SIZE}
           onPageChange={handleHomePageChange}
           stats={stats}

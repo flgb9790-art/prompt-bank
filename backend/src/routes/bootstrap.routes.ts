@@ -53,7 +53,7 @@ router.get("/", async (req, res, next) => {
       lite: false,
       sort: "new",
       userId,
-      includeTotal: false
+      includeTotal: true
     });
 
     res.set("Cache-Control", "private, no-store");
