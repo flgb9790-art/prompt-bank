@@ -1504,6 +1504,96 @@ button.brand-logo {
   cursor: not-allowed;
 }
 
+.mini-pagination {
+  margin-top: 24px;
+  margin-bottom: 8px;
+  padding: 16px 12px calc(20px + env(safe-area-inset-bottom, 0px));
+  border-radius: 18px;
+  border: 1px solid var(--border);
+  background: #ffffff;
+  box-shadow: var(--shadow-card);
+}
+
+.mini-pagination-summary {
+  margin: 0 0 14px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.mini-pagination-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+}
+
+.mini-pagination-nav {
+  min-height: 44px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: #ffffff;
+  color: var(--text-soft);
+  font-size: 14px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.mini-pagination-nav:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.mini-pagination-pages {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.mini-pagination-page {
+  min-width: 40px;
+  height: 40px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: #ffffff;
+  color: var(--text-soft);
+  font-size: 14px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.mini-pagination-page.active {
+  background: linear-gradient(135deg, #6d5dfc, #7c3aed);
+  border-color: transparent;
+  color: #ffffff;
+}
+
+.mini-pagination-ellipsis {
+  color: var(--muted-light);
+  font-size: 14px;
+}
+
+.mini-prompts-page {
+  padding-bottom: 12px;
+}
+
+.mini-list-loading {
+  opacity: 0.55;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+}
+
+.home-recent-section {
+  margin-top: 2px;
+}
+
+.home-recent-header {
+  margin-bottom: 16px;
+}
+
 /* Modal */
 .modal-overlay {
   background: rgba(16, 24, 40, 0.45);

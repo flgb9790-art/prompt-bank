@@ -63,23 +63,21 @@ export function HomePage({
 
     if (viewMode === "list") {
       return (
-        <div className="mt-4">
-          <VirtualPromptList
-            prompts={recentPrompts}
-            variant="list"
-            scrollSelector=".mobile-frame"
-            estimateSize={128}
-            onOpenPrompt={onOpenPrompt}
-            onToggleFavorite={onToggleFavorite}
-            onCopyPrompt={onCopyPrompt}
-            onTagClick={onTagClick}
-          />
-        </div>
+        <VirtualPromptList
+          prompts={recentPrompts}
+          variant="list"
+          scrollSelector=".mobile-frame"
+          estimateSize={128}
+          onOpenPrompt={onOpenPrompt}
+          onToggleFavorite={onToggleFavorite}
+          onCopyPrompt={onCopyPrompt}
+          onTagClick={onTagClick}
+        />
       );
     }
 
     return (
-      <MobilePromptFeed className="mt-4">
+      <MobilePromptFeed>
         {recentPrompts.map((prompt, index) => (
           <MobilePromptPostCard
             key={prompt.id}
@@ -121,8 +119,8 @@ export function HomePage({
         </div>
       </section>
 
-      <section>
-        <div className="flex items-center justify-between gap-3">
+      <section className="home-recent-section">
+        <div className="home-recent-header flex items-center justify-between gap-3">
           <h2 className="mobile-section-title">Недавние промпты</h2>
           <div className="flex items-center gap-2">
             {onViewAll ? (

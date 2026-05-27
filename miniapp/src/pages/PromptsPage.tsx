@@ -21,6 +21,7 @@ type Props = {
   prompts: Prompt[];
   categories: Category[];
   loading: boolean;
+  initialLoading?: boolean;
   error: string;
   viewMode: MiniAppViewMode;
   onViewModeChange: (mode: ViewMode) => void;
@@ -42,6 +43,7 @@ export function PromptsPage({
   prompts,
   categories,
   loading,
+  initialLoading = false,
   error,
   viewMode,
   onViewModeChange,
@@ -63,6 +65,8 @@ export function PromptsPage({
   const [sort, setSort] = useState<SortMode>("new");
   const serverFilters = Boolean(onFiltersChange);
   const filtersBootstrappedRef = useRef(false);
+  const onFiltersChangeRef = useRef(onFiltersChange);
+  onFiltersChangeRef.current = onFiltersChange;
   const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
 
   useEffect(() => {
@@ -72,16 +76,16 @@ export function PromptsPage({
   }, [activeTag]);
 
   useEffect(() => {
-    if (!onFiltersChange) return;
+    if (!onFiltersChangeRef.current) return;
     if (!filtersBootstrappedRef.current) {
       filtersBootstrappedRef.current = true;
       return;
     }
     const timer = setTimeout(() => {
-      onFiltersChange({ search: query, category, sort });
+      onFiltersChangeRef.current?.({ search: query, category, sort });
     }, filterDebounceMs);
     return () => clearTimeout(timer);
-  }, [query, category, sort, onFiltersChange, filterDebounceMs]);
+  }, [query, category, sort, filterDebounceMs]);
 
   const categoriesWithPrompts = useMemo(() => {
     const counts = prompts.reduce<Record<string, number>>((acc, prompt) => {
@@ -113,8 +117,11 @@ export function PromptsPage({
     return list;
   }, [prompts, query, category, sort, activeTag, serverFilters]);
 
+  const showInitialSkeleton = initialLoading && !prompts.length;
+  const showListOverlay = loading && !showInitialSkeleton;
+
   function renderPrompts() {
-    if (loading) {
+    if (showInitialSkeleton) {
       return (
         <div className="space-y-3">
           {Array.from({ length: 4 }).map((_, idx) => (
@@ -137,35 +144,41 @@ export function PromptsPage({
       );
     }
 
-    if (viewMode === "list") {
-      return (
-        <VirtualPromptList
-          prompts={filtered}
-          variant="list"
-          scrollSelector=".mobile-frame"
-          onOpenPrompt={onOpenPrompt}
-          onToggleFavorite={onToggleFavorite}
-          onCopyPrompt={onCopyPrompt}
-          onTagClick={onTagClick}
-        />
-      );
+    const list = (
+      <>
+        {viewMode === "list" ? (
+          <VirtualPromptList
+            prompts={filtered}
+            variant="list"
+            scrollSelector=".mobile-frame"
+            onOpenPrompt={onOpenPrompt}
+            onToggleFavorite={onToggleFavorite}
+            onCopyPrompt={onCopyPrompt}
+            onTagClick={onTagClick}
+          />
+        ) : (
+          <VirtualPromptList
+            prompts={filtered}
+            variant="mobile"
+            scrollSelector=".mobile-frame"
+            onOpenPrompt={onOpenPrompt}
+            onToggleFavorite={onToggleFavorite}
+            onCopyPrompt={onCopyPrompt}
+            onTagClick={onTagClick}
+          />
+        )}
+      </>
+    );
+
+    if (!showListOverlay) {
+      return list;
     }
 
-    return (
-      <VirtualPromptList
-        prompts={filtered}
-        variant="mobile"
-        scrollSelector=".mobile-frame"
-        onOpenPrompt={onOpenPrompt}
-        onToggleFavorite={onToggleFavorite}
-        onCopyPrompt={onCopyPrompt}
-        onTagClick={onTagClick}
-      />
-    );
+    return <div className="mini-list-loading">{list}</div>;
   }
 
   return (
-    <div className="space-y-3 pb-1">
+    <div className="mini-prompts-page space-y-3">
       <div className="flex items-center justify-between gap-3">
         <h2 className="text-base font-semibold text-[var(--text)]">Все промпты</h2>
         <ViewModeSwitcher value={viewMode} onChange={onViewModeChange} hidePinterest />
@@ -194,8 +207,9 @@ export function PromptsPage({
 
       {renderPrompts()}
 
-      {!loading && !error && totalItems > 0 ? (
+      {!error && totalItems > 0 ? (
         <Pagination
+          variant="mini"
           page={page}
           totalPages={totalPages}
           totalItems={totalItems}

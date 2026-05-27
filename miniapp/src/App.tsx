@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { clearPromptShareUrl, parsePromptIdFromLocation, setPromptShareUrl } from "./utils/promptShare";
 import { mergePromptUpdate } from "./utils/mergePrompt";
 import { normalizeTagName } from "./utils/tagFilter";
@@ -204,6 +204,8 @@ function MiniAppApp() {
   const [isMiniAppExpanded, setIsMiniAppExpanded] = useState(true);
   const deepLinkHandledRef = useRef(false);
   const openPromptRequestRef = useRef(0);
+  const activeTagRef = useRef<string | undefined>(activeTag);
+  activeTagRef.current = activeTag;
   const favorites = useMemo(() => prompts.filter((item) => item.isFavorite), [prompts]);
   const favoritesForView = tab === "favorites" ? favoritePrompts : favorites;
 
@@ -237,6 +239,7 @@ function MiniAppApp() {
   useEffect(() => {
     if (tab === "prompts") {
       void reloadPromptsList(promptsPage);
+      return;
     }
     if (tab === "favorites") {
       void refreshFavoritesList(true, favoritesPage);
@@ -371,13 +374,18 @@ function MiniAppApp() {
     setListReloading(true);
     setError("");
     try {
-      const query = miniPromptsQuery((page - 1) * MINI_APP_PAGE_SIZE, listFiltersRef.current, activeTag, MINI_APP_PAGE_SIZE);
+      const query = miniPromptsQuery(
+        (page - 1) * MINI_APP_PAGE_SIZE,
+        listFiltersRef.current,
+        activeTagRef.current,
+        MINI_APP_PAGE_SIZE
+      );
       const promptsData = await api.getPrompts(query);
       const mapped = mapPromptsFromApi(promptsData.items);
       setPrompts(mapped);
       setPromptsTotal(promptsData.total);
       setPromptsPage(page);
-      if (isDefaultPromptsList(listFiltersRef.current, activeTag) && page === 1) {
+      if (isDefaultPromptsList(listFiltersRef.current, activeTagRef.current) && page === 1) {
         syncRecentFromPrompts(mapped);
       }
     } catch {
@@ -386,6 +394,12 @@ function MiniAppApp() {
       setListReloading(false);
     }
   }
+
+  const handlePromptsFiltersChange = useCallback((filters: { search: string; category?: string; sort: ListSortMode }) => {
+    listFiltersRef.current = filters;
+    setPromptsPage(1);
+    void reloadPromptsList(1);
+  }, []);
 
   useEffect(() => {
     const getWebApp = () => window.Telegram?.WebApp;
@@ -786,7 +800,8 @@ function MiniAppApp() {
           key={activeTag ?? "all"}
           prompts={prompts}
           categories={categories}
-          loading={listReloading || promptsListLoading}
+          loading={listReloading}
+          initialLoading={promptsListLoading && !prompts.length}
           error={error}
           viewMode={viewMode}
           onViewModeChange={handleViewModeChange}
@@ -800,11 +815,7 @@ function MiniAppApp() {
           onTagClick={handleSelectTag}
           activeTag={activeTag}
           onClearTag={() => setActiveTag(undefined)}
-          onFiltersChange={(filters) => {
-            listFiltersRef.current = filters;
-            setPromptsPage(1);
-            void reloadPromptsList(1);
-          }}
+          onFiltersChange={handlePromptsFiltersChange}
           filterDebounceMs={LIST_FILTER_DEBOUNCE_MS}
         />
       )}

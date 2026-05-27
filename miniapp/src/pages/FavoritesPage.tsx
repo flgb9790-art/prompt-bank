@@ -88,6 +88,7 @@ export function FavoritesPage({
       )}
 
       <Pagination
+        variant="mini"
         page={page}
         totalPages={totalPages}
         totalItems={totalItems}

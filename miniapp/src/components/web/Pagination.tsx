@@ -4,9 +4,17 @@ type Props = {
   totalItems: number;
   pageSize: number;
   onPageChange: (page: number) => void;
+  variant?: "default" | "mini";
 };
 
-export function Pagination({ page, totalPages, totalItems, pageSize, onPageChange }: Props) {
+export function Pagination({
+  page,
+  totalPages,
+  totalItems,
+  pageSize,
+  onPageChange,
+  variant = "default"
+}: Props) {
   if (totalItems === 0) return null;
 
   const from = (page - 1) * pageSize + 1;
@@ -16,6 +24,55 @@ export function Pagination({ page, totalPages, totalItems, pageSize, onPageChang
     if (totalPages <= 7) return true;
     return num === 1 || num === totalPages || Math.abs(num - page) <= 1;
   });
+
+  if (variant === "mini") {
+    return (
+      <div className="mini-pagination">
+        <p className="mini-pagination-summary">
+          Показано {from}–{to} из {totalItems}
+        </p>
+        {totalPages > 1 ? (
+          <div className="mini-pagination-controls">
+            <button
+              type="button"
+              disabled={page <= 1}
+              onClick={() => onPageChange(page - 1)}
+              className="mini-pagination-nav"
+            >
+              ← Назад
+            </button>
+            <div className="mini-pagination-pages">
+              {pages.map((num, index) => {
+                const prev = pages[index - 1];
+                const showEllipsis = prev !== undefined && num - prev > 1;
+                return (
+                  <span key={num} className="inline-flex items-center gap-1.5">
+                    {showEllipsis ? <span className="mini-pagination-ellipsis">…</span> : null}
+                    <button
+                      type="button"
+                      onClick={() => onPageChange(num)}
+                      className={`mini-pagination-page ${page === num ? "active" : ""}`}
+                      aria-current={page === num ? "page" : undefined}
+                    >
+                      {num}
+                    </button>
+                  </span>
+                );
+              })}
+            </div>
+            <button
+              type="button"
+              disabled={page >= totalPages}
+              onClick={() => onPageChange(page + 1)}
+              className="mini-pagination-nav"
+            >
+              Далее →
+            </button>
+          </div>
+        ) : null}
+      </div>
+    );
+  }
 
   return (
     <div className="mt-8 flex flex-col items-center gap-4">
