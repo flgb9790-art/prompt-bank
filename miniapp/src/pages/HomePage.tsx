@@ -1,14 +1,19 @@
-import { BarChart3, Heart, Layers, Plus, Sparkles } from "lucide-react";
+import { Plus } from "lucide-react";
 import type { Prompt } from "../types";
 import type { MiniAppViewMode, ViewMode } from "../utils/viewMode";
 import { MobilePromptFeed } from "../components/MobilePromptFeed";
 import { MobilePromptPostCard } from "../components/MobilePromptPostCard";
 import { VirtualPromptList } from "../components/VirtualPromptList";
 import { ViewModeSwitcher } from "../components/web/ViewModeSwitcher";
+import { Pagination } from "../components/web/Pagination";
 
 type Props = {
-  recentPrompts: Prompt[];
-  recentLoading?: boolean;
+  prompts: Prompt[];
+  loading?: boolean;
+  page: number;
+  totalItems: number;
+  pageSize: number;
+  onPageChange: (page: number) => void;
   stats: { total: number; favorites: number; categories: number; usage: number };
   viewMode: MiniAppViewMode;
   onViewModeChange: (mode: ViewMode) => void;
@@ -23,8 +28,12 @@ type Props = {
 };
 
 export function HomePage({
-  recentPrompts,
-  recentLoading = false,
+  prompts,
+  loading = false,
+  page,
+  totalItems,
+  pageSize,
+  onPageChange,
   stats,
   viewMode,
   onViewModeChange,
@@ -40,11 +49,12 @@ export function HomePage({
   const welcomeText = isAdmin
     ? "Здесь хранятся все промпты банка. Легко находите, копируйте и управляйте контентом."
     : "Готовые промпты для работы. Ищите по категориям и тегам, копируйте и сохраняйте в избранное.";
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
 
   function renderRecentPrompts() {
-    if (recentLoading) {
+    if (loading && !prompts.length) {
       return (
-        <div className="mt-4 space-y-3">
+        <div className="space-y-3">
           {Array.from({ length: 3 }).map((_, idx) => (
             <div key={idx} className="mobile-post-card skeleton mobile-post-card-skeleton" />
           ))}
@@ -52,19 +62,19 @@ export function HomePage({
       );
     }
 
-    if (!recentPrompts.length) {
+    if (!prompts.length) {
       return (
-        <div className="surface-card empty-state mt-4">
+        <div className="surface-card empty-state">
           <p className="text-base font-medium text-[var(--text)]">Пока нет промптов</p>
           <p className="mt-1 text-sm text-[var(--muted)]">Создайте первый промпт кнопкой ниже.</p>
         </div>
       );
     }
 
-    if (viewMode === "list") {
-      return (
+    const list =
+      viewMode === "list" ? (
         <VirtualPromptList
-          prompts={recentPrompts}
+          prompts={prompts}
           variant="list"
           scrollSelector=".mobile-frame"
           estimateSize={128}
@@ -73,24 +83,27 @@ export function HomePage({
           onCopyPrompt={onCopyPrompt}
           onTagClick={onTagClick}
         />
+      ) : (
+        <MobilePromptFeed paginated>
+          {prompts.map((prompt, index) => (
+            <MobilePromptPostCard
+              key={prompt.id}
+              prompt={prompt}
+              imagePriority={index < 3}
+              onOpen={onOpenPrompt}
+              onCopy={onCopyPrompt}
+              onToggleFavorite={onToggleFavorite}
+              onTagClick={onTagClick}
+            />
+          ))}
+        </MobilePromptFeed>
       );
+
+    if (loading) {
+      return <div className="mini-list-loading">{list}</div>;
     }
 
-    return (
-      <MobilePromptFeed>
-        {recentPrompts.map((prompt, index) => (
-          <MobilePromptPostCard
-            key={prompt.id}
-            prompt={prompt}
-            imagePriority={index < 3}
-            onOpen={onOpenPrompt}
-            onCopy={onCopyPrompt}
-            onToggleFavorite={onToggleFavorite}
-            onTagClick={onTagClick}
-          />
-        ))}
-      </MobilePromptFeed>
-    );
+    return list;
   }
 
   return (
@@ -132,6 +145,16 @@ export function HomePage({
           </div>
         </div>
         {renderRecentPrompts()}
+        {totalItems > 0 ? (
+          <Pagination
+            variant="mini"
+            page={page}
+            totalPages={totalPages}
+            totalItems={totalItems}
+            pageSize={pageSize}
+            onPageChange={onPageChange}
+          />
+        ) : null}
       </section>
 
       {showCreateButton && onCreate ? (

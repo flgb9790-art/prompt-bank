@@ -1,6 +1,8 @@
 import type { Prompt } from "../types";
 import type { MiniAppViewMode, ViewMode } from "../utils/viewMode";
 import { VirtualPromptList } from "../components/VirtualPromptList";
+import { MobilePromptFeed } from "../components/MobilePromptFeed";
+import { MobilePromptPostCard } from "../components/MobilePromptPostCard";
 import { ViewModeSwitcher } from "../components/web/ViewModeSwitcher";
 import { Pagination } from "../components/web/Pagination";
 
@@ -76,15 +78,19 @@ export function FavoritesPage({
           onTagClick={onTagClick}
         />
       ) : (
-        <VirtualPromptList
-          prompts={prompts}
-          variant="mobile"
-          scrollSelector=".mobile-frame"
-          onOpenPrompt={onOpenPrompt}
-          onToggleFavorite={onToggleFavorite}
-          onCopyPrompt={onCopyPrompt}
-          onTagClick={onTagClick}
-        />
+        <MobilePromptFeed paginated>
+          {prompts.map((prompt, index) => (
+            <MobilePromptPostCard
+              key={prompt.id}
+              prompt={prompt}
+              imagePriority={index < 2}
+              onOpen={onOpenPrompt}
+              onCopy={onCopyPrompt}
+              onToggleFavorite={onToggleFavorite}
+              onTagClick={onTagClick}
+            />
+          ))}
+        </MobilePromptFeed>
       )}
 
       <Pagination

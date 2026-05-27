@@ -29,44 +29,44 @@ export function Pagination({
     return (
       <div className="mini-pagination">
         <p className="mini-pagination-summary">
-          Показано {from}–{to} из {totalItems}
+          {from}–{to} из {totalItems}
         </p>
         {totalPages > 1 ? (
-          <div className="mini-pagination-controls">
+          <div className="mini-pagination-row">
             <button
               type="button"
               disabled={page <= 1}
               onClick={() => onPageChange(page - 1)}
-              className="mini-pagination-nav"
+              className="mini-pagination-btn"
+              aria-label="Предыдущая страница"
             >
-              ← Назад
+              ‹
             </button>
-            <div className="mini-pagination-pages">
-              {pages.map((num, index) => {
-                const prev = pages[index - 1];
-                const showEllipsis = prev !== undefined && num - prev > 1;
-                return (
-                  <span key={num} className="inline-flex items-center gap-1.5">
-                    {showEllipsis ? <span className="mini-pagination-ellipsis">…</span> : null}
-                    <button
-                      type="button"
-                      onClick={() => onPageChange(num)}
-                      className={`mini-pagination-page ${page === num ? "active" : ""}`}
-                      aria-current={page === num ? "page" : undefined}
-                    >
-                      {num}
-                    </button>
-                  </span>
-                );
-              })}
-            </div>
+            {pages.map((num, index) => {
+              const prev = pages[index - 1];
+              const showEllipsis = prev !== undefined && num - prev > 1;
+              return (
+                <span key={num} className="inline-flex items-center">
+                  {showEllipsis ? <span className="mini-pagination-ellipsis">…</span> : null}
+                  <button
+                    type="button"
+                    onClick={() => onPageChange(num)}
+                    className={`mini-pagination-page ${page === num ? "active" : ""}`}
+                    aria-current={page === num ? "page" : undefined}
+                  >
+                    {num}
+                  </button>
+                </span>
+              );
+            })}
             <button
               type="button"
               disabled={page >= totalPages}
               onClick={() => onPageChange(page + 1)}
-              className="mini-pagination-nav"
+              className="mini-pagination-btn"
+              aria-label="Следующая страница"
             >
-              Далее →
+              ›
             </button>
           </div>
         ) : null}

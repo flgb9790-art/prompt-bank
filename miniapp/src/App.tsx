@@ -171,6 +171,10 @@ export default function App() {
 function MiniAppApp() {
   const [tab, setTab] = useState<TabKey>("home");
   const [viewMode, setViewMode] = useState<MiniAppViewMode>(() => readMiniAppViewMode("grid"));
+  const [homePrompts, setHomePrompts] = useState<Prompt[]>([]);
+  const [homeTotal, setHomeTotal] = useState(0);
+  const [homePage, setHomePage] = useState(1);
+  const [homeLoading, setHomeLoading] = useState(false);
   const [prompts, setPrompts] = useState<Prompt[]>([]);
   const [recentPrompts, setRecentPrompts] = useState<Prompt[]>([]);
   const [promptsTotal, setPromptsTotal] = useState(0);
@@ -223,6 +227,12 @@ function MiniAppApp() {
     setPromptsPage(page);
     scrollMiniAppToTop();
     void reloadPromptsList(page);
+  }
+
+  function handleHomePageChange(page: number) {
+    setHomePage(page);
+    scrollMiniAppToTop();
+    void reloadHomePrompts(page);
   }
 
   function handleFavoritesPageChange(page: number) {
@@ -358,6 +368,8 @@ function MiniAppApp() {
       setIsAdmin(data.me.isAdmin);
       setPrompts(mapped);
       setPromptsTotal(data.prompts.total);
+      setHomePrompts(mapped);
+      setHomeTotal(data.prompts.total);
       syncRecentFromPrompts(mapped);
       setPromptsListLoading(false);
       void loadDeferredBootstrapData();
@@ -367,6 +379,30 @@ function MiniAppApp() {
     } finally {
       setLoading(false);
       hideAppSplash();
+    }
+  }
+
+  async function reloadHomePrompts(page = 1) {
+    setHomeLoading(true);
+    try {
+      const data = await api.getPrompts({
+        limit: MINI_APP_PAGE_SIZE,
+        offset: (page - 1) * MINI_APP_PAGE_SIZE,
+        lite: true,
+        sort: "new"
+      });
+      const mapped = mapPromptsFromApi(data.items);
+      setHomePrompts(mapped);
+      setHomeTotal(data.total);
+      setHomePage(page);
+      setPromptsTotal(data.total);
+      if (page === 1) {
+        syncRecentFromPrompts(mapped);
+      }
+    } catch {
+      setToastMessage("Не удалось загрузить промпты");
+    } finally {
+      setHomeLoading(false);
     }
   }
 
@@ -492,6 +528,11 @@ function MiniAppApp() {
       setAuthTelegramId(null);
     };
   }, []);
+
+  useEffect(() => {
+    if (tab !== "home") return;
+    void reloadHomePrompts(homePage);
+  }, [tab]);
 
   useEffect(() => {
     if (tab !== "favorites") return;
@@ -780,8 +821,12 @@ function MiniAppApp() {
     <Layout freezeScroll={!isMiniAppExpanded}>
       {tab === "home" && !loading ? (
         <HomePage
-          recentPrompts={recentPrompts}
-          recentLoading={loading}
+          prompts={homePrompts}
+          loading={homeLoading}
+          page={homePage}
+          totalItems={homeTotal}
+          pageSize={MINI_APP_PAGE_SIZE}
+          onPageChange={handleHomePageChange}
           stats={stats}
           viewMode={viewMode}
           onViewModeChange={handleViewModeChange}

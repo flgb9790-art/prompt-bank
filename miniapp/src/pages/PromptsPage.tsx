@@ -4,6 +4,8 @@ import type { MiniAppViewMode, ViewMode } from "../utils/viewMode";
 import { SearchBar } from "../components/SearchBar";
 import { CategoryTabs } from "../components/CategoryTabs";
 import { VirtualPromptList } from "../components/VirtualPromptList";
+import { MobilePromptFeed } from "../components/MobilePromptFeed";
+import { MobilePromptPostCard } from "../components/MobilePromptPostCard";
 import { ViewModeSwitcher } from "../components/web/ViewModeSwitcher";
 import { Pagination } from "../components/web/Pagination";
 import { promptHasTag } from "../utils/tagFilter";
@@ -157,15 +159,19 @@ export function PromptsPage({
             onTagClick={onTagClick}
           />
         ) : (
-          <VirtualPromptList
-            prompts={filtered}
-            variant="mobile"
-            scrollSelector=".mobile-frame"
-            onOpenPrompt={onOpenPrompt}
-            onToggleFavorite={onToggleFavorite}
-            onCopyPrompt={onCopyPrompt}
-            onTagClick={onTagClick}
-          />
+          <MobilePromptFeed paginated>
+            {filtered.map((prompt, index) => (
+              <MobilePromptPostCard
+                key={prompt.id}
+                prompt={prompt}
+                imagePriority={index < 2}
+                onOpen={onOpenPrompt}
+                onCopy={onCopyPrompt}
+                onToggleFavorite={onToggleFavorite}
+                onTagClick={onTagClick}
+              />
+            ))}
+          </MobilePromptFeed>
         )}
       </>
     );
