@@ -3510,3 +3510,86 @@ button.brand-logo {
 html.telegram-mini-app .pinterest-grid--mini-app {
   column-count: 1 !important;
 }
+
+.mini-pagination {
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.mini-pagination-summary {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.mini-pagination-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.mini-pagination-btn,
+.mini-pagination-page {
+  min-width: 36px;
+  height: 36px;
+  padding: 0 10px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: #ffffff;
+  color: var(--text-soft);
+  font-size: 14px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.mini-pagination-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.mini-pagination-page.active {
+  background: var(--primary-soft);
+  border-color: var(--primary-border);
+  color: var(--primary);
+}
+
+.mini-pagination-ellipsis {
+  padding: 0 4px;
+  color: var(--muted-light);
+  font-size: 14px;
+}
+
+.mini-list-loading {
+  opacity: 0.72;
+  pointer-events: none;
+}
+
+.pagination-btn {
+  min-width: 38px;
+  height: 38px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: #ffffff;
+  color: var(--text-soft);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.pagination-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.pagination-btn.active {
+  background: var(--primary-soft);
+  border-color: var(--primary-border);
+  color: var(--primary);
+}

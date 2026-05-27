@@ -113,6 +113,15 @@ export function WebApp() {
   const [userUsageTotal, setUserUsageTotal] = useState(0);
   const [me, setMe] = useState<MeResponse | null>(null);
   const [page, setPage] = useState(1);
+
+  function scrollWebToTop() {
+    document.querySelector<HTMLElement>(".prompt-scroll-root")?.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function handlePageChange(nextPage: number) {
+    setPage(nextPage);
+    scrollWebToTop();
+  }
   const isAuthenticated = Boolean(user);
   const bootstrappedRef = useRef(false);
   const filtersEffectReadyRef = useRef(false);
@@ -328,7 +337,9 @@ export function WebApp() {
         if (cancelled) return;
         const mapped = mapPromptsFromApi(data.prompts.items).map(withPromptDetails);
         setPrompts(mapped);
-        setPromptsTotal(data.prompts.total);
+        if (data.prompts.total >= 0) {
+          setPromptsTotal(data.prompts.total);
+        }
         setCategories(data.categories);
         writeReferenceCache(CATEGORIES_CACHE_KEY, data.categories);
         setIsAdmin(Boolean(data.me.isAdmin));
@@ -865,7 +876,7 @@ export function WebApp() {
           totalPages={listTotalPages}
           totalItems={list.length}
           pageSize={PROMPTS_PER_PAGE}
-          onPageChange={setPage}
+          onPageChange={handlePageChange}
         />
         {hasMoreRemote ? (
           <div ref={loadMoreRef} className="mt-4 flex min-h-10 items-center justify-center">

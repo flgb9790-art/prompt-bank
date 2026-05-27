@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, Copy, Eye } from "lucide-react";
-import { api, resolveCardMediaUrl } from "../../api";
+import { api, resolveCardMediaUrl, resolveMediaUrl } from "../../api";
+import { resolvePostMedia } from "../../utils/resolvePostMedia";
 import type { Prompt, PromptHistoryItem } from "../../types";
 import { AuthRequiredState } from "../AuthRequiredState";
 import { MobilePromptFeed } from "../MobilePromptFeed";
@@ -122,14 +123,31 @@ export function PromptHistoryScreen({
           const prompt = item.prompt;
           if (!prompt) return null;
           const when = eventTime(item, mode);
-          const mediaType = prompt.coverMediaType ?? "image";
-          const coverUrl = prompt.coverMediaUrl
-            ? resolveCardMediaUrl(prompt.coverMediaUrl, mediaType === "video" ? "video" : "image")
+          const media = resolvePostMedia(prompt);
+          const coverUrl = media
+            ? media.type === "image"
+              ? resolveCardMediaUrl(media.url, "image")
+              : resolveMediaUrl(media.url)
             : null;
           return (
             <article key={item.id} className="history-item">
               <div className="history-item-preview">
-                {coverUrl ? <img src={coverUrl} alt="" loading="lazy" /> : <div className="history-item-preview-fallback" />}
+                {coverUrl ? (
+                  <img
+                    src={coverUrl}
+                    alt=""
+                    loading="lazy"
+                    onError={(event) => {
+                      if (!media) return;
+                      const fallback = resolveMediaUrl(media.url);
+                      if (event.currentTarget.src !== fallback) {
+                        event.currentTarget.src = fallback;
+                      }
+                    }}
+                  />
+                ) : (
+                  <div className="history-item-preview-fallback" />
+                )}
               </div>
               <div className="history-item-content">
                 <h3 className="history-item-title">{prompt.title}</h3>

@@ -367,9 +367,11 @@ function MiniAppApp() {
       writeReferenceCache(CATEGORIES_CACHE_KEY, data.categories);
       setIsAdmin(data.me.isAdmin);
       setPrompts(mapped);
-      setPromptsTotal(data.prompts.total);
+      if (data.prompts.total >= 0) {
+        setPromptsTotal(data.prompts.total);
+        setHomeTotal(data.prompts.total);
+      }
       setHomePrompts(mapped);
-      setHomeTotal(data.prompts.total);
       syncRecentFromPrompts(mapped);
       setPromptsListLoading(false);
       void loadDeferredBootstrapData();
@@ -532,6 +534,7 @@ function MiniAppApp() {
   useEffect(() => {
     if (tab !== "home") return;
     setHomePage(1);
+    scrollMiniAppToTop();
     void reloadHomePrompts(1);
   }, [tab]);
 
@@ -828,7 +831,7 @@ function MiniAppApp() {
           prompts={homePrompts}
           loading={homeLoading}
           page={homePage}
-          totalItems={homeTotal}
+          totalItems={Math.max(homeTotal, promptsTotal, homePrompts.length)}
           pageSize={MINI_APP_PAGE_SIZE}
           onPageChange={handleHomePageChange}
           stats={stats}
