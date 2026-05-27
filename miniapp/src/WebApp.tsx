@@ -1028,8 +1028,6 @@ export function WebApp() {
         <PromptHistoryScreen
           mode="copied"
           isAuthenticated={isAuthenticated}
-          viewMode={viewMode}
-          onViewModeChange={handleViewModeChange}
           onLogin={loginTelegram}
           onOpenPrompt={openPrompt}
           onCopyPrompt={handleCopy}
@@ -1042,8 +1040,6 @@ export function WebApp() {
         <PromptHistoryScreen
           mode="viewed"
           isAuthenticated={isAuthenticated}
-          viewMode={viewMode}
-          onViewModeChange={handleViewModeChange}
           onLogin={loginTelegram}
           onOpenPrompt={openPrompt}
           onCopyPrompt={handleCopy}

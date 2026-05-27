@@ -865,8 +865,6 @@ function MiniAppApp() {
           mode="copied"
           variant="mini"
           isAuthenticated
-          viewMode={viewMode}
-          onViewModeChange={handleViewModeChange}
           onBack={() => setProfileScreen(null)}
           onLogin={() => undefined}
           onOpenPrompt={openPrompt}
@@ -883,8 +881,6 @@ function MiniAppApp() {
           mode="viewed"
           variant="mini"
           isAuthenticated
-          viewMode={viewMode}
-          onViewModeChange={handleViewModeChange}
           onBack={() => setProfileScreen(null)}
           onLogin={() => undefined}
           onOpenPrompt={openPrompt}

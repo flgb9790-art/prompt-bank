@@ -5,12 +5,8 @@ import type { Prompt, PromptHistoryItem } from "../../types";
 import { AuthRequiredState } from "../AuthRequiredState";
 import { MobilePromptFeed } from "../MobilePromptFeed";
 import { MobilePromptPostCard } from "../MobilePromptPostCard";
-import { PinterestMasonryGrid } from "../PinterestMasonryGrid";
-import { VirtualPromptList } from "../VirtualPromptList";
-import { ViewModeSwitcher } from "../web/ViewModeSwitcher";
 import { formatRelativeTime } from "../../utils/formatRelativeTime";
 import { getPromptExcerpt } from "../../utils/promptContent";
-import type { ViewMode } from "../../utils/viewMode";
 
 type Mode = "copied" | "viewed";
 
@@ -24,8 +20,6 @@ type Props = {
   onCopyPrompt: (prompt: Prompt) => void;
   onToggleFavorite: (id: number) => void;
   onNavigatePrompts: () => void;
-  viewMode?: ViewMode;
-  onViewModeChange?: (mode: ViewMode) => void;
 };
 
 function eventTime(item: PromptHistoryItem, mode: Mode) {
@@ -41,9 +35,7 @@ export function PromptHistoryScreen({
   onOpenPrompt,
   onCopyPrompt,
   onToggleFavorite,
-  onNavigatePrompts,
-  viewMode = "grid",
-  onViewModeChange
+  onNavigatePrompts
 }: Props) {
   const [items, setItems] = useState<PromptHistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -84,51 +76,6 @@ export function PromptHistoryScreen({
       return `${prompt.title} ${getPromptExcerpt(prompt)} ${prompt.category?.name ?? ""} ${tags}`.toLowerCase().includes(query);
     });
   }, [items, search]);
-
-  const historyPrompts = useMemo(
-    () => filtered.map((item) => item.prompt).filter((prompt): prompt is Prompt => Boolean(prompt)),
-    [filtered]
-  );
-
-  function renderHistoryContent() {
-    if (viewMode === "pinterest") {
-      return (
-        <PinterestMasonryGrid
-          prompts={historyPrompts}
-          loading={loading}
-          miniAppSingleColumn={isMini}
-          onOpen={onOpenPrompt}
-          onCopy={onCopyPrompt}
-          onToggleFavorite={onToggleFavorite}
-        />
-      );
-    }
-
-    if (viewMode === "list") {
-      return (
-        <VirtualPromptList
-          prompts={historyPrompts}
-          variant="list"
-          scrollSelector={isMini ? ".mobile-frame" : ".web-app-main"}
-          estimateSize={128}
-          onOpenPrompt={onOpenPrompt}
-          onToggleFavorite={onToggleFavorite}
-          onCopyPrompt={onCopyPrompt}
-        />
-      );
-    }
-
-    if (isMini) {
-      return renderHistoryFeed();
-    }
-
-    return (
-      <>
-        <div className="hidden md:block">{renderDesktopHistoryList()}</div>
-        <div className="md:hidden">{renderHistoryFeed()}</div>
-      </>
-    );
-  }
 
   async function handleClear() {
     setClearing(true);
@@ -250,7 +197,6 @@ export function PromptHistoryScreen({
           onChange={(event) => setSearch(event.target.value)}
           placeholder={isMini ? "Поиск..." : "Поиск в истории..."}
         />
-        {onViewModeChange ? <ViewModeSwitcher value={viewMode} onChange={onViewModeChange} /> : null}
         <button type="button" className="btn-secondary history-clear-btn" onClick={() => setConfirmOpen(true)} disabled={!items.length}>
           Очистить историю
         </button>
@@ -263,7 +209,14 @@ export function PromptHistoryScreen({
           ))}
         </div>
       ) : filtered.length ? (
-        renderHistoryContent()
+        isMini ? (
+          renderHistoryFeed()
+        ) : (
+          <>
+            <div className="hidden md:block">{renderDesktopHistoryList()}</div>
+            <div className="md:hidden">{renderHistoryFeed()}</div>
+          </>
+        )
       ) : (
         <div className="history-empty-card">
           <div className="history-empty-icon" aria-hidden>
