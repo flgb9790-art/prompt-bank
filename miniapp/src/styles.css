@@ -3480,19 +3480,20 @@ html.telegram-mini-app .media-lightbox-nav {
   transform: scale(0.98);
 }
 
-/* Pinterest masonry */
+/* Pinterest grid — document order left-to-right so API sort matches display */
 .pinterest-grid {
-  column-gap: 18px;
+  display: grid;
+  gap: 18px;
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .pinterest-item {
-  break-inside: avoid;
-  margin-bottom: 18px;
+  min-width: 0;
 }
 
 .pinterest-card {
   width: 100%;
-  display: inline-block;
+  display: block;
   background: #ffffff;
   border-radius: 18px;
   overflow: hidden;
@@ -3677,8 +3678,8 @@ html.telegram-mini-app .media-lightbox-nav {
 }
 
 .pinterest-sentinel-wrap {
+  grid-column: 1 / -1;
   width: 100%;
-  clear: both;
   margin-top: 4px;
 }
 
@@ -3722,28 +3723,28 @@ html.telegram-mini-app .media-lightbox-nav {
 
 @media (min-width: 1440px) {
   .pinterest-grid {
-    column-count: 5;
-    column-gap: 16px;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 16px;
   }
 }
 
 @media (min-width: 1200px) and (max-width: 1439px) {
   .pinterest-grid {
-    column-count: 3;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
 @media (min-width: 768px) and (max-width: 1199px) {
   .pinterest-grid {
-    column-count: 2;
-    column-gap: 16px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
   }
 }
 
 @media (min-width: 480px) and (max-width: 767px) {
   .pinterest-grid {
-    column-count: 2;
-    column-gap: 12px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
   }
 
   .pinterest-card {
@@ -3767,8 +3768,8 @@ html.telegram-mini-app .media-lightbox-nav {
 
 @media (max-width: 479px) {
   .pinterest-grid {
-    column-count: 1;
-    column-gap: 14px;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 14px;
   }
 
   .pinterest-actions {
@@ -3783,19 +3784,19 @@ html.telegram-mini-app .media-lightbox-nav {
 }
 
 .pinterest-grid--mini-app {
-  column-count: 1 !important;
-  column-gap: 14px !important;
+  grid-template-columns: minmax(0, 1fr) !important;
+  gap: 14px !important;
 }
 
 @media (min-width: 480px) {
   .pinterest-grid--mini-app:not(.pinterest-grid--force-single) {
-    column-count: 2 !important;
-    column-gap: 12px !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 12px !important;
   }
 }
 
 html.telegram-mini-app .pinterest-grid--mini-app {
-  column-count: 1 !important;
+  grid-template-columns: minmax(0, 1fr) !important;
 }
 
 .mini-pagination {
