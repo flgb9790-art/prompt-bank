@@ -5,11 +5,19 @@ export function useGridColumns() {
 
   useEffect(() => {
     const update = () => {
+      if (window.matchMedia("(min-width: 1440px)").matches) {
+        setColumns(5);
+        return;
+      }
       if (window.matchMedia("(min-width: 1280px)").matches) {
-        setColumns(3);
+        setColumns(4);
         return;
       }
       if (window.matchMedia("(min-width: 1024px)").matches) {
+        setColumns(3);
+        return;
+      }
+      if (window.matchMedia("(min-width: 768px)").matches) {
         setColumns(2);
         return;
       }

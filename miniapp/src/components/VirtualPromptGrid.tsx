@@ -69,7 +69,15 @@ export function VirtualPromptGrid({
   });
 
   const gridClass =
-    columns === 3 ? "grid-cols-3" : columns === 2 ? "grid-cols-2" : "grid-cols-1";
+    columns === 5
+      ? "grid-cols-5"
+      : columns === 4
+        ? "grid-cols-4"
+        : columns === 3
+          ? "grid-cols-3"
+          : columns === 2
+            ? "grid-cols-2"
+            : "grid-cols-1";
 
   if (!scrollElement || prompts.length < VIRTUALIZE_MIN_ITEMS) {
     return (

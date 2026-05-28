@@ -3722,7 +3722,8 @@ html.telegram-mini-app .media-lightbox-nav {
 
 @media (min-width: 1440px) {
   .pinterest-grid {
-    column-count: 4;
+    column-count: 5;
+    column-gap: 16px;
   }
 }
 
