@@ -3480,11 +3480,27 @@ html.telegram-mini-app .media-lightbox-nav {
   transform: scale(0.98);
 }
 
-/* Pinterest grid — document order left-to-right so API sort matches display */
-.pinterest-grid {
-  display: grid;
+/* Pinterest masonry — columns with staggered card heights */
+.pinterest-masonry {
+  display: flex;
+  align-items: flex-start;
   gap: 18px;
-  grid-template-columns: minmax(0, 1fr);
+}
+
+.pinterest-masonry-column {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.pinterest-masonry--mini-app {
+  gap: 14px;
+}
+
+.pinterest-masonry--mini-app .pinterest-masonry-column {
+  gap: 14px;
 }
 
 .pinterest-item {
@@ -3678,7 +3694,6 @@ html.telegram-mini-app .media-lightbox-nav {
 }
 
 .pinterest-sentinel-wrap {
-  grid-column: 1 / -1;
   width: 100%;
   margin-top: 4px;
 }
@@ -3722,31 +3737,16 @@ html.telegram-mini-app .media-lightbox-nav {
 }
 
 @media (min-width: 1440px) {
-  .pinterest-grid {
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+  .pinterest-masonry {
     gap: 16px;
   }
-}
 
-@media (min-width: 1200px) and (max-width: 1439px) {
-  .pinterest-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-}
-
-@media (min-width: 768px) and (max-width: 1199px) {
-  .pinterest-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .pinterest-masonry-column {
     gap: 16px;
   }
 }
 
 @media (min-width: 480px) and (max-width: 767px) {
-  .pinterest-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
-  }
-
   .pinterest-card {
     border-radius: 16px;
   }
@@ -3767,11 +3767,6 @@ html.telegram-mini-app .media-lightbox-nav {
 }
 
 @media (max-width: 479px) {
-  .pinterest-grid {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 14px;
-  }
-
   .pinterest-actions {
     opacity: 1;
     transform: translateY(0);
@@ -3783,20 +3778,14 @@ html.telegram-mini-app .media-lightbox-nav {
   }
 }
 
-.pinterest-grid--mini-app {
-  grid-template-columns: minmax(0, 1fr) !important;
-  gap: 14px !important;
-}
-
 @media (min-width: 480px) {
-  .pinterest-grid--mini-app:not(.pinterest-grid--force-single) {
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-    gap: 12px !important;
+  .pinterest-masonry--mini-app:not(.pinterest-masonry--force-single) {
+    gap: 12px;
   }
-}
 
-html.telegram-mini-app .pinterest-grid--mini-app {
-  grid-template-columns: minmax(0, 1fr) !important;
+  .pinterest-masonry--mini-app:not(.pinterest-masonry--force-single) .pinterest-masonry-column {
+    gap: 12px;
+  }
 }
 
 .mini-pagination {
