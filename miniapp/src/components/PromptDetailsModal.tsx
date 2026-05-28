@@ -1,6 +1,8 @@
-import { lazy, Suspense, useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, Share2, X } from "lucide-react";
 import { resolveMediaUrl } from "../api";
+import { useHorizontalSwipe } from "../hooks/useHorizontalSwipe";
+import { useMediaMinWidth } from "../hooks/useMediaMinWidth";
 import type { Category, MediaType, Prompt } from "../types";
 import { getCategoryBadgeClass } from "../utils/categoryStyle";
 import { hasFullPromptDetails } from "../utils/promptContent";
@@ -82,10 +84,10 @@ function buildGalleryItems(prompt: Prompt): LightboxItem[] {
   return items;
 }
 
-function PromptDetailsLoadingPanel({ desktopMode }: { desktopMode: boolean }) {
+function PromptDetailsLoadingPanel({ wideLayout }: { wideLayout: boolean }) {
   return (
     <div
-      className={`prompt-details-loading ${desktopMode ? "prompt-details-loading--desktop" : ""}`}
+      className={`prompt-details-loading ${wideLayout ? "prompt-details-loading--desktop" : ""}`}
       role="status"
       aria-live="polite"
     >
@@ -93,7 +95,7 @@ function PromptDetailsLoadingPanel({ desktopMode }: { desktopMode: boolean }) {
         <span className="prompt-details-loading-spinner" aria-hidden />
         <span>Загрузка промпта…</span>
       </div>
-      <div className={desktopMode ? "grid gap-6 md:grid-cols-[300px_1fr]" : "flex flex-col gap-4"}>
+      <div className={wideLayout ? "prompt-details-layout prompt-details-layout--desktop" : "flex flex-col gap-4"}>
         <div className="prompt-details-skeleton-gallery" aria-hidden />
         <div className="space-y-3" aria-hidden>
           <div className="prompt-details-skeleton-line prompt-details-skeleton-line--wide" />
@@ -137,6 +139,18 @@ export function PromptDetailsModal({
   const [pinterestPublishing, setPinterestPublishing] = useState(false);
 
   const galleryItems = useMemo(() => (prompt ? buildGalleryItems(prompt) : []), [prompt]);
+  const wideLayout = useMediaMinWidth(1024, desktopMode);
+  const showGalleryNav = wideLayout && galleryItems.length > 1;
+
+  const goGalleryPrev = useCallback(() => {
+    setGalleryIndex((prev) => (prev > 0 ? prev - 1 : galleryItems.length - 1));
+  }, [galleryItems.length]);
+
+  const goGalleryNext = useCallback(() => {
+    setGalleryIndex((prev) => (prev < galleryItems.length - 1 ? prev + 1 : 0));
+  }, [galleryItems.length]);
+
+  const gallerySwipe = useHorizontalSwipe(goGalleryNext, goGalleryPrev, !wideLayout && galleryItems.length > 1);
 
   function resetEditState(current: Prompt) {
     setTitle(current.title);
@@ -187,7 +201,9 @@ export function PromptDetailsModal({
     <>
       <div className={`modal-overlay fixed inset-0 z-50 flex justify-center p-4 ${desktopMode ? "items-center" : "items-end"}`}>
         <div
-          className={`modal-panel fade-up max-h-[90vh] w-full overflow-y-auto p-5 ${desktopMode ? "max-w-[860px] rounded-[24px]" : "max-w-[460px]"}`}
+          className={`modal-panel fade-up max-h-[92vh] w-full overflow-y-auto p-5 ${
+            wideLayout ? "modal-panel--prompt-desktop rounded-[24px]" : "max-w-[460px]"
+          }`}
         >
           <div className="mb-4 flex items-center justify-between gap-3">
             <h3 className="text-lg font-semibold text-[var(--text)]">Детали промпта</h3>
@@ -322,22 +338,21 @@ export function PromptDetailsModal({
               </div>
             </div>
           ) : isShellPrompt ? (
-            <PromptDetailsLoadingPanel desktopMode={desktopMode} />
+            <PromptDetailsLoadingPanel wideLayout={wideLayout} />
           ) : (
-            <div className={desktopMode ? "grid gap-6 md:grid-cols-[300px_1fr]" : "flex flex-col gap-4"}>
+            <div className={wideLayout ? "prompt-details-layout prompt-details-layout--desktop" : "flex flex-col gap-4"}>
               <div>
                 {loadingDetails && !galleryItems.length ? (
                   <div className="prompt-details-skeleton-gallery" aria-hidden />
                 ) : galleryItems.length ? (
-                  <div className="prompt-gallery">
-                    <div className="prompt-gallery-main">
-                      {galleryItems.length > 1 ? (
-                        <button
-                          type="button"
-                          className="prompt-gallery-nav"
-                          onClick={() => setGalleryIndex((prev) => (prev > 0 ? prev - 1 : galleryItems.length - 1))}
-                          aria-label="Предыдущее"
-                        >
+                  <div className={`prompt-gallery ${wideLayout ? "prompt-gallery--desktop" : "prompt-gallery--mobile"}`}>
+                    <div
+                      className="prompt-gallery-main"
+                      onTouchStart={gallerySwipe.onTouchStart}
+                      onTouchEnd={gallerySwipe.onTouchEnd}
+                    >
+                      {showGalleryNav ? (
+                        <button type="button" className="prompt-gallery-nav" onClick={goGalleryPrev} aria-label="Предыдущее">
                           <ChevronLeft size={18} />
                         </button>
                       ) : null}
@@ -348,13 +363,8 @@ export function PromptDetailsModal({
                         className="prompt-gallery-preview"
                         onClick={() => setLightboxOpen(true)}
                       />
-                      {galleryItems.length > 1 ? (
-                        <button
-                          type="button"
-                          className="prompt-gallery-nav"
-                          onClick={() => setGalleryIndex((prev) => (prev < galleryItems.length - 1 ? prev + 1 : 0))}
-                          aria-label="Следующее"
-                        >
+                      {showGalleryNav ? (
+                        <button type="button" className="prompt-gallery-nav" onClick={goGalleryNext} aria-label="Следующее">
                           <ChevronRight size={18} />
                         </button>
                       ) : null}
