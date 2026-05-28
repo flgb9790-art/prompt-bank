@@ -90,8 +90,9 @@ export default defineConfig(({ mode }) => {
         ]
       },
       workbox: {
-        mode: "development",
         globPatterns: ["**/*.{js,css,svg,woff2,webmanifest}"],
+        skipWaiting: true,
+        clientsClaim: true,
         navigateFallback: "index.html",
         navigateFallbackDenylist: [/^\/api/, /^\/uploads/],
         runtimeCaching: [

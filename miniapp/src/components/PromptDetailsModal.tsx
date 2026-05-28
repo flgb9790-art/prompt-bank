@@ -3,6 +3,8 @@ import { ChevronLeft, ChevronRight, Share2, X } from "lucide-react";
 import { resolveMediaUrl } from "../api";
 import { useHorizontalSwipe } from "../hooks/useHorizontalSwipe";
 import { useMediaMinWidth } from "../hooks/useMediaMinWidth";
+import { isTelegramMiniAppContext } from "../telegram";
+import { MediaLightbox } from "./MediaLightbox";
 import type { Category, MediaType, Prompt } from "../types";
 import { getCategoryBadgeClass } from "../utils/categoryStyle";
 import { hasFullPromptDetails } from "../utils/promptContent";
@@ -11,7 +13,6 @@ import { telegramPublicationStatusLabel } from "../utils/telegramPost";
 import { pinterestPublicationStatusLabel } from "../utils/pinterestPost";
 import type { LightboxItem } from "./MediaLightbox";
 
-const MediaLightbox = lazy(() => import("./MediaLightbox").then((module) => ({ default: module.MediaLightbox })));
 const MediaUploader = lazy(() => import("./MediaUploader").then((module) => ({ default: module.MediaUploader })));
 import { TagPill } from "./TagPill";
 
@@ -46,20 +47,23 @@ function MediaPreview({
   type,
   className,
   onClick,
-  fit = "cover"
+  fit = "cover",
+  framed = true
 }: {
   url: string;
   type: MediaType;
   className?: string;
   onClick?: () => void;
   fit?: "cover" | "contain";
+  framed?: boolean;
 }) {
   const clickable = Boolean(onClick);
   const fitClass = fit === "contain" ? "preview-fit-contain" : "";
+  const frameClass = framed ? "preview-4x5" : "preview-unframed";
   return (
     <button
       type="button"
-      className={`preview-4x5 ${fitClass} ${clickable ? "preview-clickable" : ""} ${className ?? ""}`}
+      className={`${frameClass} ${fitClass} ${clickable ? "preview-clickable" : ""} ${className ?? ""}`}
       onClick={onClick}
       disabled={!clickable}
     >
@@ -139,8 +143,10 @@ export function PromptDetailsModal({
   const [pinterestPublishing, setPinterestPublishing] = useState(false);
 
   const galleryItems = useMemo(() => (prompt ? buildGalleryItems(prompt) : []), [prompt]);
-  const wideLayout = useMediaMinWidth(1024, desktopMode);
-  const showGalleryNav = wideLayout && galleryItems.length > 1;
+  const isTelegramMiniApp = isTelegramMiniAppContext();
+  const wideLayout = useMediaMinWidth(1024, desktopMode && !isTelegramMiniApp);
+  const compactGallery = isTelegramMiniApp || !wideLayout;
+  const showGalleryNav = !compactGallery && galleryItems.length > 1;
 
   const goGalleryPrev = useCallback(() => {
     setGalleryIndex((prev) => (prev > 0 ? prev - 1 : galleryItems.length - 1));
@@ -150,7 +156,7 @@ export function PromptDetailsModal({
     setGalleryIndex((prev) => (prev < galleryItems.length - 1 ? prev + 1 : 0));
   }, [galleryItems.length]);
 
-  const gallerySwipe = useHorizontalSwipe(goGalleryNext, goGalleryPrev, !wideLayout && galleryItems.length > 1);
+  const gallerySwipe = useHorizontalSwipe(goGalleryNext, goGalleryPrev, compactGallery && galleryItems.length > 1);
 
   function resetEditState(current: Prompt) {
     setTitle(current.title);
@@ -199,10 +205,10 @@ export function PromptDetailsModal({
 
   return (
     <>
-      <div className={`modal-overlay fixed inset-0 z-50 flex justify-center p-4 ${desktopMode ? "items-center" : "items-end"}`}>
+      <div className={`modal-overlay fixed inset-0 z-50 flex justify-center p-4 ${wideLayout ? "items-center" : "items-end"}`}>
         <div
-          className={`modal-panel fade-up max-h-[92vh] w-full overflow-y-auto p-5 ${
-            wideLayout ? "modal-panel--prompt-desktop rounded-[24px]" : "max-w-[460px]"
+          className={`modal-panel fade-up max-h-[92vh] overflow-y-auto p-5 ${
+            wideLayout ? "modal-panel--prompt-desktop rounded-[24px]" : "modal-panel--prompt-mobile"
           }`}
         >
           <div className="mb-4 flex items-center justify-between gap-3">
@@ -345,7 +351,7 @@ export function PromptDetailsModal({
                 {loadingDetails && !galleryItems.length ? (
                   <div className="prompt-details-skeleton-gallery" aria-hidden />
                 ) : galleryItems.length ? (
-                  <div className={`prompt-gallery ${wideLayout ? "prompt-gallery--desktop" : "prompt-gallery--mobile"}`}>
+                  <div className={`prompt-gallery ${compactGallery ? "prompt-gallery--mobile" : "prompt-gallery--desktop"}`}>
                     <div
                       className="prompt-gallery-main"
                       onTouchStart={gallerySwipe.onTouchStart}
@@ -360,6 +366,7 @@ export function PromptDetailsModal({
                         url={currentGallery.url}
                         type={currentGallery.type}
                         fit="contain"
+                        framed={false}
                         className="prompt-gallery-preview"
                         onClick={() => setLightboxOpen(true)}
                       />
@@ -543,9 +550,12 @@ export function PromptDetailsModal({
       </div>
 
       {lightboxOpen && galleryItems.length ? (
-        <Suspense fallback={null}>
-          <MediaLightbox items={galleryItems} initialIndex={galleryIndex} onClose={() => setLightboxOpen(false)} />
-        </Suspense>
+        <MediaLightbox
+          items={galleryItems}
+          initialIndex={galleryIndex}
+          isTelegramMiniApp={isTelegramMiniApp}
+          onClose={() => setLightboxOpen(false)}
+        />
       ) : null}
     </>
   );

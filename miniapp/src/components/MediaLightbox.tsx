@@ -14,6 +14,7 @@ export type LightboxItem = {
 type Props = {
   items: LightboxItem[];
   initialIndex?: number;
+  isTelegramMiniApp?: boolean;
   onClose: () => void;
 };
 
@@ -33,13 +34,13 @@ function touchDistance(touches: React.TouchList) {
   return Math.hypot(dx, dy);
 }
 
-export function MediaLightbox({ items, initialIndex = 0, onClose }: Props) {
+export function MediaLightbox({ items, initialIndex = 0, isTelegramMiniApp = false, onClose }: Props) {
   const [index, setIndex] = useState(initialIndex);
   const [scale, setScale] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const pinchRef = useRef<{ distance: number; baseScale: number } | null>(null);
   const panRef = useRef<{ x: number; y: number; originX: number; originY: number } | null>(null);
-  const showNavButtons = useMediaMinWidth(768);
+  const showNavButtons = useMediaMinWidth(768) && !isTelegramMiniApp;
   const current = items[index];
 
   useEffect(() => {

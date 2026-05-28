@@ -1600,8 +1600,13 @@ button.brand-logo {
 }
 
 .modal-panel--prompt-desktop {
-  width: min(1120px, calc(100vw - 32px));
-  max-width: min(1120px, calc(100vw - 32px));
+  width: min(1180px, calc(100vw - 32px)) !important;
+  max-width: min(1180px, calc(100vw - 32px)) !important;
+}
+
+.modal-panel--prompt-mobile {
+  width: 100%;
+  max-width: 460px;
 }
 
 /* Form */
@@ -2002,8 +2007,41 @@ button.brand-logo {
 .prompt-details-layout--desktop {
   display: grid;
   gap: 28px;
-  grid-template-columns: minmax(400px, 46%) minmax(0, 1fr);
+  grid-template-columns: minmax(460px, 50%) minmax(0, 1fr);
   align-items: start;
+}
+
+.preview-unframed {
+  width: 100%;
+  border: none;
+  padding: 0;
+  background: #f2f4f7;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  min-height: 200px;
+}
+
+.preview-unframed img,
+.preview-unframed video {
+  position: static;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: min(56vh, 520px);
+  object-fit: contain;
+  object-position: center;
+  display: block;
+  pointer-events: none;
+}
+
+.prompt-gallery--desktop .preview-unframed img,
+.prompt-gallery--desktop .preview-unframed video,
+.prompt-gallery--desktop .preview-fit-contain img,
+.prompt-gallery--desktop .preview-fit-contain video {
+  max-height: min(78vh, 680px);
 }
 
 .prompt-gallery-main {
@@ -2018,7 +2056,19 @@ button.brand-logo {
 }
 
 .prompt-gallery--mobile .prompt-gallery-nav {
-  display: none;
+  display: none !important;
+}
+
+html.telegram-mini-app .prompt-gallery-nav {
+  display: none !important;
+}
+
+html.telegram-mini-app .prompt-gallery-main {
+  gap: 0 !important;
+}
+
+html.telegram-mini-app .media-lightbox-nav {
+  display: none !important;
 }
 
 .prompt-gallery--mobile .prompt-gallery-preview {
