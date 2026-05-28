@@ -5,6 +5,7 @@ import { resolveMediaUrl } from "../api";
 import type { MediaType } from "../types";
 import { useHorizontalSwipe } from "../hooks/useHorizontalSwipe";
 import { useMediaMinWidth } from "../hooks/useMediaMinWidth";
+import { usePinchZoom } from "../hooks/usePinchZoom";
 
 export type LightboxItem = {
   url: string;
@@ -33,6 +34,10 @@ export function MediaLightbox({ items, initialIndex = 0, isTelegramMiniApp = fal
   const [mounted, setMounted] = useState(false);
   const showNavButtons = useMediaMinWidth(768) && !isTelegramMiniApp;
   const current = items[index];
+  const zoomOnImageOnly = isTelegramMiniApp && current?.type === "image";
+  const pinchZoom = usePinchZoom(zoomOnImageOnly);
+  const activeScale = zoomOnImageOnly ? pinchZoom.scale : scale;
+  const setActiveScale = zoomOnImageOnly ? pinchZoom.setScale : setScale;
 
   useEffect(() => {
     setMounted(true);
@@ -44,6 +49,7 @@ export function MediaLightbox({ items, initialIndex = 0, isTelegramMiniApp = fal
 
   useEffect(() => {
     setScale(1);
+    pinchZoom.resetScale();
     setMediaReady(false);
   }, [index, current?.url]);
 
@@ -82,18 +88,33 @@ export function MediaLightbox({ items, initialIndex = 0, isTelegramMiniApp = fal
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") onClose();
-      if (scale > 1) return;
+      if (activeScale > 1) return;
       if (event.key === "ArrowLeft") setIndex((prev) => (prev > 0 ? prev - 1 : items.length - 1));
       if (event.key === "ArrowRight") setIndex((prev) => (prev < items.length - 1 ? prev + 1 : 0));
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [items.length, onClose, scale]);
+  }, [activeScale, items.length, onClose]);
+
+  useEffect(() => {
+    if (!isTelegramMiniApp) return;
+    const preventGesture = (event: Event) => {
+      if (event.cancelable) event.preventDefault();
+    };
+    document.addEventListener("gesturestart", preventGesture, { passive: false });
+    document.addEventListener("gesturechange", preventGesture, { passive: false });
+    document.addEventListener("gestureend", preventGesture, { passive: false });
+    return () => {
+      document.removeEventListener("gesturestart", preventGesture);
+      document.removeEventListener("gesturechange", preventGesture);
+      document.removeEventListener("gestureend", preventGesture);
+    };
+  }, [isTelegramMiniApp]);
 
   const swipe = useHorizontalSwipe(
     () => setIndex((prev) => (prev < items.length - 1 ? prev + 1 : 0)),
     () => setIndex((prev) => (prev > 0 ? prev - 1 : items.length - 1)),
-    scale === 1 && items.length > 1
+    activeScale === 1 && items.length > 1
   );
 
   function goPrev() {
@@ -106,10 +127,11 @@ export function MediaLightbox({ items, initialIndex = 0, isTelegramMiniApp = fal
 
   function resetZoom() {
     setScale(1);
+    pinchZoom.resetScale();
   }
 
   function adjustZoom(delta: number) {
-    setScale((prev) => {
+    setActiveScale((prev) => {
       const next = clamp(prev + delta, MIN_SCALE, MAX_SCALE);
       return next <= 1 ? 1 : next;
     });
@@ -123,20 +145,20 @@ export function MediaLightbox({ items, initialIndex = 0, isTelegramMiniApp = fal
 
   function onDoubleClick() {
     if (current?.type !== "image") return;
-    setScale((prev) => (prev > 1 ? 1 : 2));
+    setActiveScale((prev) => (prev > 1 ? 1 : 2));
   }
 
   function onTouchStart(event: TouchEvent) {
-    if (scale === 1) swipe.onTouchStart(event);
+    if (activeScale === 1 && event.touches.length < 2) swipe.onTouchStart(event);
   }
 
   function onTouchEnd(event: TouchEvent) {
-    if (scale === 1) swipe.onTouchEnd(event);
+    if (activeScale === 1) swipe.onTouchEnd(event);
   }
 
   if (!mounted || !current || !items.length) return null;
 
-  const zoomPercent = Math.round(scale * 100);
+  const zoomPercent = Math.round(activeScale * 100);
   const imageUrl = resolveMediaUrl(current.url);
 
   const content = (
@@ -165,7 +187,7 @@ export function MediaLightbox({ items, initialIndex = 0, isTelegramMiniApp = fal
                   type="button"
                   className="media-lightbox-tool-btn"
                   onClick={resetZoom}
-                  disabled={scale === 1}
+                  disabled={activeScale === 1}
                   aria-label="Сбросить масштаб"
                 >
                   <RotateCcw size={17} />
@@ -186,23 +208,21 @@ export function MediaLightbox({ items, initialIndex = 0, isTelegramMiniApp = fal
           ) : null}
 
           <div
-            className={`media-lightbox-viewport${scale > 1 ? " is-zoomed" : ""}`}
+            className={`media-lightbox-viewport${activeScale > 1 ? " is-zoomed" : ""}`}
             onWheel={onWheel}
             onDoubleClick={onDoubleClick}
             onTouchStart={onTouchStart}
             onTouchEnd={onTouchEnd}
           >
             {!mediaReady ? <div className="media-lightbox-loader" aria-hidden /> : null}
-            <div
-              className="media-lightbox-media"
-              style={scale > 1 ? { transform: `scale(${scale})` } : undefined}
-            >
+            <div className="media-lightbox-media">
               {current.type === "video" ? (
                 <video
                   src={imageUrl}
                   controls
                   playsInline
                   className={`media-lightbox-video${mediaReady ? " is-ready" : ""}`}
+                  style={!zoomOnImageOnly && activeScale > 1 ? { transform: `scale(${activeScale})` } : undefined}
                   onLoadedData={() => setMediaReady(true)}
                 />
               ) : (
@@ -211,8 +231,14 @@ export function MediaLightbox({ items, initialIndex = 0, isTelegramMiniApp = fal
                   alt={current.label ?? "media"}
                   className={`media-lightbox-image${mediaReady ? " is-ready" : ""}`}
                   draggable={false}
+                  style={
+                    activeScale > 1
+                      ? { transform: `scale(${activeScale})`, transformOrigin: "center center" }
+                      : undefined
+                  }
                   onLoad={() => setMediaReady(true)}
                   onError={() => setMediaReady(true)}
+                  {...(zoomOnImageOnly ? pinchZoom.pinchHandlers : {})}
                 />
               )}
             </div>

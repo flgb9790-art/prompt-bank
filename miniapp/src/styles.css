@@ -1613,6 +1613,11 @@ button.brand-logo {
   max-width: 460px;
 }
 
+html.telegram-mini-app .modal-overlay,
+html.telegram-mini-app .modal-panel {
+  touch-action: manipulation;
+}
+
 /* Form */
 .form-input,
 .form-select,
@@ -2080,6 +2085,24 @@ html.telegram-mini-app .media-lightbox-nav {
   max-width: 100%;
 }
 
+.prompt-gallery--mobile .prompt-gallery-preview.preview-unframed.preview-fit-contain {
+  display: block;
+  width: 100%;
+  min-height: unset;
+  height: auto;
+}
+
+.prompt-gallery--mobile .prompt-gallery-preview.preview-unframed.preview-fit-contain img,
+.prompt-gallery--mobile .prompt-gallery-preview.preview-unframed.preview-fit-contain video {
+  width: 100% !important;
+  height: auto !important;
+  max-width: 100% !important;
+  max-height: min(68vh, 560px);
+  object-fit: contain;
+  object-position: center;
+  margin: 0;
+}
+
 .preview-fit-contain {
   aspect-ratio: unset;
   width: 100%;
@@ -2282,7 +2305,16 @@ html.telegram-mini-app .media-lightbox-nav {
 
 .media-lightbox--mini .media-lightbox-viewport {
   border-radius: 12px;
-  touch-action: pan-x pan-y pinch-zoom;
+  touch-action: manipulation;
+}
+
+.media-lightbox--mini .media-lightbox-panel {
+  touch-action: manipulation;
+}
+
+.media-lightbox--mini .media-lightbox-image {
+  touch-action: none;
+  transform-origin: center center;
 }
 
 .media-lightbox-viewport.is-zoomed {
