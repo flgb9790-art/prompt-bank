@@ -205,7 +205,10 @@ export function PromptDetailsModal({
 
   return (
     <>
-      <div className={`modal-overlay fixed inset-0 z-50 flex justify-center p-4 ${wideLayout ? "items-center" : "items-end"}`}>
+      <div
+        className={`modal-overlay fixed inset-0 z-50 flex justify-center p-4 ${wideLayout ? "items-center" : "items-end"}${lightboxOpen ? " modal-overlay--behind-lightbox" : ""}`}
+        aria-hidden={lightboxOpen}
+      >
         <div
           className={`modal-panel fade-up max-h-[92vh] overflow-y-auto p-5 ${
             wideLayout ? "modal-panel--prompt-desktop rounded-[24px]" : "modal-panel--prompt-mobile"

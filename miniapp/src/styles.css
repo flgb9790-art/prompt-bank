@@ -1592,6 +1592,10 @@ button.brand-logo {
   background: rgba(16, 24, 40, 0.45);
 }
 
+.modal-overlay--behind-lightbox {
+  pointer-events: none;
+}
+
 .modal-panel {
   background: #ffffff;
   border-radius: 22px;
@@ -2162,21 +2166,34 @@ html.telegram-mini-app .media-lightbox-nav {
 .media-lightbox {
   position: fixed;
   inset: 0;
-  z-index: 80;
-  background: rgba(8, 12, 24, 0.92);
+  z-index: 10000;
+  background: rgba(8, 12, 24, 0.94);
   display: flex;
-  align-items: center;
+  align-items: stretch;
   justify-content: center;
   padding: 12px;
-  backdrop-filter: blur(6px);
+  box-sizing: border-box;
+}
+
+.media-lightbox--mini {
+  padding: 0;
+  background: #0b1220;
 }
 
 .media-lightbox-panel {
   width: min(1080px, 100%);
-  max-height: 94vh;
+  max-height: 100%;
+  height: 100%;
   display: flex;
   flex-direction: column;
   gap: 10px;
+  box-sizing: border-box;
+}
+
+.media-lightbox--mini .media-lightbox-panel {
+  width: 100%;
+  max-height: 100dvh;
+  padding: calc(10px + env(safe-area-inset-top, 0px)) 10px calc(10px + env(safe-area-inset-bottom, 0px));
 }
 
 .media-lightbox-toolbar {
@@ -2249,22 +2266,29 @@ html.telegram-mini-app .media-lightbox-nav {
 }
 
 .media-lightbox-viewport {
+  position: relative;
   flex: 1 1 auto;
   min-width: 0;
-  min-height: min(78vh, 820px);
-  max-height: min(78vh, 820px);
+  min-height: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
   border-radius: 16px;
   background: #0b1220;
-  touch-action: none;
+  touch-action: manipulation;
   cursor: zoom-in;
+}
+
+.media-lightbox--mini .media-lightbox-viewport {
+  border-radius: 12px;
+  touch-action: pan-x pan-y pinch-zoom;
 }
 
 .media-lightbox-viewport.is-zoomed {
   cursor: grab;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .media-lightbox-media {
@@ -2272,8 +2296,6 @@ html.telegram-mini-app .media-lightbox-nav {
   align-items: center;
   justify-content: center;
   transform-origin: center center;
-  transition: transform 0.05s linear;
-  will-change: transform;
 }
 
 .media-lightbox-image,
@@ -2283,6 +2305,29 @@ html.telegram-mini-app .media-lightbox-nav {
   object-fit: contain;
   user-select: none;
   -webkit-user-drag: none;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.media-lightbox-image.is-ready,
+.media-lightbox-video.is-ready {
+  opacity: 1;
+}
+
+.media-lightbox--mini .media-lightbox-image,
+.media-lightbox--mini .media-lightbox-video {
+  max-width: 100%;
+  max-height: calc(100dvh - 168px);
+}
+
+.media-lightbox-loader {
+  position: absolute;
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-top-color: #ffffff;
+  animation: prompt-details-spin 0.8s linear infinite;
 }
 
 .media-lightbox-nav {
@@ -2339,25 +2384,18 @@ html.telegram-mini-app .media-lightbox-nav {
 }
 
 @media (max-width: 767px) {
-  .media-lightbox {
+  .media-lightbox:not(.media-lightbox--mini) {
     padding: 8px;
   }
 
-  .media-lightbox-panel {
+  .media-lightbox:not(.media-lightbox--mini) .media-lightbox-panel {
     width: 100%;
-    max-height: 96vh;
   }
 
-  .media-lightbox-viewport {
-    min-height: min(62vh, 640px);
-    max-height: min(62vh, 640px);
-    border-radius: 14px;
-  }
-
-  .media-lightbox-image,
-  .media-lightbox-video {
+  .media-lightbox:not(.media-lightbox--mini) .media-lightbox-image,
+  .media-lightbox:not(.media-lightbox--mini) .media-lightbox-video {
     max-width: 100%;
-    max-height: min(62vh, 640px);
+    max-height: min(72vh, 720px);
   }
 
   .media-lightbox-toolbar {

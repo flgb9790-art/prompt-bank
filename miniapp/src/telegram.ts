@@ -9,6 +9,13 @@ export const mockTelegramUser: TelegramUser = {
 
 export type TelegramViewportChangedHandler = () => void;
 
+export type TelegramBackButton = {
+  show: () => void;
+  hide: () => void;
+  onClick: (handler: () => void) => void;
+  offClick: (handler: () => void) => void;
+};
+
 export type TelegramWebApp = {
   ready?: () => void;
   expand?: () => void;
@@ -19,6 +26,7 @@ export type TelegramWebApp = {
   disableClosingConfirmation?: () => void;
   onEvent?: (eventType: "viewportChanged", handler: TelegramViewportChangedHandler) => void;
   offEvent?: (eventType: "viewportChanged", handler: TelegramViewportChangedHandler) => void;
+  BackButton?: TelegramBackButton;
   isExpanded?: boolean;
   initData?: string;
   initDataUnsafe?: { user?: TelegramUser; start_param?: string };
