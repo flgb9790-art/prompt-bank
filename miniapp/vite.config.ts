@@ -5,6 +5,7 @@ import { VitePWA } from "vite-plugin-pwa";
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
   const backendUrl = env.VITE_BACKEND_URL?.trim();
+  const buildStamp = new Date().toISOString().replace(/[-:TZ.]/g, "").slice(0, 14);
 
   return {
   plugins: [
@@ -53,7 +54,10 @@ export default defineConfig(({ mode }) => {
         } catch (e) {}
       })();
     </script>`;
-        next = next.replace("</head>", `${redirectScript}\n  </head>`);
+        next = next.replace(
+          "</head>",
+          `    <meta name="app-build" content="${buildStamp}" />\n${redirectScript}\n  </head>`
+        );
 
         return next;
       }
@@ -98,11 +102,7 @@ export default defineConfig(({ mode }) => {
         runtimeCaching: [
           {
             urlPattern: ({ request }) => request.mode === "navigate",
-            handler: "NetworkFirst",
-            options: {
-              cacheName: "html-pages",
-              networkTimeoutSeconds: 3
-            }
+            handler: "NetworkOnly"
           }
         ]
       },

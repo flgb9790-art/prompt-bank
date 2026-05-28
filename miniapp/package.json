@@ -1,6 +1,6 @@
 {
   "name": "prompt-bank-miniapp",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "private": true,
   "engines": {
     "node": ">=20"
@@ -10,7 +10,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
-    "start": "serve dist -s"
+    "start": "serve dist -s -c serve.json"
   },
   "dependencies": {
     "@tanstack/react-virtual": "^3.13.25",

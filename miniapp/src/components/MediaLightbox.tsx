@@ -6,6 +6,7 @@ import type { MediaType } from "../types";
 import { useHorizontalSwipe } from "../hooks/useHorizontalSwipe";
 import { useMediaMinWidth } from "../hooks/useMediaMinWidth";
 import { usePinchZoom } from "../hooks/usePinchZoom";
+import { lockTelegramViewport } from "../utils/telegramViewport";
 
 export type LightboxItem = {
   url: string;
@@ -98,6 +99,7 @@ export function MediaLightbox({ items, initialIndex = 0, isTelegramMiniApp = fal
 
   useEffect(() => {
     if (!isTelegramMiniApp) return;
+    lockTelegramViewport();
     const preventGesture = (event: Event) => {
       if (event.cancelable) event.preventDefault();
     };

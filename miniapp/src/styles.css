@@ -1988,6 +1988,32 @@ html.telegram-mini-app .modal-panel {
 }
 
 /* Prompt gallery in details modal */
+.preview-media-fill {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  border: none;
+  padding: 0;
+  background: #f2f4f7;
+  border-radius: 14px;
+  overflow: hidden;
+  text-align: initial;
+}
+
+.preview-media-fill img,
+.preview-media-fill video {
+  width: 100% !important;
+  height: auto !important;
+  max-width: 100% !important;
+  max-height: min(68vh, 560px);
+  object-fit: contain !important;
+  object-position: center;
+  display: block !important;
+  margin: 0 !important;
+  pointer-events: none;
+}
+
 .preview-clickable {
   border: none;
   padding: 0;
@@ -2061,7 +2087,12 @@ html.telegram-mini-app .modal-panel {
 
 .prompt-gallery--mobile .prompt-gallery-main {
   gap: 0;
+  width: 100%;
   touch-action: pan-y;
+}
+
+.prompt-gallery--mobile {
+  width: 100%;
 }
 
 .prompt-gallery--mobile .prompt-gallery-nav {

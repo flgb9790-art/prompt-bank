@@ -33,6 +33,7 @@ import {
   writeFavoritesCache
 } from "./utils/favoritesCache";
 import { hideAppSplash } from "./utils/appSplash";
+import { clearStaleServiceWorkers, lockTelegramViewport } from "./utils/telegramViewport";
 import { miniRouteDocumentTitle, useDocumentTitle } from "./utils/documentTitle";
 import { writeReferenceCache } from "./utils/referenceCache";
 import { buildCreatePromptToastMessage } from "./utils/pinterestPost";
@@ -244,6 +245,8 @@ function MiniAppApp() {
 
   useEffect(() => {
     document.documentElement.classList.add("telegram-mini-app");
+    lockTelegramViewport();
+    void clearStaleServiceWorkers();
     return () => document.documentElement.classList.remove("telegram-mini-app");
   }, []);
 

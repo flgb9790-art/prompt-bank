@@ -4,6 +4,7 @@ import { resolveMediaUrl } from "../api";
 import { useHorizontalSwipe } from "../hooks/useHorizontalSwipe";
 import { useMediaMinWidth } from "../hooks/useMediaMinWidth";
 import { isTelegramMiniAppContext } from "../telegram";
+import { lockTelegramViewport, setTelegramPagePinchBlocked } from "../utils/telegramViewport";
 import { MediaLightbox } from "./MediaLightbox";
 import type { Category, MediaType, Prompt } from "../types";
 import { getCategoryBadgeClass } from "../utils/categoryStyle";
@@ -42,13 +43,23 @@ type Props = {
   onTagClick?: (tag: string) => void;
 };
 
+const galleryMediaStyle = {
+  width: "100%",
+  height: "auto",
+  display: "block",
+  maxHeight: "min(68vh, 560px)",
+  objectFit: "contain" as const,
+  objectPosition: "center" as const
+};
+
 function MediaPreview({
   url,
   type,
   className,
   onClick,
   fit = "cover",
-  framed = true
+  framed = true,
+  fillWidth = false
 }: {
   url: string;
   type: MediaType;
@@ -56,10 +67,11 @@ function MediaPreview({
   onClick?: () => void;
   fit?: "cover" | "contain";
   framed?: boolean;
+  fillWidth?: boolean;
 }) {
   const clickable = Boolean(onClick);
-  const fitClass = fit === "contain" ? "preview-fit-contain" : "";
-  const frameClass = framed ? "preview-4x5" : "preview-unframed";
+  const fitClass = fillWidth ? "" : fit === "contain" ? "preview-fit-contain" : "";
+  const frameClass = fillWidth ? "preview-media-fill" : framed ? "preview-4x5" : "preview-unframed";
   return (
     <button
       type="button"
@@ -68,9 +80,21 @@ function MediaPreview({
       disabled={!clickable}
     >
       {type === "video" ? (
-        <video src={resolveMediaUrl(url)} muted playsInline preload="metadata" />
+        <video
+          src={resolveMediaUrl(url)}
+          muted
+          playsInline
+          preload="metadata"
+          style={fillWidth ? galleryMediaStyle : undefined}
+        />
       ) : (
-        <img src={resolveMediaUrl(url)} alt="media" loading="lazy" decoding="async" />
+        <img
+          src={resolveMediaUrl(url)}
+          alt="media"
+          loading="lazy"
+          decoding="async"
+          style={fillWidth ? galleryMediaStyle : undefined}
+        />
       )}
       {clickable ? <span className="preview-clickable-hint">Открыть</span> : null}
     </button>
@@ -180,6 +204,13 @@ export function PromptDetailsModal({
     setLightboxOpen(false);
     setShareError("");
   }, [prompt]);
+
+  useEffect(() => {
+    if (!isTelegramMiniApp || !prompt) return;
+    lockTelegramViewport();
+    setTelegramPagePinchBlocked(!lightboxOpen);
+    return () => setTelegramPagePinchBlocked(false);
+  }, [isTelegramMiniApp, prompt, lightboxOpen]);
 
   if (!prompt) return null;
 
@@ -368,8 +399,7 @@ export function PromptDetailsModal({
                       <MediaPreview
                         url={currentGallery.url}
                         type={currentGallery.type}
-                        fit="contain"
-                        framed={false}
+                        fillWidth={compactGallery}
                         className="prompt-gallery-preview"
                         onClick={() => setLightboxOpen(true)}
                       />
