@@ -167,7 +167,6 @@ export function PromptDetailsModal({
   const [content, setContent] = useState("");
   const [categoryId, setCategoryId] = useState<number>(0);
   const [mediaItems, setMediaItems] = useState<Array<{ url: string; type: MediaType; exampleId?: number }>>([]);
-  const [publicationTemplatesOpen, setPublicationTemplatesOpen] = useState(false);
   const [publicationTemplates, setPublicationTemplates] = useState({
     telegramPostTemplate: "",
     pinterestTitleTemplate: "",
@@ -297,8 +296,6 @@ export function PromptDetailsModal({
                     tagNames={editTagNames}
                     value={publicationTemplates}
                     onChange={setPublicationTemplates}
-                    open={publicationTemplatesOpen}
-                    onToggleOpen={() => setPublicationTemplatesOpen((open) => !open)}
                   />
                 </div>
               ) : null}

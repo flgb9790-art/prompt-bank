@@ -1975,8 +1975,13 @@ html.telegram-mini-app .modal-panel {
 
 .prompt-media-grid {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: flex-start;
   gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  -webkit-overflow-scrolling: touch;
 }
 
 .prompt-media-grid-item {
@@ -2020,6 +2025,7 @@ html.telegram-mini-app .modal-panel {
   right: 6px;
   z-index: 2;
   display: flex;
+  flex-wrap: nowrap;
   gap: 4px;
 }
 
@@ -3912,8 +3918,81 @@ html.telegram-mini-app .media-lightbox-nav {
   cursor: pointer;
 }
 
-.publication-templates-panel {
-  padding-top: 2px;
+.publication-templates-root {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.publication-templates-hint {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.publication-template-section-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border-soft);
+  background: #ffffff;
+  color: var(--text-soft);
+  font-size: 14px;
+  font-weight: 650;
+  cursor: pointer;
+  text-align: left;
+}
+
+.publication-template-section-toggle--telegram {
+  border-color: #c7ddff;
+  background: #f5f9ff;
+}
+
+.publication-template-section-toggle--pinterest {
+  border-color: #fecaca;
+  background: #fff5f5;
+}
+
+.publication-template-section {
+  margin-top: -4px;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border-soft);
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.publication-template-section--telegram {
+  border-color: #c7ddff;
+  background: #fafcff;
+}
+
+.publication-template-section--pinterest {
+  border-color: #fecaca;
+  background: #fffcfc;
+}
+
+.publication-template-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.publication-template-section-title {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
 }
 
 .pinterest-category-overlay {
@@ -3934,48 +4013,6 @@ html.telegram-mini-app .media-lightbox-nav {
   overflow: hidden;
   text-overflow: ellipsis;
   box-shadow: 0 6px 16px rgba(16, 24, 40, 0.18);
-}
-
-.prompt-media-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-}
-
-.prompt-media-grid-item {
-  position: relative;
-  border-radius: 12px;
-  overflow: hidden;
-  border: 1px solid var(--border-soft);
-  background: #f8f9fd;
-}
-
-.prompt-media-grid-item img,
-.prompt-media-grid-item video {
-  width: 100%;
-  aspect-ratio: 4 / 5;
-  object-fit: cover;
-  display: block;
-}
-
-.prompt-media-badge {
-  position: absolute;
-  top: 8px;
-  left: 8px;
-  z-index: 2;
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: rgba(109, 93, 252, 0.92);
-  color: #fff;
-  font-size: 10px;
-  font-weight: 700;
-}
-
-.prompt-media-grid-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  padding: 8px;
 }
 
 .pinterest-tags {

@@ -29,7 +29,6 @@ export function PromptForm({ categories, user, showTelegramPublish = false, onSu
   const [content, setContent] = useState("");
   const [publishToTelegram, setPublishToTelegram] = useState(false);
   const [publishToPinterest, setPublishToPinterest] = useState(false);
-  const [publicationTemplatesOpen, setPublicationTemplatesOpen] = useState(false);
   const [publicationTemplates, setPublicationTemplates] = useState(emptyPublicationTemplates);
   const [mediaItems, setMediaItems] = useState<PromptMediaItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -127,8 +126,6 @@ export function PromptForm({ categories, user, showTelegramPublish = false, onSu
             tagNames={keywordsPreview}
             value={publicationTemplates}
             onChange={setPublicationTemplates}
-            open={publicationTemplatesOpen}
-            onToggleOpen={() => setPublicationTemplatesOpen((open) => !open)}
           />
         </div>
       ) : null}
