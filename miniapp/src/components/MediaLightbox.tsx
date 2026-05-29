@@ -28,25 +28,26 @@ function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
 }
 
+function clampIndex(value: number, length: number) {
+  if (length <= 0) return 0;
+  return clamp(value, 0, length - 1);
+}
+
 export function MediaLightbox({ items, initialIndex = 0, isTelegramMiniApp = false, onClose }: Props) {
-  const [index, setIndex] = useState(initialIndex);
+  const [index, setIndex] = useState(() => clampIndex(initialIndex, items.length));
   const [scale, setScale] = useState(1);
   const [mediaReady, setMediaReady] = useState(false);
-  const [mounted, setMounted] = useState(false);
   const showNavButtons = useMediaMinWidth(768) && !isTelegramMiniApp;
-  const current = items[index];
+  const safeIndex = clampIndex(index, items.length);
+  const current = items[safeIndex];
   const zoomOnImageOnly = isTelegramMiniApp && current?.type === "image";
   const pinchZoom = usePinchZoom(zoomOnImageOnly);
   const activeScale = zoomOnImageOnly ? pinchZoom.scale : scale;
   const setActiveScale = zoomOnImageOnly ? pinchZoom.setScale : setScale;
 
   useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  useEffect(() => {
-    setIndex(initialIndex);
-  }, [initialIndex, items]);
+    setIndex(clampIndex(initialIndex, items.length));
+  }, [initialIndex, items.length]);
 
   useEffect(() => {
     setScale(1);
@@ -158,7 +159,7 @@ export function MediaLightbox({ items, initialIndex = 0, isTelegramMiniApp = fal
     if (activeScale === 1) swipe.onTouchEnd(event);
   }
 
-  if (!mounted || !current || !items.length) return null;
+  if (!current || !items.length) return null;
 
   const zoomPercent = Math.round(activeScale * 100);
   const imageUrl = resolveMediaUrl(current.url);
@@ -173,7 +174,7 @@ export function MediaLightbox({ items, initialIndex = 0, isTelegramMiniApp = fal
       <div className="media-lightbox-panel" onClick={(event) => event.stopPropagation()}>
         <div className="media-lightbox-toolbar">
           <p className="media-lightbox-caption">
-            {current.label ?? "Медиа"} · {index + 1} / {items.length}
+            {current.label ?? "Медиа"} · {safeIndex + 1} / {items.length}
           </p>
           <div className="media-lightbox-toolbar-actions">
             {current.type === "image" ? (
@@ -229,6 +230,7 @@ export function MediaLightbox({ items, initialIndex = 0, isTelegramMiniApp = fal
                 />
               ) : (
                 <img
+                  key={imageUrl}
                   src={imageUrl}
                   alt={current.label ?? "media"}
                   className={`media-lightbox-image${mediaReady ? " is-ready" : ""}`}
@@ -259,7 +261,7 @@ export function MediaLightbox({ items, initialIndex = 0, isTelegramMiniApp = fal
               <button
                 key={`${item.url}-${itemIndex}`}
                 type="button"
-                className={`media-lightbox-thumb ${itemIndex === index ? "active" : ""}`}
+                className={`media-lightbox-thumb ${itemIndex === safeIndex ? "active" : ""}`}
                 onClick={() => setIndex(itemIndex)}
               >
                 {item.type === "video" ? (

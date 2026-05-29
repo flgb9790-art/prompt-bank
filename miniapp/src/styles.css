@@ -1594,6 +1594,7 @@ button.brand-logo {
 
 .modal-overlay--behind-lightbox {
   pointer-events: none;
+  visibility: hidden;
 }
 
 .modal-panel {
@@ -2169,6 +2170,37 @@ html.telegram-mini-app .media-lightbox-nav {
   max-width: 100%;
 }
 
+.prompt-gallery-preview.preview-unframed,
+.prompt-gallery-preview.preview-fit-contain {
+  display: block;
+  width: 100%;
+  min-height: 0;
+  height: auto;
+  max-height: none;
+  background: #f2f4f7;
+  border-radius: 14px;
+}
+
+.prompt-gallery-preview.preview-unframed img,
+.prompt-gallery-preview.preview-unframed video,
+.prompt-gallery-preview.preview-fit-contain img,
+.prompt-gallery-preview.preview-fit-contain video {
+  position: static;
+  width: 100%;
+  height: auto;
+  max-width: 100%;
+  max-height: min(78vh, 720px);
+  object-fit: contain;
+  object-position: center;
+}
+
+.prompt-gallery--desktop .prompt-gallery-preview.preview-unframed img,
+.prompt-gallery--desktop .prompt-gallery-preview.preview-unframed video,
+.prompt-gallery--desktop .prompt-gallery-preview.preview-fit-contain img,
+.prompt-gallery--desktop .prompt-gallery-preview.preview-fit-contain video {
+  max-height: min(82vh, 760px);
+}
+
 .prompt-gallery-preview.preview-fit-contain {
   max-width: 100%;
 }
@@ -2363,6 +2395,8 @@ html.telegram-mini-app .media-lightbox-nav {
 
 .media-lightbox-image,
 .media-lightbox-video {
+  width: auto;
+  height: auto;
   max-width: min(96vw, 980px);
   max-height: min(78vh, 820px);
   object-fit: contain;

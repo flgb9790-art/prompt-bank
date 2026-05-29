@@ -183,6 +183,17 @@ export function PromptDetailsModal({
   const [pinterestPublishing, setPinterestPublishing] = useState(false);
 
   const galleryItems = useMemo(() => (prompt ? buildGalleryItems(prompt) : []), [prompt]);
+
+  useEffect(() => {
+    if (!galleryItems.length) {
+      setGalleryIndex(0);
+      setLightboxOpen(false);
+      return;
+    }
+    if (galleryIndex >= galleryItems.length) {
+      setGalleryIndex(0);
+    }
+  }, [galleryItems.length, galleryIndex]);
   const isTelegramMiniApp = isTelegramMiniAppContext();
   const wideLayout = useMediaMinWidth(1024, desktopMode && !isTelegramMiniApp);
   const compactGallery = isTelegramMiniApp || !wideLayout;
@@ -227,7 +238,8 @@ export function PromptDetailsModal({
   const loadingDetails = !hasFullPromptDetails(prompt);
   const isShellPrompt = loadingDetails && prompt.category.slug === "loading";
   const badgeClass = getCategoryBadgeClass(prompt.category.slug, prompt.category.name);
-  const currentGallery = galleryItems[galleryIndex];
+  const safeGalleryIndex = galleryItems.length ? Math.min(galleryIndex, galleryItems.length - 1) : 0;
+  const currentGallery = galleryItems[safeGalleryIndex];
   const editCategory = categories.find((category) => category.id === categoryId);
   const editTagNames = prompt.keywords.map((item) => item.keyword.name);
   const promptId = prompt.id;
@@ -357,13 +369,16 @@ export function PromptDetailsModal({
                           <ChevronLeft size={18} />
                         </button>
                       ) : null}
-                      <MediaPreview
-                        url={currentGallery.url}
-                        type={currentGallery.type}
-                        fillWidth={compactGallery}
-                        className="prompt-gallery-preview"
-                        onClick={() => setLightboxOpen(true)}
-                      />
+                      {currentGallery ? (
+                        <MediaPreview
+                          url={currentGallery.url}
+                          type={currentGallery.type}
+                          framed={false}
+                          fit="contain"
+                          className="prompt-gallery-preview"
+                          onClick={() => setLightboxOpen(true)}
+                        />
+                      ) : null}
                       {showGalleryNav ? (
                         <button type="button" className="prompt-gallery-nav" onClick={goGalleryNext} aria-label="Следующее">
                           <ChevronRight size={18} />
@@ -376,7 +391,7 @@ export function PromptDetailsModal({
                           <button
                             key={`${item.url}-${index}`}
                             type="button"
-                            className={`prompt-gallery-thumb ${index === galleryIndex ? "active" : ""}`}
+                            className={`prompt-gallery-thumb ${index === safeGalleryIndex ? "active" : ""}`}
                             onClick={() => setGalleryIndex(index)}
                           >
                             {item.type === "video" ? (
@@ -542,10 +557,11 @@ export function PromptDetailsModal({
         </div>
       </div>
 
-      {lightboxOpen && galleryItems.length ? (
+      {lightboxOpen && galleryItems.length && currentGallery ? (
         <MediaLightbox
+          key={`${promptId}-${safeGalleryIndex}`}
           items={galleryItems}
-          initialIndex={galleryIndex}
+          initialIndex={safeGalleryIndex}
           isTelegramMiniApp={isTelegramMiniApp}
           onClose={() => setLightboxOpen(false)}
         />
