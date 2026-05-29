@@ -7,21 +7,16 @@ import {
   defaultTelegramPostTemplate,
   resolvePinterestTitleTemplate
 } from "../utils/publicationTemplate";
+import { isHtmlTemplate, plainTemplateToHtml, renderPublicationTemplateHtml } from "../utils/templateHtml";
 import {
-  htmlToPlainText,
-  htmlToTelegramHtml,
-  isHtmlTemplate,
-  plainTemplateToHtml,
-  renderPublicationTemplateHtml
-} from "../utils/templateHtml";
+  effectivePublicationTemplates,
+  saveStoredPublicationTemplates,
+  type PublicationTemplatesValue
+} from "../utils/publicationTemplatesStorage";
 import { RichTextEditor } from "./RichTextEditor";
 import { TemplateVariableChips } from "./TemplateVariableChips";
 
-export type PublicationTemplatesValue = {
-  telegramPostTemplate: string;
-  pinterestTitleTemplate: string;
-  pinterestDescriptionTemplate: string;
-};
+export type { PublicationTemplatesValue };
 
 type Props = {
   content: string;
@@ -39,16 +34,25 @@ export function emptyPublicationTemplates(): PublicationTemplatesValue {
   };
 }
 
-export function publicationTemplatesFromPrompt(prompt: {
-  telegramPostTemplate?: string | null;
-  pinterestTitleTemplate?: string | null;
-  pinterestDescriptionTemplate?: string | null;
-}): PublicationTemplatesValue {
-  return {
+export function publicationTemplatesFromPrompt(
+  prompt: {
+    telegramPostTemplate?: string | null;
+    pinterestTitleTemplate?: string | null;
+    pinterestDescriptionTemplate?: string | null;
+  },
+  fallback?: PublicationTemplatesValue | null
+): PublicationTemplatesValue {
+  const fromPrompt: PublicationTemplatesValue = {
     telegramPostTemplate: prompt.telegramPostTemplate ?? "",
     pinterestTitleTemplate: prompt.pinterestTitleTemplate ?? "",
     pinterestDescriptionTemplate: prompt.pinterestDescriptionTemplate ?? ""
   };
+  const hasStoredOnPrompt =
+    fromPrompt.telegramPostTemplate.trim() ||
+    fromPrompt.pinterestTitleTemplate.trim() ||
+    fromPrompt.pinterestDescriptionTemplate.trim();
+  if (hasStoredOnPrompt) return fromPrompt;
+  return fallback ?? fromPrompt;
 }
 
 export function templatesDirty(
@@ -68,10 +72,12 @@ export function templatesDirty(
 }
 
 export function templatesPayloadForApi(value: PublicationTemplatesValue) {
+  const effective = effectivePublicationTemplates(value);
+  saveStoredPublicationTemplates(effective);
   return {
-    telegramPostTemplate: value.telegramPostTemplate.trim() || null,
-    pinterestTitleTemplate: value.pinterestTitleTemplate.trim() || null,
-    pinterestDescriptionTemplate: value.pinterestDescriptionTemplate.trim() || null
+    telegramPostTemplate: effective.telegramPostTemplate,
+    pinterestTitleTemplate: effective.pinterestTitleTemplate,
+    pinterestDescriptionTemplate: effective.pinterestDescriptionTemplate
   };
 }
 
@@ -92,22 +98,24 @@ export function PublicationTemplatesEditor({ content, categoryName, tagNames, va
     defaultTelegramPostTemplate(),
     vars
   );
-  const telegramPreviewHtml = htmlToTelegramHtml(telegramHtml);
-
   const pinterestTitleResolved = resolvePinterestTitleTemplate(value.pinterestTitleTemplate, vars);
   const pinterestDescriptionHtml = resolveTemplateHtml(
     value.pinterestDescriptionTemplate,
     defaultPinterestDescriptionTemplate(),
     vars
   );
-  const pinterestDescriptionPlain = htmlToPlainText(pinterestDescriptionHtml);
+
+  function persistTemplates(next: PublicationTemplatesValue) {
+    saveStoredPublicationTemplates(effectivePublicationTemplates(next));
+    onChange(next);
+  }
 
   function resetTelegram() {
-    onChange({ ...value, telegramPostTemplate: defaultTelegramPostTemplate() });
+    persistTemplates({ ...value, telegramPostTemplate: defaultTelegramPostTemplate() });
   }
 
   function resetPinterest() {
-    onChange({
+    persistTemplates({
       ...value,
       pinterestTitleTemplate: defaultPinterestTitleTemplate(),
       pinterestDescriptionTemplate: defaultPinterestDescriptionTemplate()
@@ -118,13 +126,13 @@ export function PublicationTemplatesEditor({ content, categoryName, tagNames, va
     const input = pinterestTitleRef.current;
     const current = value.pinterestTitleTemplate || defaultPinterestTitleTemplate();
     if (!input) {
-      onChange({ ...value, pinterestTitleTemplate: current + token });
+      persistTemplates({ ...value, pinterestTitleTemplate: current + token });
       return;
     }
     const start = input.selectionStart ?? current.length;
     const end = input.selectionEnd ?? start;
     const next = current.slice(0, start) + token + current.slice(end);
-    onChange({ ...value, pinterestTitleTemplate: next });
+    persistTemplates({ ...value, pinterestTitleTemplate: next });
     requestAnimationFrame(() => {
       input.focus();
       const pos = start + token.length;
@@ -134,12 +142,12 @@ export function PublicationTemplatesEditor({ content, categoryName, tagNames, va
 
   function insertIntoTelegram(token: string) {
     const current = value.telegramPostTemplate || defaultTelegramPostTemplate();
-    onChange({ ...value, telegramPostTemplate: current + token });
+    persistTemplates({ ...value, telegramPostTemplate: current + token });
   }
 
   function insertIntoPinterestDescription(token: string) {
     const current = value.pinterestDescriptionTemplate || defaultPinterestDescriptionTemplate();
-    onChange({ ...value, pinterestDescriptionTemplate: current + token });
+    persistTemplates({ ...value, pinterestDescriptionTemplate: current + token });
   }
 
   return (
@@ -167,15 +175,18 @@ export function PublicationTemplatesEditor({ content, categoryName, tagNames, va
             </button>
           </div>
           <TemplateVariableChips onInsert={insertIntoTelegram} />
-          <RichTextEditor
-            value={value.telegramPostTemplate || defaultTelegramPostTemplate()}
-            onChange={(html) => onChange({ ...value, telegramPostTemplate: html })}
-            placeholder="Текст поста в Telegram…"
-          />
-          <div
-            className="publication-templates-preview-html"
-            dangerouslySetInnerHTML={{ __html: telegramPreviewHtml }}
-          />
+            <RichTextEditor
+              value={value.telegramPostTemplate || defaultTelegramPostTemplate()}
+              onChange={(html) => persistTemplates({ ...value, telegramPostTemplate: html })}
+              placeholder="Текст поста в Telegram…"
+            />
+            <div className="template-preview template-preview--telegram">
+              <p className="template-preview-label">Предпросмотр поста</p>
+              <div
+                className="template-preview-body"
+                dangerouslySetInnerHTML={{ __html: telegramHtml }}
+              />
+            </div>
         </div>
       ) : null}
 
@@ -199,23 +210,28 @@ export function PublicationTemplatesEditor({ content, categoryName, tagNames, va
           </div>
           <label className="block text-xs text-[var(--muted)]">Заголовок</label>
           <TemplateVariableChips onInsert={insertIntoPinterestTitle} />
-          <input
-            ref={pinterestTitleRef}
-            className="form-input"
-            value={value.pinterestTitleTemplate || defaultPinterestTitleTemplate()}
-            onChange={(event) => onChange({ ...value, pinterestTitleTemplate: event.target.value })}
-          />
-          <label className="block text-xs text-[var(--muted)]">Описание</label>
-          <TemplateVariableChips onInsert={insertIntoPinterestDescription} />
-          <RichTextEditor
-            value={value.pinterestDescriptionTemplate || defaultPinterestDescriptionTemplate()}
-            onChange={(html) => onChange({ ...value, pinterestDescriptionTemplate: html })}
-            placeholder="Описание пина…"
-            minHeight={120}
-          />
-          <pre className="whitespace-pre-wrap rounded-xl border border-[var(--border-soft)] bg-white p-3 text-xs leading-relaxed text-[var(--text-soft)]">
-            {`Title:\n${pinterestTitleResolved}\n\nDescription:\n${pinterestDescriptionPlain}`}
-          </pre>
+            <input
+              ref={pinterestTitleRef}
+              className="form-input"
+              value={value.pinterestTitleTemplate || defaultPinterestTitleTemplate()}
+              onChange={(event) => persistTemplates({ ...value, pinterestTitleTemplate: event.target.value })}
+            />
+            <label className="block text-xs text-[var(--muted)]">Описание</label>
+            <TemplateVariableChips onInsert={insertIntoPinterestDescription} />
+            <RichTextEditor
+              value={value.pinterestDescriptionTemplate || defaultPinterestDescriptionTemplate()}
+              onChange={(html) => persistTemplates({ ...value, pinterestDescriptionTemplate: html })}
+              placeholder="Описание пина…"
+              minHeight={120}
+            />
+            <div className="template-preview template-preview--pinterest">
+              <p className="template-preview-label">Предпросмотр пина</p>
+              <p className="template-preview-pin-title">{pinterestTitleResolved}</p>
+              <div
+                className="template-preview-body"
+                dangerouslySetInnerHTML={{ __html: pinterestDescriptionHtml }}
+              />
+            </div>
         </div>
       ) : null}
     </div>

@@ -37,6 +37,7 @@ import { clearStaleServiceWorkers, lockTelegramViewport } from "./utils/telegram
 import { miniRouteDocumentTitle, useDocumentTitle } from "./utils/documentTitle";
 import { writeReferenceCache } from "./utils/referenceCache";
 import { buildCreatePromptToastMessage } from "./utils/pinterestPost";
+import { persistPublicationTemplatesFromPrompt } from "./utils/publicationTemplatesStorage";
 import { createPromptLoadingShell } from "./utils/promptShell";
 import {
   MINI_APP_PAGE_SIZE,
@@ -592,6 +593,7 @@ function MiniAppApp() {
       return;
     }
     const created = withPromptDetails(await api.createPrompt(payload)) as CreatePromptResponse;
+    persistPublicationTemplatesFromPrompt(created);
     invalidateReferenceCaches();
     setCreatedPromptId(created.id);
     setPrompts((prev) => [created, ...prev]);
@@ -613,6 +615,7 @@ function MiniAppApp() {
     try {
       const result = await api.publishPromptToTelegram(promptId);
       const fresh = withPromptDetails(await api.getPrompt(promptId));
+      persistPublicationTemplatesFromPrompt(fresh);
       setPrompts((prev) => prev.map((item) => (item.id === promptId ? mergePromptUpdate(item, fresh) : item)));
       syncRecentPrompt(fresh);
       if (selectedPrompt?.id === promptId) {
@@ -636,6 +639,7 @@ function MiniAppApp() {
     try {
       const result = await api.publishPromptToPinterest(promptId);
       const fresh = withPromptDetails(await api.getPrompt(promptId));
+      persistPublicationTemplatesFromPrompt(fresh);
       setPrompts((prev) => prev.map((item) => (item.id === promptId ? mergePromptUpdate(item, fresh) : item)));
       syncRecentPrompt(fresh);
       if (selectedPrompt?.id === promptId) {
@@ -837,6 +841,7 @@ function MiniAppApp() {
       ...data.newExamples.map((example) => api.addExample(promptId, example))
     ]);
     const fresh = withPromptDetails(await api.getPrompt(promptId));
+    persistPublicationTemplatesFromPrompt(fresh);
     setPrompts((prev) => prev.map((item) => (item.id === promptId ? fresh : item)));
     syncRecentPrompt(fresh);
     setSelectedPrompt(fresh);

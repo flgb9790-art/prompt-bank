@@ -2162,20 +2162,66 @@ html.telegram-mini-app .modal-panel {
   background: #e8e4ff;
 }
 
-.publication-templates-preview-html {
+.template-preview {
   border-radius: 12px;
   border: 1px solid var(--border-soft);
   background: #fff;
   padding: 12px 14px;
-  font-size: 13px;
+}
+
+.template-preview-label {
+  margin: 0 0 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.template-preview-pin-title {
+  margin: 0 0 10px;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--text);
+  word-break: break-word;
+}
+
+.template-preview-body {
+  font-size: 14px;
   line-height: 1.55;
   color: var(--text-soft);
   word-break: break-word;
 }
 
-.publication-templates-preview-html a {
+.template-preview-body p {
+  margin: 0 0 0.55em;
+}
+
+.template-preview-body p:last-child {
+  margin-bottom: 0;
+}
+
+.template-preview-body a {
   color: var(--primary);
   text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.template-preview-body strong,
+.template-preview-body b {
+  font-weight: 700;
+  color: var(--text);
+}
+
+.template-preview--telegram {
+  border-color: #c7ddff;
+  background: #fafcff;
+}
+
+.template-preview--pinterest {
+  border-color: #fecaca;
+  background: #fffcfc;
 }
 
 .example-remove-btn {

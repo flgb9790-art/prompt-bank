@@ -1,6 +1,6 @@
 {
   "name": "prompt-bank-miniapp",
-  "version": "1.0.12",
+  "version": "1.0.13",
   "private": true,
   "engines": {
     "node": ">=20"

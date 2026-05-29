@@ -25,6 +25,7 @@ import {
   publicationTemplatesFromPrompt,
   templatesPayloadForApi
 } from "./PublicationTemplatesEditor";
+import { loadStoredPublicationTemplates } from "../utils/publicationTemplatesStorage";
 
 export type PromptEditPayload = {
   content: string;
@@ -211,7 +212,7 @@ export function PromptDetailsModal({
     setContent(current.content ?? current.contentExcerpt ?? "");
     setCategoryId(current.categoryId);
     setMediaItems(buildPromptMediaItemsFromPrompt(current));
-    setPublicationTemplates(publicationTemplatesFromPrompt(current));
+    setPublicationTemplates(publicationTemplatesFromPrompt(current, loadStoredPublicationTemplates()));
     setSaveError("");
   }
 

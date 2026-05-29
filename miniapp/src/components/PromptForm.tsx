@@ -5,6 +5,7 @@ import {
   emptyPublicationTemplates,
   templatesPayloadForApi
 } from "./PublicationTemplatesEditor";
+import { loadStoredPublicationTemplates } from "../utils/publicationTemplatesStorage";
 import {
   PromptMediaGalleryEditor,
   splitPromptMediaItems,
@@ -29,7 +30,9 @@ export function PromptForm({ categories, user, showTelegramPublish = false, onSu
   const [content, setContent] = useState("");
   const [publishToTelegram, setPublishToTelegram] = useState(false);
   const [publishToPinterest, setPublishToPinterest] = useState(false);
-  const [publicationTemplates, setPublicationTemplates] = useState(emptyPublicationTemplates);
+  const [publicationTemplates, setPublicationTemplates] = useState(
+    () => loadStoredPublicationTemplates() ?? emptyPublicationTemplates()
+  );
   const [mediaItems, setMediaItems] = useState<PromptMediaItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");

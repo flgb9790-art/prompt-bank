@@ -53,6 +53,7 @@ import {
 } from "./utils/promptContent";
 import { PINTEREST_PAGE_SIZE, readViewMode, saveViewMode, computePagedHasMore, type ViewMode } from "./utils/viewMode";
 import { getPromptLabel } from "./utils/promptTitle";
+import { persistPublicationTemplatesFromPrompt } from "./utils/publicationTemplatesStorage";
 
 type SortValue = "new" | "old" | "usage";
 type RoutePath = "/" | "/prompts" | "/favorites" | "/categories" | "/tags" | "/recent" | "/settings" | "/copied" | "/viewed" | "/privacy";
@@ -698,6 +699,7 @@ export function WebApp() {
         ...data.newExamples.map((example) => api.addExample(promptId, example))
       ]);
       const fresh = withPromptDetails(await api.getPrompt(promptId));
+      persistPublicationTemplatesFromPrompt(fresh);
       upsertPromptInList(fresh);
       setSelectedPrompt(fresh);
       setToast("Промпт сохранен");
@@ -720,6 +722,7 @@ export function WebApp() {
     }
     try {
       const created = withPromptDetails(await api.createPrompt(payload)) as CreatePromptResponse;
+      persistPublicationTemplatesFromPrompt(created);
       invalidateReferenceCaches();
       upsertPromptInList(created);
       setPromptsTotal((prev) => prev + 1);
@@ -745,6 +748,7 @@ export function WebApp() {
     try {
       const result = await api.publishPromptToTelegram(promptId);
       const fresh = withPromptDetails(await api.getPrompt(promptId));
+      persistPublicationTemplatesFromPrompt(fresh);
       upsertPromptInList(fresh);
       if (selectedPrompt?.id === promptId) {
         setSelectedPrompt(fresh);
@@ -770,6 +774,7 @@ export function WebApp() {
     try {
       const result = await api.publishPromptToPinterest(promptId);
       const fresh = withPromptDetails(await api.getPrompt(promptId));
+      persistPublicationTemplatesFromPrompt(fresh);
       upsertPromptInList(fresh);
       if (selectedPrompt?.id === promptId) {
         setSelectedPrompt(fresh);
