@@ -8,8 +8,7 @@ import { saveFromRemoteUrl } from "./services/media.service";
 type MediaType = "image" | "video";
 
 type AddPromptState = {
-  step: "title" | "content" | "category" | "cover" | "examples";
-  title?: string;
+  step: "content" | "category" | "cover" | "examples";
   content?: string;
   categoryId?: number;
   categoryName?: string;
@@ -137,8 +136,9 @@ async function showPromptList(ctx: any, prompts: any[], emptyText: string) {
 
   for (const prompt of prompts.slice(0, 5)) {
     const tags = prompt.keywords.map((kw: any) => `#${kw.keyword.name}`).join(" ");
+    const preview = prompt.content.length > 120 ? `${prompt.content.slice(0, 119)}…` : prompt.content;
     await ctx.reply(
-      `**${prompt.title}**\nКатегория: ${prompt.category.name}\nКлючевые слова: ${tags || "—"}`,
+      `${preview}\n\nКатегория: ${prompt.category.name}\nКлючевые слова: ${tags || "—"}`,
       { parse_mode: "Markdown", ...promptResultKeyboard(prompt.id) }
     );
   }
@@ -169,13 +169,13 @@ async function beginAddPromptFlow(ctx: any, fromId: number) {
     await denyNonAdminAdd(ctx);
     return;
   }
-  userStates.set(fromId, { mode: "adding", addPrompt: { step: "title", examples: [] } });
-  await ctx.reply("Введите название промпта:");
+  userStates.set(fromId, { mode: "adding", addPrompt: { step: "content", examples: [] } });
+  await ctx.reply("Введите текст промпта:");
 }
 
 async function beginSearchFlow(ctx: any, fromId: number) {
   userStates.set(fromId, { mode: "searching" });
-  await ctx.reply("Введите слово, тег или часть названия для поиска:");
+  await ctx.reply("Введите слово, тег или часть текста для поиска:");
 }
 
 async function showRecentPrompts(ctx: any) {
@@ -215,13 +215,13 @@ async function showHelp(ctx: any) {
 
   if (isBotAdmin(from.id)) {
     await ctx.reply(
-      "Prompt Bank помогает хранить промпты, примеры, категории и теги.\nЧто можно делать:\n➕ Добавлять промпты\n🖼 Прикреплять картинки и видео\n🔎 Искать по названию, тексту и тегам\n⭐ Добавлять в избранное\n📋 Быстро копировать промпт\n🌐 Управлять всем через Mini App"
+      "Prompt Bank помогает хранить промпты, примеры, категории и теги.\nЧто можно делать:\n➕ Добавлять промпты\n🖼 Прикреплять картинки и видео\n🔎 Искать по тексту и тегам\n⭐ Добавлять в избранное\n📋 Быстро копировать промпт\n🌐 Управлять всем через Mini App"
     );
     return;
   }
 
   await ctx.reply(
-    "Prompt Bank — библиотека готовых промптов.\n\n🔎 Искать по названию, тексту и тегам\n⭐ Сохранять в личное избранное\n📋 Копировать промпты в один клик\n🌐 Открыть полный каталог в приложении",
+    "Prompt Bank — библиотека готовых промптов.\n\n🔎 Искать по тексту и тегам\n⭐ Сохранять в личное избранное\n📋 Копировать промпты в один клик\n🌐 Открыть полный каталог в приложении",
     Markup.inlineKeyboard([[Markup.button.webApp("🌐 Открыть Prompt Bank", buildMiniAppUrl())]])
   );
 }
@@ -346,7 +346,7 @@ export async function startBot() {
       return;
     }
     await prisma.prompt.update({ where: { id }, data: { usageCount: { increment: 1 } } });
-    await ctx.reply(`📋 ${prompt.title}\n\n${prompt.content}`);
+    await ctx.reply(`📋 ${prompt.content}`);
   });
 
 
@@ -404,8 +404,8 @@ export async function startBot() {
       await denyNonAdminAdd(ctx);
       return;
     }
-    userStates.set(from.id, { mode: "adding", addPrompt: { step: "title", examples: [] } });
-    await ctx.reply("Введите название промпта:");
+    userStates.set(from.id, { mode: "adding", addPrompt: { step: "content", examples: [] } });
+    await ctx.reply("Введите текст промпта:");
   });
 
   bot.action("after_add_menu", async (ctx) => {
@@ -484,17 +484,6 @@ export async function startBot() {
       }
 
       const add = state.addPrompt;
-      if (add.step === "title") {
-        if (!("text" in ctx.message)) {
-          await ctx.reply("Пожалуйста, отправьте текст с названием промпта.");
-          return;
-        }
-        add.title = ctx.message.text.trim();
-        add.step = "content";
-        await ctx.reply("Теперь отправьте сам промпт:");
-        return;
-      }
-
       if (add.step === "content") {
         if (!("text" in ctx.message)) {
           await ctx.reply("Пожалуйста, отправьте текст промпта.");
@@ -569,7 +558,7 @@ async function finalizePrompt(ctx: any, telegramUserId: number) {
   }
 
   const add = state.addPrompt;
-  if (!add.title || !add.content || !add.categoryId) {
+  if (!add.content || !add.categoryId) {
     await ctx.reply("Не хватает данных для сохранения. Запустите добавление заново.");
     userStates.set(telegramUserId, { mode: "idle" });
     return;
@@ -586,7 +575,6 @@ async function finalizePrompt(ctx: any, telegramUserId: number) {
   try {
     const prompt = await PromptService.create({
       userId: user.id,
-      title: add.title,
       content: add.content,
       categoryId: add.categoryId,
       coverMediaUrl: add.coverMediaUrl,
@@ -596,7 +584,7 @@ async function finalizePrompt(ctx: any, telegramUserId: number) {
 
     const keywords = extractKeywords(add.content).slice(0, 6).map((k) => `#${k}`).join(" ");
     await ctx.reply(
-      `✅ Промпт сохранен!\nНазвание: ${prompt.title}\nКатегория: ${add.categoryName ?? prompt.category.name}\nКлючевые слова: ${keywords || "—"}\nМедиа: ${add.coverMediaUrl ? "1 заставка" : "0 заставок"}, ${add.examples.length} примера`,
+      `✅ Промпт сохранен!\nКатегория: ${add.categoryName ?? prompt.category.name}\nКлючевые слова: ${keywords || "—"}\nМедиа: ${add.coverMediaUrl ? "1 заставка" : "0 заставок"}, ${add.examples.length} примера`,
       Markup.inlineKeyboard([
         [Markup.button.webApp("🌐 Открыть в Mini App", buildMiniAppUrl(prompt.id))],
         [Markup.button.callback("➕ Добавить еще", "after_add_more")],

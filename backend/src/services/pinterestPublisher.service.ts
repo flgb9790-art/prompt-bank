@@ -2,6 +2,7 @@ import { prisma } from "../db";
 import { config } from "../config";
 import { PromptService } from "./prompt.service";
 import { resolvePublicMediaUrl } from "./telegramPublisher.service";
+import { derivePromptTitle } from "../utils/promptTitle";
 
 const PINTEREST_TITLE_MAX = 100;
 const PINTEREST_DESCRIPTION_MAX = 800;
@@ -9,6 +10,7 @@ const PINTEREST_DESCRIPTION_MAX = 800;
 type PromptForPin = {
   id: number;
   title: string;
+  content: string;
   coverMediaUrl: string | null;
   coverMediaType: string | null;
   category: { name: string };
@@ -45,7 +47,7 @@ export function buildPinterestPin(prompt: PromptForPin) {
     throw new Error("TELEGRAM_CHANNEL_URL должен быть валидным URL");
   }
 
-  const title = truncatePinterestTitle(prompt.title);
+  const title = truncatePinterestTitle(derivePromptTitle(prompt.content));
   const description = truncatePinterestDescription(
     `Готовый промпт для ${prompt.category.name}. 
 Больше промптов и подборок в нашем Telegram-канале.

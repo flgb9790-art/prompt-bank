@@ -1,7 +1,9 @@
 import { useMemo, useState, type FormEvent } from "react";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import type { Category, PromptCreatePayload, TelegramUser } from "../types";
 import { buildTelegramPostPreview } from "../utils/telegramPost";
 import { buildPinterestPinPreview } from "../utils/pinterestPost";
+import { derivePromptTitle } from "../utils/promptTitle";
 import { MediaUploader } from "./MediaUploader";
 
 type Props = {
@@ -18,34 +20,34 @@ function previewKeywords(content: string) {
 }
 
 export function PromptForm({ categories, user, showTelegramPublish = false, onSubmit, onCancel }: Props) {
-  const [title, setTitle] = useState("");
   const [categoryId, setCategoryId] = useState<number>(categories[0]?.id ?? 1);
   const [content, setContent] = useState("");
-  const [note, setNote] = useState("");
   const [publishToTelegram, setPublishToTelegram] = useState(false);
   const [publishToPinterest, setPublishToPinterest] = useState(false);
+  const [publicationTemplatesOpen, setPublicationTemplatesOpen] = useState(false);
   const [coverMedia, setCoverMedia] = useState<{ url: string; type: "image" | "video" } | undefined>();
   const [examples, setExamples] = useState<Array<{ url: string; type: "image" | "video"; originalName?: string }>>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const keywordsPreview = useMemo(() => previewKeywords(content), [content]);
   const selectedCategory = categories.find((category) => category.id === categoryId);
+  const previewHeadline = useMemo(() => derivePromptTitle(content), [content]);
   const telegramPreview = useMemo(
     () =>
       buildTelegramPostPreview({
-        title: title || "Название промпта",
+        content: content || "Текст промпта",
         categoryName: selectedCategory?.name ?? "Категория",
         tagNames: keywordsPreview
       }),
-    [title, selectedCategory?.name, keywordsPreview]
+    [content, selectedCategory?.name, keywordsPreview]
   );
   const pinterestPreview = useMemo(
     () =>
       buildPinterestPinPreview({
-        title: title || "Название промпта",
+        content: content || "Текст промпта",
         categoryName: selectedCategory?.name ?? "Категория"
       }),
-    [title, selectedCategory?.name]
+    [content, selectedCategory?.name]
   );
 
   async function handleSubmit(event: FormEvent) {
@@ -55,10 +57,8 @@ export function PromptForm({ categories, user, showTelegramPublish = false, onSu
     try {
       await onSubmit({
         userId: user.id || 1,
-        title,
         content,
         categoryId,
-        note: note || undefined,
         coverMediaUrl: coverMedia?.url,
         coverMediaType: coverMedia?.type,
         examples,
@@ -75,10 +75,6 @@ export function PromptForm({ categories, user, showTelegramPublish = false, onSu
   return (
     <form onSubmit={handleSubmit} className="prompt-form space-y-4">
       <div>
-        <label className="mb-2 block text-sm text-[var(--muted)]">Название промпта</label>
-        <input required value={title} onChange={(e) => setTitle(e.target.value)} className="form-input" />
-      </div>
-      <div>
         <label className="mb-2 block text-sm text-[var(--muted)]">Категория</label>
         <select value={categoryId} onChange={(e) => setCategoryId(Number(e.target.value))} className="form-select">
           {categories.map((category) => (
@@ -90,7 +86,7 @@ export function PromptForm({ categories, user, showTelegramPublish = false, onSu
       </div>
       <div>
         <label className="mb-2 block text-sm text-[var(--muted)]">Текст промпта</label>
-        <textarea required rows={6} value={content} onChange={(e) => setContent(e.target.value)} className="form-textarea" />
+        <textarea required rows={8} value={content} onChange={(e) => setContent(e.target.value)} className="form-textarea" />
       </div>
       {keywordsPreview.length ? (
         <div className="flex flex-wrap gap-2">
@@ -130,11 +126,6 @@ export function PromptForm({ categories, user, showTelegramPublish = false, onSu
         </div>
       </div>
 
-      <div>
-        <label className="mb-2 block text-sm text-[var(--muted)]">Заметка (необязательно)</label>
-        <textarea rows={2} value={note} onChange={(e) => setNote(e.target.value)} className="form-textarea min-h-[80px]" />
-      </div>
-
       {showTelegramPublish ? (
         <div className="surface-card-soft space-y-3 p-4">
           <p className="text-sm font-semibold text-[var(--text)]">Публикация</p>
@@ -166,18 +157,36 @@ export function PromptForm({ categories, user, showTelegramPublish = false, onSu
               </span>
             </span>
           </label>
-          <div>
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">Превью Telegram-поста</p>
-            <pre className="whitespace-pre-wrap rounded-xl border border-[var(--border-soft)] bg-white p-3 text-xs leading-relaxed text-[var(--text-soft)]">
-              {telegramPreview}
-            </pre>
-          </div>
-          <div>
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">Превью Pinterest-публикации</p>
-            <pre className="whitespace-pre-wrap rounded-xl border border-[var(--border-soft)] bg-white p-3 text-xs leading-relaxed text-[var(--text-soft)]">
-              {pinterestPreview}
-            </pre>
-          </div>
+
+          <button
+            type="button"
+            className="publication-templates-toggle"
+            onClick={() => setPublicationTemplatesOpen((open) => !open)}
+            aria-expanded={publicationTemplatesOpen}
+          >
+            <span>Шаблоны публикации</span>
+            {publicationTemplatesOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+          </button>
+
+          {publicationTemplatesOpen ? (
+            <div className="publication-templates-panel space-y-3">
+              <p className="text-xs text-[var(--muted)]">
+                Заголовок в шаблонах формируется автоматически из первой строки промпта: «{previewHeadline}»
+              </p>
+              <div>
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">Превью Telegram-поста</p>
+                <pre className="whitespace-pre-wrap rounded-xl border border-[var(--border-soft)] bg-white p-3 text-xs leading-relaxed text-[var(--text-soft)]">
+                  {telegramPreview}
+                </pre>
+              </div>
+              <div>
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">Превью Pinterest-публикации</p>
+                <pre className="whitespace-pre-wrap rounded-xl border border-[var(--border-soft)] bg-white p-3 text-xs leading-relaxed text-[var(--text-soft)]">
+                  {pinterestPreview}
+                </pre>
+              </div>
+            </div>
+          ) : null}
         </div>
       ) : null}
 

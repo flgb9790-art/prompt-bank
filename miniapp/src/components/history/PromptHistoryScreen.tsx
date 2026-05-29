@@ -74,7 +74,7 @@ export function PromptHistoryScreen({
       const prompt = item.prompt;
       if (!prompt) return false;
       const tags = prompt.keywords?.map((entry: { keyword: { name: string } }) => entry.keyword.name).join(" ") ?? "";
-      return `${prompt.title} ${getPromptExcerpt(prompt)} ${prompt.category?.name ?? ""} ${tags}`.toLowerCase().includes(query);
+      return `${getPromptExcerpt(prompt)} ${prompt.category?.name ?? ""} ${tags}`.toLowerCase().includes(query);
     });
   }, [items, search]);
 
@@ -150,7 +150,6 @@ export function PromptHistoryScreen({
                 )}
               </div>
               <div className="history-item-content">
-                <h3 className="history-item-title">{prompt.title}</h3>
                 <p className="history-item-meta">
                   {mode === "copied" ? "Скопировано" : "Просмотрено"} {when ? formatRelativeTime(when) : ""}
                 </p>

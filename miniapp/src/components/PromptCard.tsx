@@ -131,7 +131,6 @@ export const PromptCard = memo(function PromptCard({
         <div className="prompt-card-list-layout prompt-card-web-layout">
           <CardPreview prompt={prompt} variant="list" imagePriority={imagePriority} />
           <div className="prompt-card-body prompt-card-body--list">
-            <h3 className="prompt-card-title prompt-card-title--list">{prompt.title}</h3>
             <span className={`category-badge category-badge-mobile ${badgeClass}`}>{prompt.category.name}</span>
             <p className="prompt-card-excerpt prompt-card-excerpt--list">{getPromptExcerpt(prompt)}</p>
           </div>
@@ -181,7 +180,6 @@ export const PromptCard = memo(function PromptCard({
         <div className="prompt-card-desktop-layout prompt-card-web-layout">
           <CardPreview prompt={prompt} variant="desktop" imagePriority={imagePriority} />
           <div className="prompt-card-body prompt-card-body--desktop">
-            <h3 className="prompt-card-title">{prompt.title}</h3>
             <span className={`category-badge ${badgeClass}`}>{prompt.category.name}</span>
             <p className="prompt-card-excerpt prompt-card-excerpt--desktop">{getPromptExcerpt(prompt)}</p>
           </div>
@@ -230,7 +228,6 @@ export const PromptCard = memo(function PromptCard({
       <div className="prompt-card-mobile-layout prompt-card-web-layout">
         <CardPreview prompt={prompt} variant="mobile" imagePriority={imagePriority} />
         <div className="prompt-card-body prompt-card-body--mobile">
-          <h3 className="prompt-card-title prompt-card-title--mobile">{prompt.title}</h3>
           <span className={`category-badge category-badge-mobile ${badgeClass}`}>{prompt.category.name}</span>
           <p className="prompt-card-excerpt prompt-card-excerpt--mobile">{getPromptExcerpt(prompt)}</p>
         </div>

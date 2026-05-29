@@ -3,7 +3,7 @@ import { Copy, Sparkles, Star } from "lucide-react";
 import { api, resolveMediaUrl } from "../api";
 import type { Prompt } from "../types";
 import { getCategoryBadgeClass } from "../utils/categoryStyle";
-import { hasFullPromptDetails } from "../utils/promptContent";
+import { getPromptExcerpt, hasFullPromptDetails } from "../utils/promptContent";
 import { resolvePostMedia } from "../utils/resolvePostMedia";
 
 const MAX_TAGS = 5;
@@ -126,7 +126,7 @@ export const PinterestPromptCard = memo(function PinterestPromptCard({
       </div>
 
       <div className="pinterest-content">
-        <h3 className="pinterest-title">{prompt.title}</h3>
+        <p className="pinterest-excerpt">{getPromptExcerpt(prompt)}</p>
         <span className={`pinterest-category ${badgeClass}`}>{prompt.category.name}</span>
         {tags.length ? (
           <div className="pinterest-tags">

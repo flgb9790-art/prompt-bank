@@ -52,6 +52,7 @@ import {
   withPromptDetails
 } from "./utils/promptContent";
 import { PINTEREST_PAGE_SIZE, readViewMode, saveViewMode, computePagedHasMore, type ViewMode } from "./utils/viewMode";
+import { getPromptLabel } from "./utils/promptTitle";
 
 type SortValue = "new" | "old" | "usage";
 type RoutePath = "/" | "/prompts" | "/favorites" | "/categories" | "/tags" | "/recent" | "/settings" | "/copied" | "/viewed" | "/privacy";
@@ -187,10 +188,10 @@ export function WebApp() {
         activeTag,
         activeCategory,
         categories,
-        selectedPromptTitle: selectedPrompt?.title,
+        selectedPromptLabel: selectedPrompt ? getPromptLabel(selectedPrompt) : undefined,
         isAddModalOpen
       }),
-    [path, activeTag, activeCategory, categories, selectedPrompt?.title, isAddModalOpen]
+    [path, activeTag, activeCategory, categories, selectedPrompt, isAddModalOpen]
   );
 
   useDocumentTitle(documentTitleSuffix);
@@ -680,7 +681,6 @@ export function WebApp() {
     }
     try {
       await api.updatePrompt(promptId, {
-        title: data.title,
         content: data.content,
         categoryId: data.categoryId,
         ...(data.coverMediaUrl !== undefined ? { coverMediaUrl: data.coverMediaUrl } : {}),

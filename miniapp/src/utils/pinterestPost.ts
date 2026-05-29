@@ -5,15 +5,18 @@ export function resolveTelegramChannelUrl(): string {
   return fromEnv || DEFAULT_TELEGRAM_CHANNEL_URL;
 }
 
+import { derivePromptTitle } from "./promptTitle";
+
 export function buildPinterestPinPreview(input: {
-  title: string;
+  content: string;
   categoryName: string;
   telegramChannelUrl?: string;
 }): string {
   const channelUrl = input.telegramChannelUrl?.trim() || resolveTelegramChannelUrl();
+  const headline = derivePromptTitle(input.content);
 
   return `Title:
-${input.title || "Название промпта"}
+${headline}
 
 Description:
 Готовый промпт для ${input.categoryName || "Категория"}. 

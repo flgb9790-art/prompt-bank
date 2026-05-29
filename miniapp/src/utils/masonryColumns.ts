@@ -3,7 +3,8 @@ import { resolvePostMedia } from "./resolvePostMedia";
 
 export function estimatePinterestCardHeight(prompt: Prompt): number {
   const media = resolvePostMedia(prompt);
-  const titleHeight = Math.min(2, Math.ceil(prompt.title.length / 22)) * 22;
+  const excerpt = prompt.contentExcerpt ?? prompt.content ?? "";
+  const titleHeight = Math.min(2, Math.ceil(excerpt.length / 22)) * 22;
   const tagsHeight = prompt.keywords.length > 0 ? 54 : 0;
   const metaHeight = 90 + titleHeight + tagsHeight;
 

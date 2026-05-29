@@ -3,7 +3,7 @@ import { Copy, Sparkles, Star } from "lucide-react";
 import { api, resolveCardMediaUrl, resolveMediaUrl } from "../api";
 import type { Prompt } from "../types";
 import { getCategoryBadgeClass } from "../utils/categoryStyle";
-import { hasFullPromptDetails } from "../utils/promptContent";
+import { getPromptExcerpt, hasFullPromptDetails } from "../utils/promptContent";
 import { resolvePostMedia } from "../utils/resolvePostMedia";
 import { TagPill } from "./TagPill";
 
@@ -57,7 +57,7 @@ function PostMediaBlock({
 
   if (!media) {
     return (
-      <button type="button" className="mobile-post-media mobile-post-placeholder" onClick={openDetails} aria-label={prompt.title}>
+      <button type="button" className="mobile-post-media mobile-post-placeholder" onClick={openDetails} aria-label="Открыть промпт">
         <div className="mobile-post-placeholder-inner">
           <Sparkles size={42} strokeWidth={2} />
           <span>Prompt Bank</span>
@@ -73,7 +73,7 @@ function PostMediaBlock({
       type="button"
       className={mediaClass}
       onClick={openDetails}
-      aria-label={prompt.title}
+      aria-label="Открыть промпт"
     >
       {!mediaReady ? <div className="mobile-post-media-shimmer" aria-hidden /> : null}
       {media.type === "video" ? (
@@ -171,7 +171,7 @@ export const MobilePromptPostCard = memo(function MobilePromptPostCard({
         </div>
 
         <button type="button" className="mobile-post-title" onClick={() => onOpen(prompt)}>
-          {prompt.title}
+          {getPromptExcerpt(prompt)}
         </button>
 
         {tags.length ? (

@@ -201,7 +201,7 @@ export function PromptsPage({
           </button>
         </div>
       ) : null}
-      <SearchBar value={query} onChange={setQuery} placeholder="Поиск по названию, тексту, тегам..." />
+      <SearchBar value={query} onChange={setQuery} placeholder="Поиск по тексту и тегам..." />
       {!activeTag ? <CategoryTabs categories={categoriesWithPrompts} active={category} onSelect={setCategory} /> : null}
 
       <select value={sort} onChange={(event) => setSort(event.target.value as SortMode)} className="form-select">

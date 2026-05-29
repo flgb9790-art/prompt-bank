@@ -22,11 +22,11 @@ export function webRouteDocumentTitle(input: {
   activeTag?: string;
   activeCategory?: string;
   categories: Array<{ slug: string; name: string }>;
-  selectedPromptTitle?: string;
+  selectedPromptLabel?: string;
   isAddModalOpen?: boolean;
 }) {
-  if (input.selectedPromptTitle) {
-    return input.selectedPromptTitle;
+  if (input.selectedPromptLabel) {
+    return input.selectedPromptLabel;
   }
   if (input.isAddModalOpen) {
     return "Новый промпт";
@@ -57,11 +57,11 @@ export function miniRouteDocumentTitle(input: {
   tab: string;
   activeTag?: string;
   searchQuery?: string;
-  selectedPromptTitle?: string;
+  selectedPromptLabel?: string;
   profileScreen?: "copied" | "viewed" | null;
 }) {
-  if (input.selectedPromptTitle) {
-    return input.selectedPromptTitle;
+  if (input.selectedPromptLabel) {
+    return input.selectedPromptLabel;
   }
   if (input.profileScreen === "copied") return "Скопированные";
   if (input.profileScreen === "viewed") return "Просмотренные";

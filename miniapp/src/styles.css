@@ -3627,17 +3627,37 @@ html.telegram-mini-app .media-lightbox-nav {
   background: #ffffff;
 }
 
-.pinterest-title {
+.pinterest-excerpt {
   margin: 0;
-  font-size: 15px;
+  font-size: 14px;
   line-height: 20px;
-  font-weight: 800;
-  color: #101828;
-  letter-spacing: -0.01em;
+  font-weight: 600;
+  color: #344054;
   display: -webkit-box;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  word-break: break-word;
+}
+
+.publication-templates-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border-soft);
+  background: #ffffff;
+  color: var(--text-soft);
+  font-size: 14px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.publication-templates-panel {
+  padding-top: 2px;
 }
 
 .pinterest-category {

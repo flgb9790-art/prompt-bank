@@ -18,7 +18,6 @@ const MediaUploader = lazy(() => import("./MediaUploader").then((module) => ({ d
 import { TagPill } from "./TagPill";
 
 export type PromptEditPayload = {
-  title: string;
   content: string;
   categoryId: number;
   coverMediaUrl?: string | null;
@@ -152,7 +151,6 @@ export function PromptDetailsModal({
   onTagClick
 }: Props) {
   const [isEditing, setIsEditing] = useState(false);
-  const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [categoryId, setCategoryId] = useState<number>(0);
   const [coverMedia, setCoverMedia] = useState<{ url: string; type: MediaType } | null>(null);
@@ -183,7 +181,6 @@ export function PromptDetailsModal({
   const gallerySwipe = useHorizontalSwipe(goGalleryNext, goGalleryPrev, compactGallery && galleryItems.length > 1);
 
   function resetEditState(current: Prompt) {
-    setTitle(current.title);
     setContent(current.content ?? current.contentExcerpt ?? "");
     setCategoryId(current.categoryId);
     setCoverMedia(
@@ -260,7 +257,6 @@ export function PromptDetailsModal({
 
           {isEditing ? (
             <div className="space-y-3">
-              <input value={title} onChange={(event) => setTitle(event.target.value)} className="form-input" placeholder="Название" />
               <select value={categoryId} onChange={(event) => setCategoryId(Number(event.target.value))} className="form-select">
                 {categories.map((category) => (
                   <option key={category.id} value={category.id}>
@@ -346,7 +342,6 @@ export function PromptDetailsModal({
                         (prompt.coverMediaUrl ?? null) !== (coverMedia?.url ?? null) ||
                         (prompt.coverMediaType ?? null) !== (coverMedia?.type ?? null);
                       await onEdit(prompt.id, {
-                        title: title.trim(),
                         content: content.trim(),
                         categoryId,
                         coverMediaUrl: coverChanged ? (coverMedia?.url ?? null) : undefined,
@@ -434,8 +429,7 @@ export function PromptDetailsModal({
               </div>
 
               <div>
-                <h2 className="text-xl font-semibold text-[var(--text)]">{prompt.title}</h2>
-                <span className={`category-badge mt-2 ${badgeClass}`}>{prompt.category.name}</span>
+                <span className={`category-badge ${badgeClass}`}>{prompt.category.name}</span>
                 <div className="mt-3 flex flex-wrap gap-1.5">
                   {prompt.keywords.map((item) => (
                     <TagPill

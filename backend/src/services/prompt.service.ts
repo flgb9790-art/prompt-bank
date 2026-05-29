@@ -1,11 +1,12 @@
 import { prisma } from "../db";
 import { extractKeywords } from "../keywordExtractor";
+import { derivePromptTitle } from "../utils/promptTitle";
 
 type MediaType = "image" | "video";
 
 type PromptCreateInput = {
   userId: number;
-  title: string;
+  title?: string;
   content: string;
   categoryId: number;
   note?: string;
@@ -279,12 +280,13 @@ export class PromptService {
   }
 
   static async create(input: PromptCreateInput) {
-    const keywords = extractKeywords(input.content, input.title);
+    const title = derivePromptTitle(input.title?.trim() || input.content);
+    const keywords = extractKeywords(input.content, title);
 
     const prompt = await prisma.prompt.create({
       data: {
         userId: input.userId,
-        title: input.title,
+        title,
         content: input.content,
         categoryId: input.categoryId,
         note: input.note,
@@ -312,10 +314,14 @@ export class PromptService {
   }
 
   static async update(id: number, input: PromptUpdateInput) {
-    const keywords = input.content ? extractKeywords(input.content, input.title) : null;
+    const nextTitle =
+      input.content !== undefined
+        ? derivePromptTitle(input.title?.trim() || input.content)
+        : input.title?.trim();
+    const keywords = input.content ? extractKeywords(input.content, nextTitle) : null;
 
     const data: Record<string, unknown> = {};
-    if (input.title !== undefined) data.title = input.title;
+    if (nextTitle !== undefined) data.title = nextTitle;
     if (input.content !== undefined) data.content = input.content;
     if (input.categoryId !== undefined) data.categoryId = input.categoryId;
     if (input.note !== undefined) data.note = input.note;

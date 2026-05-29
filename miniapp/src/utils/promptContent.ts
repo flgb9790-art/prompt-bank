@@ -26,7 +26,7 @@ export function withPromptDetails(prompt: Prompt): Prompt {
 
 export function getPromptSearchText(prompt: Prompt): string {
   const tags = prompt.keywords.map((keyword) => keyword.keyword.name).join(" ");
-  return `${prompt.title} ${getPromptExcerpt(prompt)} ${prompt.category.name} ${tags}`.toLowerCase();
+  return `${getPromptExcerpt(prompt)} ${prompt.category.name} ${tags}`.toLowerCase();
 }
 
 export async function ensurePromptWithContent(

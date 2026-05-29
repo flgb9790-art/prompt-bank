@@ -1,6 +1,7 @@
 import { prisma } from "../db";
 import { config } from "../config";
 import { PromptService } from "./prompt.service";
+import { derivePromptTitle } from "../utils/promptTitle";
 
 const TELEGRAM_CAPTION_MAX = 1024;
 const TELEGRAM_MEDIA_GROUP_MAX = 10;
@@ -9,6 +10,7 @@ const HASHTAG_MAX = 8;
 type PromptForPost = {
   id: number;
   title: string;
+  content: string;
   coverMediaUrl: string | null;
   coverMediaType: string | null;
   category: { name: string };
@@ -71,7 +73,8 @@ function truncateCaption(text: string): string {
 
 export function buildTelegramPost(prompt: PromptForPost): string {
   const hashtags = buildHashtags(prompt.keywords);
-  return truncateCaption(`✨ Новый промпт: ${prompt.title}
+  const headline = derivePromptTitle(prompt.content);
+  return truncateCaption(`✨ Новый промпт: ${headline}
 
 📂 ${prompt.category.name}
 🏷 ${hashtags}
@@ -83,7 +86,8 @@ ${buildPromptUrl(prompt.id)}`);
 export function buildTelegramPostHtml(prompt: PromptForPost): string {
   const hashtags = buildHashtags(prompt.keywords);
   const promptUrl = buildPromptUrl(prompt.id);
-  return truncateCaption(`✨ Новый промпт: ${escapeHtml(prompt.title)}
+  const headline = derivePromptTitle(prompt.content);
+  return truncateCaption(`✨ Новый промпт: ${escapeHtml(headline)}
 
 📂 ${escapeHtml(prompt.category.name)}
 🏷 ${escapeHtml(hashtags)}

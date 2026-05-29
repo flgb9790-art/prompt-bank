@@ -22,16 +22,19 @@ export function buildPromptPublicUrl(promptId: number | string, siteOrigin = win
   return `${base}/?prompt=${promptId}`;
 }
 
+import { derivePromptTitle } from "./promptTitle";
+
 export function buildTelegramPostPreview(input: {
-  title: string;
+  content: string;
   categoryName: string;
   tagNames: string[];
   promptId?: number | string;
   siteOrigin?: string;
 }): string {
   const hashtags = buildHashtagsFromNames(input.tagNames);
+  const headline = derivePromptTitle(input.content);
 
-  return `✨ Новый промпт: ${input.title || "Название промпта"}
+  return `✨ Новый промпт: ${headline}
 
 📂 ${input.categoryName || "Категория"}
 🏷 ${hashtags}

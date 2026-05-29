@@ -45,6 +45,7 @@ import {
   type MiniAppViewMode,
   type ViewMode
 } from "./utils/viewMode";
+import { getPromptLabel } from "./utils/promptTitle";
 
 const CATEGORIES_CACHE_KEY = "prompt-bank-categories";
 const TAGS_CACHE_KEY = "prompt-bank-tags";
@@ -276,10 +277,10 @@ function MiniAppApp() {
         tab,
         activeTag,
         searchQuery,
-        selectedPromptTitle: selectedPrompt?.title,
+        selectedPromptLabel: selectedPrompt ? getPromptLabel(selectedPrompt) : undefined,
         profileScreen
       }),
-    [tab, activeTag, searchQuery, selectedPrompt?.title, profileScreen]
+    [tab, activeTag, searchQuery, selectedPrompt, profileScreen]
   );
 
   useDocumentTitle(documentTitleSuffix);
@@ -819,7 +820,6 @@ function MiniAppApp() {
 
   async function handleEditPrompt(promptId: number, data: PromptEditPayload) {
     await api.updatePrompt(promptId, {
-      title: data.title,
       content: data.content,
       categoryId: data.categoryId,
       ...(data.coverMediaUrl !== undefined ? { coverMediaUrl: data.coverMediaUrl } : {}),

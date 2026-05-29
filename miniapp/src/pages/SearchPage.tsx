@@ -40,7 +40,7 @@ export function SearchPage({
         <ViewModeSwitcher value={viewMode} onChange={onViewModeChange} hidePinterest />
       </div>
 
-      <SearchBar value={query} onChange={onQueryChange} placeholder="Введите слово, тег или часть названия..." />
+      <SearchBar value={query} onChange={onQueryChange} placeholder="Введите слово, тег или часть текста..." />
       <div className="flex flex-wrap gap-2">
         {quickTags.map((tag) => (
           <button key={tag} type="button" className="chip" onClick={() => onQueryChange(tag)}>

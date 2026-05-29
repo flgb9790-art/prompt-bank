@@ -3,7 +3,8 @@ import type { Prompt } from "../types";
 export function createPromptLoadingShell(promptId: number): Prompt {
   return {
     id: promptId,
-    title: "Загрузка промпта…",
+    title: "Загрузка…",
+    contentExcerpt: "Загрузка промпта…",
     categoryId: 0,
     category: {
       id: 0,
