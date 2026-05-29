@@ -5,3 +5,6 @@ buildCommand = "npm install && npm run build"
 [deploy]
 startCommand = "npm run start"
 restartPolicyType = "ON_FAILURE"
+
+# На сервисе miniapp задайте переменную BACKEND_URL = публичный URL backend (https://...railway.app).
+# VITE_BACKEND_URL на этапе build тоже подойдёт; BACKEND_URL подставляется в dist/config.js при старте.

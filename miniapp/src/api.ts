@@ -14,11 +14,15 @@ import type {
   UserSettings
 } from "./types";
 import { readReferenceCache, removeReferenceCache, writeReferenceCache } from "./utils/referenceCache";
+import { getBackendBaseUrl, getMediaCdnBaseUrl, isBackendConfigured } from "./runtimeConfig";
 
-const configuredBaseUrl = (import.meta.env.VITE_BACKEND_URL as string | undefined)?.trim();
-const configuredMediaCdn = (import.meta.env.VITE_MEDIA_CDN_URL as string | undefined)?.trim();
-const baseUrl = configuredBaseUrl || "";
-const mediaCdnBase = configuredMediaCdn?.replace(/\/$/, "") ?? "";
+function resolveBaseUrl(): string {
+  return getBackendBaseUrl();
+}
+
+function resolveMediaCdnBase(): string {
+  return getMediaCdnBaseUrl();
+}
 let authTelegramId: string | null = null;
 
 export type GetPromptsParams = {
@@ -73,6 +77,14 @@ function buildAuthHeader() {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const baseUrl = resolveBaseUrl();
+  if (!baseUrl) {
+    throw new ApiError(
+      0,
+      "Адрес API не настроен. На Railway задайте переменную BACKEND_URL (URL backend-сервиса) для miniapp."
+    );
+  }
+
   const headers = new Headers(init?.headers);
   headers.set("Content-Type", "application/json");
   for (const [key, value] of Object.entries(buildAuthHeader())) {
@@ -83,6 +95,13 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     headers,
     ...init
   });
+  const contentType = response.headers.get("content-type") ?? "";
+  if (contentType && !contentType.includes("application/json") && !contentType.includes("text/json")) {
+    throw new ApiError(
+      response.status,
+      "Сервер вернул не JSON. Проверьте BACKEND_URL / VITE_BACKEND_URL (часто указывают URL miniapp вместо backend)."
+    );
+  }
   if (!response.ok) {
     let code: string | undefined;
     let message = `Request failed: ${response.status}`;
@@ -249,6 +268,10 @@ export const api = {
     return request<void>(`/api/examples/${exampleId}`, { method: "DELETE" });
   },
   async upload(file: File) {
+    const baseUrl = resolveBaseUrl();
+    if (!baseUrl) {
+      throw new ApiError(0, "Адрес API не настроен.");
+    }
     const body = new FormData();
     body.append("file", file);
     const response = await fetch(`${baseUrl}/api/upload`, {
@@ -292,14 +315,18 @@ function withMediaOrigin(pathOrUrl: string) {
     return pathOrUrl;
   }
   const path = pathOrUrl.startsWith("/") ? pathOrUrl : `/${pathOrUrl}`;
+  const mediaCdnBase = resolveMediaCdnBase();
   if (mediaCdnBase) {
     return `${mediaCdnBase}${path}`;
   }
+  const baseUrl = resolveBaseUrl();
   if (baseUrl) {
     return `${baseUrl}${path}`;
   }
   return `${window.location.origin}${path}`;
 }
+
+export { isBackendConfigured };
 
 export function resolveMediaUrl(url: string) {
   return withMediaOrigin(url);

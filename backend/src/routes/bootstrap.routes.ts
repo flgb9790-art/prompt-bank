@@ -50,7 +50,7 @@ router.get("/", async (req, res, next) => {
     const prompts = await PromptService.list({
       limit: promptLimit,
       offset: 0,
-      lite: false,
+      lite: true,
       sort: "new",
       userId,
       includeTotal: true
