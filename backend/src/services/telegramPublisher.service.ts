@@ -6,6 +6,13 @@ import {
   type PublicationTemplateVars,
   resolveTelegramPostTemplate
 } from "../utils/publicationTemplate";
+import {
+  htmlToPlainText,
+  htmlToTelegramHtml,
+  isHtmlTemplate,
+  plainTemplateToHtml,
+  renderPublicationTemplateHtml
+} from "../utils/templateHtml";
 
 const TELEGRAM_CAPTION_MAX = 1024;
 const TELEGRAM_MEDIA_GROUP_MAX = 10;
@@ -63,14 +70,6 @@ export function buildPromptUrl(promptId: number): string {
   return `https://t.me/${username}?startapp=${encodeURIComponent(startParam)}`;
 }
 
-function escapeHtml(text: string): string {
-  return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-}
-
-function escapeHtmlAttr(text: string): string {
-  return text.replace(/&/g, "&amp;").replace(/"/g, "&quot;");
-}
-
 function truncateCaption(text: string): string {
   if (text.length <= TELEGRAM_CAPTION_MAX) return text;
   return `${text.slice(0, TELEGRAM_CAPTION_MAX - 1)}…`;
@@ -88,25 +87,22 @@ function buildTelegramTemplateVars(prompt: PromptForPost): PublicationTemplateVa
 
 export function buildTelegramPost(prompt: PromptForPost): string {
   const vars = buildTelegramTemplateVars(prompt);
+  const stored = prompt.telegramPostTemplate?.trim();
+  const template = stored || resolveTelegramPostTemplate(null, vars);
+  if (isHtmlTemplate(template)) {
+    const rendered = renderPublicationTemplateHtml(template, vars);
+    return truncateCaption(htmlToPlainText(rendered));
+  }
   return truncateCaption(resolveTelegramPostTemplate(prompt.telegramPostTemplate, vars));
 }
 
 export function buildTelegramPostHtml(prompt: PromptForPost): string {
   const vars = buildTelegramTemplateVars(prompt);
-  const promptUrl = vars.link;
-  const plain = resolveTelegramPostTemplate(prompt.telegramPostTemplate, vars);
-  const linked = plain.includes(promptUrl)
-    ? plain.replace(promptUrl, `<a href="${escapeHtmlAttr(promptUrl)}">Открыть промпт</a>`)
-    : plain;
-  return truncateCaption(
-    linked
-      .split("\n")
-      .map((line) => {
-        if (line.includes("<a href=")) return line;
-        return escapeHtml(line);
-      })
-      .join("\n")
-  );
+  const stored = prompt.telegramPostTemplate?.trim();
+  const template = stored || resolveTelegramPostTemplate(null, vars);
+  const htmlSource = isHtmlTemplate(template) ? template : plainTemplateToHtml(template);
+  const rendered = renderPublicationTemplateHtml(htmlSource, vars);
+  return truncateCaption(htmlToTelegramHtml(rendered));
 }
 
 export function resolvePublicMediaUrl(url: string | null | undefined): string | null {

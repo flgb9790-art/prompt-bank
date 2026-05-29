@@ -8,6 +8,7 @@ import {
   resolvePinterestDescriptionTemplate,
   resolvePinterestTitleTemplate
 } from "../utils/publicationTemplate";
+import { htmlToPlainText, isHtmlTemplate } from "../utils/templateHtml";
 
 const PINTEREST_TITLE_MAX = 100;
 const PINTEREST_DESCRIPTION_MAX = 800;
@@ -62,8 +63,9 @@ export function buildPinterestPin(prompt: PromptForPin) {
     channel: telegramChannelUrl
   };
   const title = truncatePinterestTitle(resolvePinterestTitleTemplate(prompt.pinterestTitleTemplate, vars));
+  const descriptionRaw = resolvePinterestDescriptionTemplate(prompt.pinterestDescriptionTemplate, vars);
   const description = truncatePinterestDescription(
-    resolvePinterestDescriptionTemplate(prompt.pinterestDescriptionTemplate, vars)
+    isHtmlTemplate(descriptionRaw) ? htmlToPlainText(descriptionRaw) : descriptionRaw
   );
 
   return {

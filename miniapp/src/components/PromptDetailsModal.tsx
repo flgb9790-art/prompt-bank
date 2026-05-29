@@ -108,7 +108,6 @@ function MediaPreview({
           style={fillWidth ? galleryMediaStyle : undefined}
         />
       )}
-      {clickable ? <span className="preview-clickable-hint">Открыть</span> : null}
     </button>
   );
 }

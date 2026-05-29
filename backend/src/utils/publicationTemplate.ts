@@ -7,13 +7,10 @@ export type PublicationTemplateVars = {
 };
 
 export function defaultTelegramPostTemplate(): string {
-  return `✨ Новый промпт: {{headline}}
-
-📂 {{category}}
-🏷 {{hashtags}}
-
-🔗 Открыть промпт:
-{{link}}`;
+  return `<p>✨ Новый промпт: {{headline}}</p>
+<p>📂 {{category}}</p>
+<p>🏷 {{hashtags}}</p>
+<p><a href="{{link}}">Открыть промпт</a></p>`;
 }
 
 export function defaultPinterestTitleTemplate(): string {
@@ -21,10 +18,8 @@ export function defaultPinterestTitleTemplate(): string {
 }
 
 export function defaultPinterestDescriptionTemplate(): string {
-  return `Готовый промпт для {{category}}. 
-Больше промптов и подборок в нашем Telegram-канале.
-
-{{channel}}`;
+  return `<p>Готовый промпт для {{category}}.</p>
+<p>Больше промптов и подборок в нашем <a href="{{channel}}">Telegram-канале</a>.</p>`;
 }
 
 export function renderPublicationTemplate(template: string, vars: PublicationTemplateVars): string {

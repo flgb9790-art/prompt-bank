@@ -1,3 +1,4 @@
+import { ImageIcon, Star, Trash2 } from "lucide-react";
 import { resolveMediaUrl } from "../api";
 import type { MediaType } from "../types";
 import { MediaUploader } from "./MediaUploader";
@@ -100,14 +101,31 @@ export function PromptMediaGalleryEditor({ items, onChange, label = "Фотог�
               {index === 0 ? <span className="prompt-media-badge">Превью</span> : null}
               <div className="prompt-media-grid-actions">
                 {index > 0 ? (
-                  <button type="button" className="btn-compact" onClick={() => makePreview(index)}>
-                    Сделать превью
+                  <button
+                    type="button"
+                    className="prompt-media-icon-btn"
+                    title="Сделать превью"
+                    aria-label="Сделать превью"
+                    onClick={() => makePreview(index)}
+                  >
+                    <Star size={14} />
                   </button>
                 ) : null}
-                <button type="button" className="btn-compact btn-compact-danger" onClick={() => removeAt(index)}>
-                  Удалить
+                <button
+                  type="button"
+                  className="prompt-media-icon-btn prompt-media-icon-btn--danger"
+                  title="Удалить"
+                  aria-label="Удалить"
+                  onClick={() => removeAt(index)}
+                >
+                  <Trash2 size={14} />
                 </button>
               </div>
+              {item.type === "video" ? (
+                <span className="prompt-media-type-badge">
+                  <ImageIcon size={10} aria-hidden />
+                </span>
+              ) : null}
             </div>
           ))}
         </div>
