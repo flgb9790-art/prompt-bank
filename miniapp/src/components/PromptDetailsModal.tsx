@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, Share2, X } from "lucide-react";
 import { resolveMediaUrl } from "../api";
 import { useHorizontalSwipe } from "../hooks/useHorizontalSwipe";
@@ -14,8 +14,17 @@ import { telegramPublicationStatusLabel } from "../utils/telegramPost";
 import { pinterestPublicationStatusLabel } from "../utils/pinterestPost";
 import type { LightboxItem } from "./MediaLightbox";
 
-const MediaUploader = lazy(() => import("./MediaUploader").then((module) => ({ default: module.MediaUploader })));
 import { TagPill } from "./TagPill";
+import {
+  PromptMediaGalleryEditor,
+  buildPromptMediaItemsFromPrompt,
+  diffPromptMediaOnEdit
+} from "./PromptMediaGalleryEditor";
+import {
+  PublicationTemplatesEditor,
+  publicationTemplatesFromPrompt,
+  templatesPayloadForApi
+} from "./PublicationTemplatesEditor";
 
 export type PromptEditPayload = {
   content: string;
@@ -24,6 +33,9 @@ export type PromptEditPayload = {
   coverMediaType?: MediaType | null;
   removedExampleIds: number[];
   newExamples: Array<{ url: string; type: MediaType; originalName?: string }>;
+  telegramPostTemplate?: string | null;
+  pinterestTitleTemplate?: string | null;
+  pinterestDescriptionTemplate?: string | null;
 };
 
 type Props = {
@@ -40,6 +52,7 @@ type Props = {
   onPublishPinterest?: (promptId: number) => Promise<void>;
   onShareLinkCopied?: () => void;
   onTagClick?: (tag: string) => void;
+  showPublicationTemplates?: boolean;
 };
 
 const galleryMediaStyle = {
@@ -148,14 +161,19 @@ export function PromptDetailsModal({
   onPublishTelegram,
   onPublishPinterest,
   onShareLinkCopied,
-  onTagClick
+  onTagClick,
+  showPublicationTemplates = false
 }: Props) {
   const [isEditing, setIsEditing] = useState(false);
   const [content, setContent] = useState("");
   const [categoryId, setCategoryId] = useState<number>(0);
-  const [coverMedia, setCoverMedia] = useState<{ url: string; type: MediaType } | null>(null);
-  const [keptExampleIds, setKeptExampleIds] = useState<number[]>([]);
-  const [newExamples, setNewExamples] = useState<Array<{ url: string; type: MediaType; originalName?: string }>>([]);
+  const [mediaItems, setMediaItems] = useState<Array<{ url: string; type: MediaType; exampleId?: number }>>([]);
+  const [publicationTemplatesOpen, setPublicationTemplatesOpen] = useState(false);
+  const [publicationTemplates, setPublicationTemplates] = useState({
+    telegramPostTemplate: "",
+    pinterestTitleTemplate: "",
+    pinterestDescriptionTemplate: ""
+  });
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
   const [galleryIndex, setGalleryIndex] = useState(0);
@@ -183,13 +201,8 @@ export function PromptDetailsModal({
   function resetEditState(current: Prompt) {
     setContent(current.content ?? current.contentExcerpt ?? "");
     setCategoryId(current.categoryId);
-    setCoverMedia(
-      current.coverMediaUrl && current.coverMediaType
-        ? { url: current.coverMediaUrl, type: current.coverMediaType }
-        : null
-    );
-    setKeptExampleIds((current.examples ?? []).map((example) => example.id));
-    setNewExamples([]);
+    setMediaItems(buildPromptMediaItemsFromPrompt(current));
+    setPublicationTemplates(publicationTemplatesFromPrompt(current));
     setSaveError("");
   }
 
@@ -214,11 +227,9 @@ export function PromptDetailsModal({
   const loadingDetails = !hasFullPromptDetails(prompt);
   const isShellPrompt = loadingDetails && prompt.category.slug === "loading";
   const badgeClass = getCategoryBadgeClass(prompt.category.slug, prompt.category.name);
-  const visibleExamples = [
-    ...(prompt.examples ?? []).filter((example) => keptExampleIds.includes(example.id)),
-    ...newExamples.map((example, index) => ({ ...example, id: -(index + 1) }))
-  ];
   const currentGallery = galleryItems[galleryIndex];
+  const editCategory = categories.find((category) => category.id === categoryId);
+  const editTagNames = prompt.keywords.map((item) => item.keyword.name);
   const promptId = prompt.id;
 
   async function handleShareLink() {
@@ -265,65 +276,21 @@ export function PromptDetailsModal({
                 ))}
               </select>
 
-              <p className="text-sm font-semibold text-[var(--primary)]">Изображения и примеры</p>
+              <PromptMediaGalleryEditor items={mediaItems} onChange={setMediaItems} />
 
-              <div className="surface-card-soft p-3">
-                <p className="mb-2 text-sm font-medium text-[var(--text)]">Заставка / превью</p>
-                {coverMedia ? (
-                  <MediaPreview url={coverMedia.url} type={coverMedia.type} fit="contain" className="mb-2 w-full max-w-[280px]" />
-                ) : (
-                  <p className="mb-2 text-xs text-[var(--muted)]">Заставка не задана</p>
-                )}
-                <div className="edit-media-toolbar">
-                  <Suspense fallback={<div className="skeleton h-10 w-40" />}>
-                    <MediaUploader compact label="Заменить заставку" onUploaded={(items) => items[0] && setCoverMedia(items[0])} />
-                  </Suspense>
-                  {coverMedia ? (
-                    <button type="button" onClick={() => setCoverMedia(null)} className="btn-compact btn-compact-danger">
-                      Удалить заставку
-                    </button>
-                  ) : null}
+              {showPublicationTemplates ? (
+                <div className="surface-card-soft space-y-3 p-3">
+                  <PublicationTemplatesEditor
+                    content={content}
+                    categoryName={editCategory?.name ?? prompt.category.name}
+                    tagNames={editTagNames}
+                    value={publicationTemplates}
+                    onChange={setPublicationTemplates}
+                    open={publicationTemplatesOpen}
+                    onToggleOpen={() => setPublicationTemplatesOpen((open) => !open)}
+                  />
                 </div>
-              </div>
-
-              <div className="surface-card-soft p-3">
-                <p className="mb-2 text-sm font-medium text-[var(--text)]">Примеры</p>
-                <div className="grid grid-cols-2 gap-2">
-                  {visibleExamples.length ? (
-                    visibleExamples.map((example) => (
-                      <div key={example.id} className="relative">
-                        <MediaPreview url={example.url} type={example.type} fit="contain" className="w-full" />
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (example.id > 0) {
-                              setKeptExampleIds((prev) => prev.filter((id) => id !== example.id));
-                            } else {
-                              const index = -(example.id + 1);
-                              setNewExamples((prev) => prev.filter((_, idx) => idx !== index));
-                            }
-                          }}
-                          className="example-remove-btn"
-                        >
-                          Удалить
-                        </button>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="col-span-2 text-xs text-[var(--muted)]">Примеры не добавлены.</p>
-                  )}
-                </div>
-                <div className="edit-media-toolbar mt-2">
-                  <Suspense fallback={<div className="skeleton h-10 w-40" />}>
-                    <MediaUploader
-                      compact
-                      label="Добавить примеры"
-                      multiple
-                      onUploaded={(items) => setNewExamples((prev) => [...prev, ...items])}
-                    />
-                  </Suspense>
-                </div>
-              </div>
+              ) : null}
 
               <textarea value={content} onChange={(event) => setContent(event.target.value)} rows={6} className="form-textarea" placeholder="Текст промпта" />
               {saveError ? <p className="text-xs text-[var(--red)]">{saveError}</p> : null}
@@ -335,19 +302,18 @@ export function PromptDetailsModal({
                     setIsSaving(true);
                     setSaveError("");
                     try {
-                      const removedExampleIds = (prompt.examples ?? [])
-                        .map((example) => example.id)
-                        .filter((id) => !keptExampleIds.includes(id));
+                      const mediaDiff = diffPromptMediaOnEdit(prompt.examples ?? [], mediaItems);
                       const coverChanged =
-                        (prompt.coverMediaUrl ?? null) !== (coverMedia?.url ?? null) ||
-                        (prompt.coverMediaType ?? null) !== (coverMedia?.type ?? null);
+                        (prompt.coverMediaUrl ?? null) !== mediaDiff.coverMediaUrl ||
+                        (prompt.coverMediaType ?? null) !== mediaDiff.coverMediaType;
                       await onEdit(prompt.id, {
                         content: content.trim(),
                         categoryId,
-                        coverMediaUrl: coverChanged ? (coverMedia?.url ?? null) : undefined,
-                        coverMediaType: coverChanged ? (coverMedia?.type ?? null) : undefined,
-                        removedExampleIds,
-                        newExamples
+                        coverMediaUrl: coverChanged ? mediaDiff.coverMediaUrl : undefined,
+                        coverMediaType: coverChanged ? mediaDiff.coverMediaType : undefined,
+                        removedExampleIds: mediaDiff.removedExampleIds,
+                        newExamples: mediaDiff.newExamples,
+                        ...(showPublicationTemplates ? templatesPayloadForApi(publicationTemplates) : {})
                       });
                       setIsEditing(false);
                     } catch {

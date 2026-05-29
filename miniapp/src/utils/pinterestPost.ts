@@ -1,3 +1,9 @@
+import {
+  buildPublicationTemplateVars,
+  resolvePinterestDescriptionTemplate,
+  resolvePinterestTitleTemplate
+} from "./publicationTemplate";
+
 const DEFAULT_TELEGRAM_CHANNEL_URL = "https://t.me/your_channel";
 
 export function resolveTelegramChannelUrl(): string {
@@ -5,24 +11,31 @@ export function resolveTelegramChannelUrl(): string {
   return fromEnv || DEFAULT_TELEGRAM_CHANNEL_URL;
 }
 
-import { derivePromptTitle } from "./promptTitle";
-
 export function buildPinterestPinPreview(input: {
   content: string;
   categoryName: string;
   telegramChannelUrl?: string;
+  pinterestTitleTemplate?: string | null;
+  pinterestDescriptionTemplate?: string | null;
 }): string {
   const channelUrl = input.telegramChannelUrl?.trim() || resolveTelegramChannelUrl();
-  const headline = derivePromptTitle(input.content);
+  const vars = buildPublicationTemplateVars({
+    content: input.content,
+    categoryName: input.categoryName,
+    tagNames: [],
+    siteOrigin: channelUrl
+  });
+  vars.channel = channelUrl;
+  vars.link = channelUrl;
+
+  const title = resolvePinterestTitleTemplate(input.pinterestTitleTemplate, vars);
+  const description = resolvePinterestDescriptionTemplate(input.pinterestDescriptionTemplate, vars);
 
   return `Title:
-${headline}
+${title}
 
 Description:
-Готовый промпт для ${input.categoryName || "Категория"}. 
-Больше промптов и подборок в нашем Telegram-канале.
-
-${channelUrl}
+${description}
 
 Destination:
 ${channelUrl}`;

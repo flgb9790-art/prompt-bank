@@ -3,6 +3,11 @@ import { config } from "../config";
 import { PromptService } from "./prompt.service";
 import { resolvePublicMediaUrl } from "./telegramPublisher.service";
 import { derivePromptTitle } from "../utils/promptTitle";
+import {
+  type PublicationTemplateVars,
+  resolvePinterestDescriptionTemplate,
+  resolvePinterestTitleTemplate
+} from "../utils/publicationTemplate";
 
 const PINTEREST_TITLE_MAX = 100;
 const PINTEREST_DESCRIPTION_MAX = 800;
@@ -11,6 +16,8 @@ type PromptForPin = {
   id: number;
   title: string;
   content: string;
+  pinterestTitleTemplate?: string | null;
+  pinterestDescriptionTemplate?: string | null;
   coverMediaUrl: string | null;
   coverMediaType: string | null;
   category: { name: string };
@@ -47,12 +54,16 @@ export function buildPinterestPin(prompt: PromptForPin) {
     throw new Error("TELEGRAM_CHANNEL_URL должен быть валидным URL");
   }
 
-  const title = truncatePinterestTitle(derivePromptTitle(prompt.content));
+  const vars: PublicationTemplateVars = {
+    headline: derivePromptTitle(prompt.content),
+    category: prompt.category.name,
+    hashtags: "",
+    link: telegramChannelUrl,
+    channel: telegramChannelUrl
+  };
+  const title = truncatePinterestTitle(resolvePinterestTitleTemplate(prompt.pinterestTitleTemplate, vars));
   const description = truncatePinterestDescription(
-    `Готовый промпт для ${prompt.category.name}. 
-Больше промптов и подборок в нашем Telegram-канале.
-
-${telegramChannelUrl}`
+    resolvePinterestDescriptionTemplate(prompt.pinterestDescriptionTemplate, vars)
   );
 
   return {

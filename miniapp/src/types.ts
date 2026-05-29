@@ -47,6 +47,9 @@ export type Prompt = {
   telegramPublication?: TelegramPublication | null;
   pinterestPublished?: boolean;
   pinterestPublication?: PinterestPublication | null;
+  telegramPostTemplate?: string | null;
+  pinterestTitleTemplate?: string | null;
+  pinterestDescriptionTemplate?: string | null;
   keywords: PromptKeyword[];
   examples?: MediaExample[];
   /** Клиентский флаг: полные данные (текст + примеры) уже загружены с API. */
@@ -136,6 +139,9 @@ export type PromptCreatePayload = {
   examples: Array<{ url: string; type: MediaType; originalName?: string }>;
   publishToTelegram?: boolean;
   publishToPinterest?: boolean;
+  telegramPostTemplate?: string | null;
+  pinterestTitleTemplate?: string | null;
+  pinterestDescriptionTemplate?: string | null;
 };
 
 export type PromptUpdatePayload = {
@@ -143,6 +149,9 @@ export type PromptUpdatePayload = {
   categoryId?: number;
   coverMediaUrl?: string | null;
   coverMediaType?: MediaType | null;
+  telegramPostTemplate?: string | null;
+  pinterestTitleTemplate?: string | null;
+  pinterestDescriptionTemplate?: string | null;
 };
 
 export type MeResponse = {

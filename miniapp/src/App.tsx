@@ -823,7 +823,14 @@ function MiniAppApp() {
       content: data.content,
       categoryId: data.categoryId,
       ...(data.coverMediaUrl !== undefined ? { coverMediaUrl: data.coverMediaUrl } : {}),
-      ...(data.coverMediaType !== undefined ? { coverMediaType: data.coverMediaType } : {})
+      ...(data.coverMediaType !== undefined ? { coverMediaType: data.coverMediaType } : {}),
+      ...(data.telegramPostTemplate !== undefined
+        ? {
+            telegramPostTemplate: data.telegramPostTemplate,
+            pinterestTitleTemplate: data.pinterestTitleTemplate,
+            pinterestDescriptionTemplate: data.pinterestDescriptionTemplate
+          }
+        : {})
     });
     await Promise.all([
       ...data.removedExampleIds.map((exampleId) => api.removeExample(exampleId)),
@@ -994,6 +1001,7 @@ function MiniAppApp() {
         onPublishPinterest={isAdmin ? handlePublishPinterest : undefined}
         onShareLinkCopied={() => setToastMessage("Ссылка скопирована")}
         onTagClick={handleSelectTag}
+        showPublicationTemplates={isAdmin}
       />
       {toastMessage ? (
         <div className="toast fixed bottom-24 left-1/2 z-[60] -translate-x-1/2">{toastMessage}</div>

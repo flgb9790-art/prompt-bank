@@ -13,6 +13,9 @@ type PromptCreateInput = {
   coverMediaUrl?: string;
   coverMediaType?: MediaType;
   examples?: Array<{ url: string; type: MediaType; originalName?: string }>;
+  telegramPostTemplate?: string | null;
+  pinterestTitleTemplate?: string | null;
+  pinterestDescriptionTemplate?: string | null;
 };
 
 type PromptUpdateInput = Partial<Omit<PromptCreateInput, "userId" | "examples">> & {
@@ -292,6 +295,11 @@ export class PromptService {
         note: input.note,
         coverMediaType: input.coverMediaType,
         coverMediaUrl: input.coverMediaUrl,
+        ...(input.telegramPostTemplate !== undefined ? { telegramPostTemplate: input.telegramPostTemplate } : {}),
+        ...(input.pinterestTitleTemplate !== undefined ? { pinterestTitleTemplate: input.pinterestTitleTemplate } : {}),
+        ...(input.pinterestDescriptionTemplate !== undefined
+          ? { pinterestDescriptionTemplate: input.pinterestDescriptionTemplate }
+          : {}),
         examples: input.examples?.length
           ? {
               create: input.examples.map((example) => ({
@@ -327,6 +335,11 @@ export class PromptService {
     if (input.note !== undefined) data.note = input.note;
     if (input.coverMediaUrl !== undefined) data.coverMediaUrl = input.coverMediaUrl;
     if (input.coverMediaType !== undefined) data.coverMediaType = input.coverMediaType;
+    if (input.telegramPostTemplate !== undefined) data.telegramPostTemplate = input.telegramPostTemplate;
+    if (input.pinterestTitleTemplate !== undefined) data.pinterestTitleTemplate = input.pinterestTitleTemplate;
+    if (input.pinterestDescriptionTemplate !== undefined) {
+      data.pinterestDescriptionTemplate = input.pinterestDescriptionTemplate;
+    }
 
     await prisma.prompt.update({
       where: { id },

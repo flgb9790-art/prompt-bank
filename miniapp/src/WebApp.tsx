@@ -684,7 +684,14 @@ export function WebApp() {
         content: data.content,
         categoryId: data.categoryId,
         ...(data.coverMediaUrl !== undefined ? { coverMediaUrl: data.coverMediaUrl } : {}),
-        ...(data.coverMediaType !== undefined ? { coverMediaType: data.coverMediaType } : {})
+        ...(data.coverMediaType !== undefined ? { coverMediaType: data.coverMediaType } : {}),
+        ...(data.telegramPostTemplate !== undefined
+          ? {
+              telegramPostTemplate: data.telegramPostTemplate,
+              pinterestTitleTemplate: data.pinterestTitleTemplate,
+              pinterestDescriptionTemplate: data.pinterestDescriptionTemplate
+            }
+          : {})
       });
       await Promise.all([
         ...data.removedExampleIds.map((exampleId) => api.removeExample(exampleId)),
@@ -1109,6 +1116,7 @@ export function WebApp() {
         onPublishPinterest={isAdmin ? handlePublishPinterest : undefined}
         onShareLinkCopied={() => setToast("Ссылка скопирована")}
         onTagClick={handleSelectTag}
+        showPublicationTemplates={isAdmin}
       />
       {isAddModalOpen && isAuthenticated && isAdmin ? (
         <div className="modal-overlay fixed inset-0 z-[75] grid place-items-center p-4">

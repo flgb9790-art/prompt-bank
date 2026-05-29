@@ -3,7 +3,7 @@ import { Copy, Sparkles, Star } from "lucide-react";
 import { api, resolveCardMediaUrl, resolveMediaUrl } from "../api";
 import type { Prompt } from "../types";
 import { getCategoryBadgeClass } from "../utils/categoryStyle";
-import { getPromptExcerpt, hasFullPromptDetails } from "../utils/promptContent";
+import { hasFullPromptDetails } from "../utils/promptContent";
 import { resolvePostMedia } from "../utils/resolvePostMedia";
 import { TagPill } from "./TagPill";
 
@@ -169,10 +169,6 @@ export const MobilePromptPostCard = memo(function MobilePromptPostCard({
           <span className={`mobile-post-category-badge ${badgeClass}`}>{prompt.category.name}</span>
           {metaLabel ? <span className="mobile-post-meta-label">{metaLabel}</span> : null}
         </div>
-
-        <button type="button" className="mobile-post-title" onClick={() => onOpen(prompt)}>
-          {getPromptExcerpt(prompt)}
-        </button>
 
         {tags.length ? (
           <div

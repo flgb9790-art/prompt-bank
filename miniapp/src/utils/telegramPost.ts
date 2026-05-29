@@ -1,3 +1,8 @@
+import {
+  buildPublicationTemplateVars,
+  resolveTelegramPostTemplate
+} from "./publicationTemplate";
+
 const HASHTAG_MAX = 8;
 
 export function normalizeHashtag(name: string): string | null {
@@ -22,24 +27,22 @@ export function buildPromptPublicUrl(promptId: number | string, siteOrigin = win
   return `${base}/?prompt=${promptId}`;
 }
 
-import { derivePromptTitle } from "./promptTitle";
-
 export function buildTelegramPostPreview(input: {
   content: string;
   categoryName: string;
   tagNames: string[];
   promptId?: number | string;
   siteOrigin?: string;
+  telegramPostTemplate?: string | null;
 }): string {
-  const hashtags = buildHashtagsFromNames(input.tagNames);
-  const headline = derivePromptTitle(input.content);
-
-  return `✨ Новый промпт: ${headline}
-
-📂 ${input.categoryName || "Категория"}
-🏷 ${hashtags}
-
-🔗 Открыть промпт`;
+  const vars = buildPublicationTemplateVars({
+    content: input.content,
+    categoryName: input.categoryName,
+    tagNames: input.tagNames,
+    promptId: input.promptId,
+    siteOrigin: input.siteOrigin
+  });
+  return resolveTelegramPostTemplate(input.telegramPostTemplate, vars);
 }
 
 export function telegramPublicationStatusLabel(status?: string | null): string {

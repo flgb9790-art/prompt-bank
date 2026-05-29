@@ -11,6 +11,13 @@ type MediaType = "image" | "video";
 
 const router = Router();
 
+function optionalTemplateField(value: unknown): string | null | undefined {
+  if (value === undefined) return undefined;
+  if (value === null) return null;
+  const trimmed = String(value).trim();
+  return trimmed || null;
+}
+
 async function optionalUserId(req: { header: (name: string) => string | undefined }) {
   const telegramId = readTelegramId(req as any);
   if (!telegramId) return undefined;
@@ -60,12 +67,14 @@ router.post("/", async (req, res, next) => {
 
     const created = await PromptService.create({
       userId,
-      title: String(req.body.title),
       content: String(req.body.content),
       categoryId: Number(req.body.categoryId),
       note: req.body.note ? String(req.body.note) : undefined,
       coverMediaUrl: req.body.coverMediaUrl ? String(req.body.coverMediaUrl) : undefined,
       coverMediaType: req.body.coverMediaType as MediaType | undefined,
+      telegramPostTemplate: optionalTemplateField(req.body.telegramPostTemplate),
+      pinterestTitleTemplate: optionalTemplateField(req.body.pinterestTitleTemplate),
+      pinterestDescriptionTemplate: optionalTemplateField(req.body.pinterestDescriptionTemplate),
       examples: Array.isArray(req.body.examples)
         ? req.body.examples.map((example: { url: string; type: MediaType; originalName?: string }) => ({
             url: example.url,

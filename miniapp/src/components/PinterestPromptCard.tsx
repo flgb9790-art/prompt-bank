@@ -3,10 +3,8 @@ import { Copy, Sparkles, Star } from "lucide-react";
 import { api, resolveMediaUrl } from "../api";
 import type { Prompt } from "../types";
 import { getCategoryBadgeClass } from "../utils/categoryStyle";
-import { getPromptExcerpt, hasFullPromptDetails } from "../utils/promptContent";
+import { hasFullPromptDetails } from "../utils/promptContent";
 import { resolvePostMedia } from "../utils/resolvePostMedia";
-
-const MAX_TAGS = 5;
 
 type Props = {
   prompt: Prompt;
@@ -15,6 +13,7 @@ type Props = {
   onOpen: (prompt: Prompt) => void;
   onCopy: (prompt: Prompt) => void;
   onToggleFavorite: (id: number) => void;
+  /** @deprecated Теги на Pinterest-карточке скрыты */
   onTagClick?: (tag: string) => void;
 };
 
@@ -24,13 +23,10 @@ export const PinterestPromptCard = memo(function PinterestPromptCard({
   className = "",
   onOpen,
   onCopy,
-  onToggleFavorite,
-  onTagClick
+  onToggleFavorite
 }: Props) {
   const media = resolvePostMedia(prompt);
   const badgeClass = getCategoryBadgeClass(prompt.category.slug, prompt.category.name);
-  const tags = prompt.keywords.slice(0, MAX_TAGS);
-  const extraTags = Math.max(0, prompt.keywords.length - MAX_TAGS);
   const [tooTall, setTooTall] = useState(false);
   const [favoriteBump, setFavoriteBump] = useState(false);
 
@@ -61,14 +57,9 @@ export const PinterestPromptCard = memo(function PinterestPromptCard({
     onToggleFavorite(prompt.id);
   }
 
-  function handleTagClick(tag: string, event: MouseEvent) {
-    event.stopPropagation();
-    onTagClick?.(tag);
-  }
-
   return (
     <article
-      className={`pinterest-card fade-up ${className}`.trim()}
+      className={`pinterest-card pinterest-card--visual ${className}`.trim()}
       onClick={handleOpen}
       onPointerEnter={prefetchDetails}
       onFocus={prefetchDetails}
@@ -110,6 +101,8 @@ export const PinterestPromptCard = memo(function PinterestPromptCard({
           />
         )}
 
+        <span className={`pinterest-category-overlay ${badgeClass}`}>{prompt.category.name}</span>
+
         <div className="pinterest-actions" onClick={(event) => event.stopPropagation()}>
           <button type="button" className="pinterest-action-btn" onClick={handleCopy} aria-label="Скопировать промпт">
             <Copy size={19} strokeWidth={2} />
@@ -123,26 +116,6 @@ export const PinterestPromptCard = memo(function PinterestPromptCard({
             <Star size={19} strokeWidth={2} fill={prompt.isFavorite ? "currentColor" : "none"} />
           </button>
         </div>
-      </div>
-
-      <div className="pinterest-content">
-        <p className="pinterest-excerpt">{getPromptExcerpt(prompt)}</p>
-        <span className={`pinterest-category ${badgeClass}`}>{prompt.category.name}</span>
-        {tags.length ? (
-          <div className="pinterest-tags">
-            {tags.map((item) => (
-              <button
-                key={item.keyword.id}
-                type="button"
-                className="pinterest-tag"
-                onClick={(event) => handleTagClick(item.keyword.name, event)}
-              >
-                {item.keyword.name}
-              </button>
-            ))}
-            {extraTags > 0 ? <span className="pinterest-tag-more">+{extraTags}</span> : null}
-          </div>
-        ) : null}
       </div>
     </article>
   );

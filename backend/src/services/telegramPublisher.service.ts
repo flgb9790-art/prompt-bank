@@ -2,6 +2,10 @@ import { prisma } from "../db";
 import { config } from "../config";
 import { PromptService } from "./prompt.service";
 import { derivePromptTitle } from "../utils/promptTitle";
+import {
+  type PublicationTemplateVars,
+  resolveTelegramPostTemplate
+} from "../utils/publicationTemplate";
 
 const TELEGRAM_CAPTION_MAX = 1024;
 const TELEGRAM_MEDIA_GROUP_MAX = 10;
@@ -11,6 +15,7 @@ type PromptForPost = {
   id: number;
   title: string;
   content: string;
+  telegramPostTemplate?: string | null;
   coverMediaUrl: string | null;
   coverMediaType: string | null;
   category: { name: string };
@@ -71,28 +76,37 @@ function truncateCaption(text: string): string {
   return `${text.slice(0, TELEGRAM_CAPTION_MAX - 1)}…`;
 }
 
+function buildTelegramTemplateVars(prompt: PromptForPost): PublicationTemplateVars {
+  return {
+    headline: derivePromptTitle(prompt.content),
+    category: prompt.category.name,
+    hashtags: buildHashtags(prompt.keywords),
+    link: buildPromptUrl(prompt.id),
+    channel: config.telegramChannelUrl.trim()
+  };
+}
+
 export function buildTelegramPost(prompt: PromptForPost): string {
-  const hashtags = buildHashtags(prompt.keywords);
-  const headline = derivePromptTitle(prompt.content);
-  return truncateCaption(`✨ Новый промпт: ${headline}
-
-📂 ${prompt.category.name}
-🏷 ${hashtags}
-
-🔗 Открыть промпт:
-${buildPromptUrl(prompt.id)}`);
+  const vars = buildTelegramTemplateVars(prompt);
+  return truncateCaption(resolveTelegramPostTemplate(prompt.telegramPostTemplate, vars));
 }
 
 export function buildTelegramPostHtml(prompt: PromptForPost): string {
-  const hashtags = buildHashtags(prompt.keywords);
-  const promptUrl = buildPromptUrl(prompt.id);
-  const headline = derivePromptTitle(prompt.content);
-  return truncateCaption(`✨ Новый промпт: ${escapeHtml(headline)}
-
-📂 ${escapeHtml(prompt.category.name)}
-🏷 ${escapeHtml(hashtags)}
-
-🔗 <a href="${escapeHtmlAttr(promptUrl)}">Открыть промпт</a>`);
+  const vars = buildTelegramTemplateVars(prompt);
+  const promptUrl = vars.link;
+  const plain = resolveTelegramPostTemplate(prompt.telegramPostTemplate, vars);
+  const linked = plain.includes(promptUrl)
+    ? plain.replace(promptUrl, `<a href="${escapeHtmlAttr(promptUrl)}">Открыть промпт</a>`)
+    : plain;
+  return truncateCaption(
+    linked
+      .split("\n")
+      .map((line) => {
+        if (line.includes("<a href=")) return line;
+        return escapeHtml(line);
+      })
+      .join("\n")
+  );
 }
 
 export function resolvePublicMediaUrl(url: string | null | undefined): string | null {

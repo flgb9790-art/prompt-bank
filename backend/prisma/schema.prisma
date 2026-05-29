@@ -49,6 +49,9 @@ model Prompt {
   usageCount          Int                   @default(0)
   telegramPublished   Boolean               @default(false)
   pinterestPublished  Boolean               @default(false)
+  telegramPostTemplate String?              @db.Text
+  pinterestTitleTemplate String?
+  pinterestDescriptionTemplate String?      @db.Text
   user                User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
   category            Category              @relation(fields: [categoryId], references: [id], onDelete: Restrict)
   keywords            PromptKeyword[]

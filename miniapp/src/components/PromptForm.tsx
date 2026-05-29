@@ -1,10 +1,15 @@
 import { useMemo, useState, type FormEvent } from "react";
-import { ChevronDown, ChevronUp } from "lucide-react";
 import type { Category, PromptCreatePayload, TelegramUser } from "../types";
-import { buildTelegramPostPreview } from "../utils/telegramPost";
-import { buildPinterestPinPreview } from "../utils/pinterestPost";
-import { derivePromptTitle } from "../utils/promptTitle";
-import { MediaUploader } from "./MediaUploader";
+import {
+  PublicationTemplatesEditor,
+  emptyPublicationTemplates,
+  templatesPayloadForApi
+} from "./PublicationTemplatesEditor";
+import {
+  PromptMediaGalleryEditor,
+  splitPromptMediaItems,
+  type PromptMediaItem
+} from "./PromptMediaGalleryEditor";
 
 type Props = {
   categories: Category[];
@@ -25,45 +30,29 @@ export function PromptForm({ categories, user, showTelegramPublish = false, onSu
   const [publishToTelegram, setPublishToTelegram] = useState(false);
   const [publishToPinterest, setPublishToPinterest] = useState(false);
   const [publicationTemplatesOpen, setPublicationTemplatesOpen] = useState(false);
-  const [coverMedia, setCoverMedia] = useState<{ url: string; type: "image" | "video" } | undefined>();
-  const [examples, setExamples] = useState<Array<{ url: string; type: "image" | "video"; originalName?: string }>>([]);
+  const [publicationTemplates, setPublicationTemplates] = useState(emptyPublicationTemplates);
+  const [mediaItems, setMediaItems] = useState<PromptMediaItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const keywordsPreview = useMemo(() => previewKeywords(content), [content]);
   const selectedCategory = categories.find((category) => category.id === categoryId);
-  const previewHeadline = useMemo(() => derivePromptTitle(content), [content]);
-  const telegramPreview = useMemo(
-    () =>
-      buildTelegramPostPreview({
-        content: content || "Текст промпта",
-        categoryName: selectedCategory?.name ?? "Категория",
-        tagNames: keywordsPreview
-      }),
-    [content, selectedCategory?.name, keywordsPreview]
-  );
-  const pinterestPreview = useMemo(
-    () =>
-      buildPinterestPinPreview({
-        content: content || "Текст промпта",
-        categoryName: selectedCategory?.name ?? "Категория"
-      }),
-    [content, selectedCategory?.name]
-  );
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
     setLoading(true);
     setError("");
+    const { coverMediaUrl, coverMediaType, examples } = splitPromptMediaItems(mediaItems);
     try {
       await onSubmit({
         userId: user.id || 1,
         content,
         categoryId,
-        coverMediaUrl: coverMedia?.url,
-        coverMediaType: coverMedia?.type,
+        coverMediaUrl,
+        coverMediaType,
         examples,
         publishToTelegram: showTelegramPublish ? publishToTelegram : undefined,
-        publishToPinterest: showTelegramPublish ? publishToPinterest : undefined
+        publishToPinterest: showTelegramPublish ? publishToPinterest : undefined,
+        ...templatesPayloadForApi(publicationTemplates)
       });
     } catch {
       setError("Не удалось сохранить промпт.");
@@ -98,33 +87,7 @@ export function PromptForm({ categories, user, showTelegramPublish = false, onSu
         </div>
       ) : null}
 
-      <div className="prompt-form-media-block">
-        <p className="mb-2 text-sm font-medium text-[var(--text)]">Заставка / превью</p>
-        <div className="edit-media-toolbar">
-          <MediaUploader
-            compact
-            label="Выбрать файл"
-            onUploaded={(items) => {
-              if (items[0]) setCoverMedia(items[0]);
-            }}
-          />
-          {coverMedia ? (
-            <span className="text-xs text-[var(--muted)]">Файл выбран</span>
-          ) : (
-            <span className="text-xs text-[var(--muted)]">Не выбран</span>
-          )}
-        </div>
-      </div>
-
-      <div className="prompt-form-media-block">
-        <p className="mb-2 text-sm font-medium text-[var(--text)]">Примеры результата</p>
-        <div className="edit-media-toolbar">
-          <MediaUploader compact label="Добавить файлы" multiple onUploaded={(items) => setExamples((prev) => [...prev, ...items])} />
-          {examples.length ? (
-            <span className="text-xs text-[var(--muted)]">Добавлено: {examples.length}</span>
-          ) : null}
-        </div>
-      </div>
+      <PromptMediaGalleryEditor items={mediaItems} onChange={setMediaItems} />
 
       {showTelegramPublish ? (
         <div className="surface-card-soft space-y-3 p-4">
@@ -158,35 +121,15 @@ export function PromptForm({ categories, user, showTelegramPublish = false, onSu
             </span>
           </label>
 
-          <button
-            type="button"
-            className="publication-templates-toggle"
-            onClick={() => setPublicationTemplatesOpen((open) => !open)}
-            aria-expanded={publicationTemplatesOpen}
-          >
-            <span>Шаблоны публикации</span>
-            {publicationTemplatesOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-          </button>
-
-          {publicationTemplatesOpen ? (
-            <div className="publication-templates-panel space-y-3">
-              <p className="text-xs text-[var(--muted)]">
-                Заголовок в шаблонах формируется автоматически из первой строки промпта: «{previewHeadline}»
-              </p>
-              <div>
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">Превью Telegram-поста</p>
-                <pre className="whitespace-pre-wrap rounded-xl border border-[var(--border-soft)] bg-white p-3 text-xs leading-relaxed text-[var(--text-soft)]">
-                  {telegramPreview}
-                </pre>
-              </div>
-              <div>
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">Превью Pinterest-публикации</p>
-                <pre className="whitespace-pre-wrap rounded-xl border border-[var(--border-soft)] bg-white p-3 text-xs leading-relaxed text-[var(--text-soft)]">
-                  {pinterestPreview}
-                </pre>
-              </div>
-            </div>
-          ) : null}
+          <PublicationTemplatesEditor
+            content={content}
+            categoryName={selectedCategory?.name ?? "Категория"}
+            tagNames={keywordsPreview}
+            value={publicationTemplates}
+            onChange={setPublicationTemplates}
+            open={publicationTemplatesOpen}
+            onToggleOpen={() => setPublicationTemplatesOpen((open) => !open)}
+          />
         </div>
       ) : null}
 
