@@ -344,10 +344,22 @@ export async function getLatestTelegramPublication(promptId: number) {
   });
 }
 
+async function clearStalePendingTelegramPublications(promptId: number) {
+  await prisma.telegramPublication.updateMany({
+    where: { promptId, status: "pending" },
+    data: {
+      status: "failed",
+      error: "Публикация прервана. Нажмите «Повторить публикацию»."
+    }
+  });
+}
+
 export async function sendPromptToTelegram(promptId: number) {
   if (!config.telegramChannelId) {
     throw new Error("TELEGRAM_CHANNEL_ID не указан");
   }
+
+  await clearStalePendingTelegramPublications(promptId);
 
   const prompt = await prisma.prompt.findUnique({
     where: { id: promptId },

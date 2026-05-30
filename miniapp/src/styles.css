@@ -1614,6 +1614,16 @@ button.brand-logo {
   max-width: 460px;
 }
 
+.prompt-publish-panels {
+  position: relative;
+  z-index: 2;
+}
+
+.btn-secondary:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+
 html.telegram-mini-app .modal-overlay,
 html.telegram-mini-app .modal-panel {
   touch-action: manipulation;

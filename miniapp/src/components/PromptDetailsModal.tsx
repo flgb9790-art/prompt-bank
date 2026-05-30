@@ -259,13 +259,15 @@ export function PromptDetailsModal({
   return (
     <>
       <div
-        className={`modal-overlay fixed inset-0 z-50 flex justify-center p-4 ${wideLayout ? "items-center" : "items-end"}${lightboxOpen ? " modal-overlay--behind-lightbox" : ""}`}
+        className={`modal-overlay fixed inset-0 z-[100] flex justify-center p-4 ${wideLayout ? "items-center" : "items-end"}${lightboxOpen ? " modal-overlay--behind-lightbox" : ""}`}
         aria-hidden={lightboxOpen}
       >
         <div
           className={`modal-panel fade-up max-h-[92vh] overflow-y-auto p-5 ${
             wideLayout ? "modal-panel--prompt-desktop rounded-[24px]" : "modal-panel--prompt-mobile"
           }`}
+          onClick={(event) => event.stopPropagation()}
+          onPointerDown={(event) => event.stopPropagation()}
         >
           <div className="mb-4 flex items-center justify-between gap-3">
             <h3 className="text-lg font-semibold text-[var(--text)]">Детали промпта</h3>
@@ -461,35 +463,41 @@ export function PromptDetailsModal({
                   </button>
                 </div>
                 {canManage ? (
-                  <div className="mt-4 space-y-3">
+                  <div className="prompt-publish-panels mt-4 space-y-3">
                     <div className="surface-card-soft p-3">
                       <p className="text-sm font-medium text-[var(--text)]">
-                        {telegramPublicationStatusLabel(prompt.telegramPublication?.status)}
+                        {telegramPublicationStatusLabel(
+                          telegramPublishing ? "pending" : prompt.telegramPublication?.status
+                        )}
                       </p>
                       {prompt.telegramPublication?.status === "failed" && prompt.telegramPublication.error ? (
                         <p className="mt-2 text-xs text-[var(--red)]" title={prompt.telegramPublication.error}>
                           {prompt.telegramPublication.error}
                         </p>
                       ) : null}
-                      {prompt.telegramPublication?.status === "published" ? (
+                      {prompt.telegramPublication?.status === "published" && !telegramPublishing ? (
                         <p className="mt-2 text-xs text-[var(--muted)]">Опубликовано в Telegram ✅</p>
                       ) : onPublishTelegram ? (
                         <button
                           type="button"
-                          disabled={telegramPublishing || prompt.telegramPublication?.status === "pending"}
-                          onClick={async () => {
-                            setTelegramPublishing(true);
-                            try {
-                              await onPublishTelegram(prompt.id);
-                            } finally {
-                              setTelegramPublishing(false);
-                            }
+                          disabled={telegramPublishing}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            void (async () => {
+                              setTelegramPublishing(true);
+                              try {
+                                await onPublishTelegram(prompt.id);
+                              } finally {
+                                setTelegramPublishing(false);
+                              }
+                            })();
                           }}
                           className="btn-secondary mt-3 w-full justify-center"
                         >
                           {telegramPublishing
                             ? "Публикуем..."
-                            : prompt.telegramPublication?.status === "failed"
+                            : prompt.telegramPublication?.status === "failed" ||
+                                prompt.telegramPublication?.status === "pending"
                               ? "Повторить публикацию"
                               : "Опубликовать в Telegram"}
                         </button>
@@ -497,7 +505,9 @@ export function PromptDetailsModal({
                     </div>
                     <div className="surface-card-soft p-3">
                       <p className="text-sm font-medium text-[var(--text)]">
-                        {pinterestPublicationStatusLabel(prompt.pinterestPublication?.status)}
+                        {pinterestPublicationStatusLabel(
+                          pinterestPublishing ? "pending" : prompt.pinterestPublication?.status
+                        )}
                       </p>
                       {prompt.pinterestPublication?.status === "failed" && prompt.pinterestPublication.error ? (
                         <p className="mt-2 text-xs text-[var(--red)]" title={prompt.pinterestPublication.error}>
@@ -516,14 +526,17 @@ export function PromptDetailsModal({
                       ) : onPublishPinterest ? (
                         <button
                           type="button"
-                          disabled={pinterestPublishing || prompt.pinterestPublication?.status === "pending"}
-                          onClick={async () => {
-                            setPinterestPublishing(true);
-                            try {
-                              await onPublishPinterest(prompt.id);
-                            } finally {
-                              setPinterestPublishing(false);
-                            }
+                          disabled={pinterestPublishing}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            void (async () => {
+                              setPinterestPublishing(true);
+                              try {
+                                await onPublishPinterest(prompt.id);
+                              } finally {
+                                setPinterestPublishing(false);
+                              }
+                            })();
                           }}
                           className="btn-secondary mt-3 w-full justify-center"
                         >
