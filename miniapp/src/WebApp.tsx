@@ -68,7 +68,8 @@ const storageKey = "prompt-bank-web-auth";
 const CATEGORIES_CACHE_KEY = "prompt-bank-categories";
 const TAGS_CACHE_KEY = "prompt-bank-tags";
 const PROMPTS_PER_PAGE = 12;
-const BOOTSTRAP_PROMPTS_LIMIT = 12;
+/** Минимум для bootstrap: категории и total; список промптов подгружается отдельно. */
+const BOOTSTRAP_PROMPTS_LIMIT = 1;
 const PROMPTS_FETCH_LIMIT = 40;
 const FAVORITES_FETCH_LIMIT = 40;
 const SEARCH_DEBOUNCE_MS = 350;
@@ -134,6 +135,7 @@ export function WebApp() {
   }
   const isAuthenticated = Boolean(user);
   const bootstrappedRef = useRef(false);
+  const [appBootstrapped, setAppBootstrapped] = useState(false);
   const filtersEffectReadyRef = useRef(false);
   const deepLinkHandledRef = useRef(false);
   const openPromptRequestRef = useRef(0);
@@ -391,7 +393,7 @@ export function WebApp() {
   }, []);
 
   useEffect(() => {
-    if (!bootstrappedRef.current) return;
+    if (!appBootstrapped) return;
     if (!filtersEffectReadyRef.current) {
       filtersEffectReadyRef.current = true;
       return;
@@ -400,27 +402,15 @@ export function WebApp() {
       void loadPrompts();
     }, SEARCH_DEBOUNCE_MS);
     return () => clearTimeout(timer);
-  }, [search, activeCategory, activeTag, sort]);
+  }, [appBootstrapped, search, activeCategory, activeTag, sort]);
 
   useEffect(() => {
-    if (!bootstrappedRef.current) return;
+    if (!appBootstrapped) return;
     setPage(1);
-  }, [activeCategory, activeTag, search, sort, path, viewMode, isDesktopLayout]);
+  }, [appBootstrapped, activeCategory, activeTag, search, sort, path, viewMode, isDesktopLayout]);
 
   useEffect(() => {
-    if (!bootstrappedRef.current) return;
-    if (useWebPinterestPagination) return;
-    if (path === "/favorites" && isAuthenticated) {
-      void refreshWebFavorites(true);
-      return;
-    }
-    if (path === "/" || path === "/prompts" || path === "/recent") {
-      void loadPrompts();
-    }
-  }, [path, viewMode]);
-
-  useEffect(() => {
-    if (!bootstrappedRef.current || !useWebPinterestPagination) return;
+    if (!appBootstrapped) return;
     if (path === "/favorites") {
       if (isAuthenticated) void refreshWebFavorites(true);
       return;
@@ -428,7 +418,7 @@ export function WebApp() {
     if (path === "/" || path === "/prompts" || path === "/recent") {
       void loadPrompts();
     }
-  }, [page, webPinterestPageSize, path, viewMode, isAuthenticated]);
+  }, [appBootstrapped, page, webPinterestPageSize, path, viewMode, isAuthenticated]);
 
   useEffect(() => {
     if (!bootstrappedRef.current || path !== "/recent") return;

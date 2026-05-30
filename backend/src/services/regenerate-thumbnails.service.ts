@@ -3,7 +3,7 @@ import path from "path";
 import { uploadsDir } from "../config";
 import { generateImageThumbnail, thumbFilenameFor } from "./thumbnail.service";
 
-const THUMB_FORMAT_MARKER = ".thumbs-format-v5";
+const THUMB_FORMAT_MARKER = ".thumbs-format-v6";
 
 export function thumbFormatMarkerPath() {
   return path.join(uploadsDir, "images", "thumbs", THUMB_FORMAT_MARKER);
