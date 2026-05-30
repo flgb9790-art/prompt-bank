@@ -68,12 +68,6 @@ const galleryMediaStyle = {
   objectPosition: "center" as const
 };
 
-function isLongPromptContent(content: string): boolean {
-  const normalized = content.trim();
-  if (normalized.length > 420) return true;
-  return normalized.split("\n").length > 8;
-}
-
 function MediaPreview({
   url,
   type,
@@ -189,7 +183,6 @@ export function PromptDetailsModal({
   const [shareError, setShareError] = useState("");
   const [telegramPublishing, setTelegramPublishing] = useState(false);
   const [pinterestPublishing, setPinterestPublishing] = useState(false);
-  const [contentExpanded, setContentExpanded] = useState(false);
 
   const galleryItems = useMemo(() => (prompt ? buildGalleryItems(prompt) : []), [prompt]);
 
@@ -236,7 +229,6 @@ export function PromptDetailsModal({
     setGalleryIndex(0);
     setLightboxOpen(false);
     setShareError("");
-    setContentExpanded(false);
   }, [prompt]);
 
   useEffect(() => {
@@ -257,7 +249,6 @@ export function PromptDetailsModal({
   const editTagNames = prompt.keywords.map((item) => item.keyword.name);
   const promptId = prompt.id;
   const promptBody = prompt.content ?? "";
-  const showCollapsibleContent = webModal && !loadingDetails && isLongPromptContent(promptBody);
 
   async function handleShareLink() {
     setShareError("");
