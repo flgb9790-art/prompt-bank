@@ -1719,24 +1719,24 @@ html.web-mode .modal-panel--add-prompt-fullscreen {
 }
 
 html.web-mode .prompt-form-modal-header {
-  padding: 1.25rem 3rem;
+  padding: 1.25rem 1.5rem;
   border-bottom: 1px solid var(--border);
 }
 
 html.web-mode .prompt-form-modal-body {
-  padding: 0 3rem 2rem;
+  padding: 0 1.5rem 2rem;
 }
 
 html.web-mode .prompt-form--web-fullscreen .prompt-form-layout {
-  max-width: 1120px;
+  max-width: min(1280px, 100%);
   margin: 0 auto;
   padding-top: 2rem;
 }
 
 html.web-mode .prompt-form--web-fullscreen .prompt-form-layout--with-publish {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(300px, 360px);
-  gap: 1.25rem 2.5rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.25rem 1.5rem;
   align-items: start;
 }
 
@@ -1751,6 +1751,12 @@ html.web-mode .prompt-form-publish {
   min-width: 0;
   position: sticky;
   top: 1.25rem;
+}
+
+html.web-mode .prompt-form-publish .prompt-form-section,
+html.web-mode .prompt-form-publish .surface-card-soft {
+  width: 100%;
+  box-sizing: border-box;
 }
 
 html.web-mode .prompt-form-section {
@@ -1784,20 +1790,19 @@ html.web-mode .prompt-form-footer {
 }
 
 html.web-mode .prompt-form--web-fullscreen .prompt-form-actions {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 10px;
   max-width: none;
+  align-items: stretch;
 }
 
-html.web-mode .prompt-form--web-fullscreen .prompt-form-actions > .btn-primary {
-  flex: 1 1 200px;
-  max-width: 280px;
-}
-
+html.web-mode .prompt-form--web-fullscreen .prompt-form-actions > .btn-primary,
 html.web-mode .prompt-form--web-fullscreen .prompt-form-actions > .btn-secondary {
-  flex: 0 1 auto;
-  min-width: 132px;
+  width: 100%;
+  min-height: 44px;
+  height: 44px;
+  box-sizing: border-box;
 }
 
 @media (max-width: 1023px) {
@@ -1817,9 +1822,6 @@ html.web-mode .prompt-form--web-fullscreen .prompt-form-actions > .btn-secondary
     position: static;
   }
 
-  html.web-mode .prompt-form--web-fullscreen .prompt-form-actions > .btn-primary {
-    max-width: none;
-  }
 }
 
 html.web-mode .modal-overlay--prompt-web-mobile {
