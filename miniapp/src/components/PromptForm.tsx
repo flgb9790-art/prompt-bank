@@ -11,6 +11,8 @@ import {
   splitPromptMediaItems,
   type PromptMediaItem
 } from "./PromptMediaGalleryEditor";
+import { PromptContentTextarea } from "./PromptContentTextarea";
+import { normalizePromptContent } from "../utils/promptContentFormat";
 
 type Props = {
   categories: Category[];
@@ -77,7 +79,7 @@ export function PromptForm({ categories, user, showTelegramPublish = false, onSu
       </div>
       <div>
         <label className="mb-2 block text-sm text-[var(--muted)]">Текст промпта</label>
-        <textarea required rows={8} value={content} onChange={(e) => setContent(e.target.value)} className="form-textarea" />
+        <PromptContentTextarea required value={content} onChange={setContent} rows={10} />
       </div>
       {keywordsPreview.length ? (
         <div className="flex flex-wrap gap-2">

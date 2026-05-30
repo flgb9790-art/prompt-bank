@@ -26,6 +26,9 @@ import {
   templatesPayloadForApi
 } from "./PublicationTemplatesEditor";
 import { loadStoredPublicationTemplates } from "../utils/publicationTemplatesStorage";
+import { PromptContentText } from "./PromptContentText";
+import { PromptContentTextarea } from "./PromptContentTextarea";
+import { normalizePromptContent } from "../utils/promptContentFormat";
 
 export type PromptEditPayload = {
   content: string;
@@ -301,7 +304,7 @@ export function PromptDetailsModal({
                 </div>
               ) : null}
 
-              <textarea value={content} onChange={(event) => setContent(event.target.value)} rows={6} className="form-textarea" placeholder="Текст промпта" />
+              <PromptContentTextarea value={content} onChange={setContent} rows={10} />
               {saveError ? <p className="text-xs text-[var(--red)]">{saveError}</p> : null}
               <div className="action-button-row">
                 <button
@@ -439,9 +442,10 @@ export function PromptDetailsModal({
                     </div>
                   </div>
                 ) : (
-                  <p className="mt-4 whitespace-pre-wrap text-sm leading-relaxed text-[var(--text-soft)]">
-                    {prompt.content}
-                  </p>
+                  <PromptContentText
+                    content={prompt.content ?? ""}
+                    className="mt-4 text-sm leading-relaxed text-[var(--text-soft)]"
+                  />
                 )}
                 <div className="action-button-row mt-5">
                   <button

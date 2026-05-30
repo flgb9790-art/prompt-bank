@@ -1,5 +1,6 @@
 import { prisma } from "../db";
 import { extractKeywords } from "../keywordExtractor";
+import { normalizePromptContent } from "../utils/promptContent";
 import { derivePromptTitle } from "../utils/promptTitle";
 
 type MediaType = "image" | "video";
@@ -322,15 +323,16 @@ export class PromptService {
   }
 
   static async update(id: number, input: PromptUpdateInput) {
+    const normalizedContent = input.content !== undefined ? normalizePromptContent(input.content) : undefined;
     const nextTitle =
-      input.content !== undefined
-        ? derivePromptTitle(input.title?.trim() || input.content)
+      normalizedContent !== undefined
+        ? derivePromptTitle(input.title?.trim() || normalizedContent)
         : input.title?.trim();
-    const keywords = input.content ? extractKeywords(input.content, nextTitle) : null;
+    const keywords = normalizedContent ? extractKeywords(normalizedContent, nextTitle) : null;
 
     const data: Record<string, unknown> = {};
     if (nextTitle !== undefined) data.title = nextTitle;
-    if (input.content !== undefined) data.content = input.content;
+    if (normalizedContent !== undefined) data.content = normalizedContent;
     if (input.categoryId !== undefined) data.categoryId = input.categoryId;
     if (input.note !== undefined) data.note = input.note;
     if (input.coverMediaUrl !== undefined) data.coverMediaUrl = input.coverMediaUrl;
