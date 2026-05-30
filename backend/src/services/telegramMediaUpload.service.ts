@@ -12,6 +12,92 @@ export type TelegramMediaPayload = {
 };
 
 const MIN_MEDIA_BYTES = 200;
+/** Лимит Telegram Bot API для sendPhoto / фото в альбоме. */
+const TELEGRAM_PHOTO_MAX_BYTES = 10 * 1024 * 1024;
+/** Целевой размер с запасом, чтобы не упираться в лимит. */
+const TELEGRAM_PHOTO_TARGET_BYTES = Math.floor(TELEGRAM_PHOTO_MAX_BYTES * 0.92);
+
+let sharpLoader: Promise<typeof import("sharp") | null> | null = null;
+
+async function loadSharp() {
+  if (!sharpLoader) {
+    sharpLoader = import("sharp")
+      .then((module) => module.default)
+      .catch(() => null);
+  }
+  return sharpLoader;
+}
+
+async function compressImageForTelegram(
+  buffer: Buffer,
+  filename: string
+): Promise<{ buffer: Buffer; contentType: string; filename: string }> {
+  if (buffer.length <= TELEGRAM_PHOTO_TARGET_BYTES) {
+    return {
+      buffer,
+      contentType: guessContentType("image", filename),
+      filename
+    };
+  }
+
+  const sharp = await loadSharp();
+  if (!sharp) {
+    if (buffer.length <= TELEGRAM_PHOTO_MAX_BYTES) {
+      return { buffer, contentType: guessContentType("image", filename), filename };
+    }
+    throw new Error(
+      `Фото ${Math.round(buffer.length / 1024 / 1024)} МБ превышает лимит Telegram 10 МБ (модуль сжатия недоступен)`
+    );
+  }
+
+  const baseName = path.parse(filename).name || "photo";
+  let quality = 88;
+  let maxEdge = 4096;
+  let output = buffer;
+
+  for (let attempt = 0; attempt < 14; attempt += 1) {
+    output = await sharp(buffer)
+      .rotate()
+      .resize(maxEdge, maxEdge, { fit: "inside", withoutEnlargement: true })
+      .jpeg({ quality, mozjpeg: true })
+      .toBuffer();
+
+    if (output.length <= TELEGRAM_PHOTO_TARGET_BYTES) {
+      return { buffer: output, contentType: "image/jpeg", filename: `${baseName}.jpg` };
+    }
+
+    if (quality > 68) {
+      quality -= 8;
+    } else if (maxEdge > 1600) {
+      maxEdge = Math.floor(maxEdge * 0.82);
+      quality = 82;
+    } else {
+      quality = Math.max(52, quality - 6);
+    }
+  }
+
+  if (output.length > TELEGRAM_PHOTO_MAX_BYTES) {
+    throw new Error(
+      `Не удалось сжать фото до 10 МБ для Telegram (осталось ${(output.length / 1024 / 1024).toFixed(1)} МБ)`
+    );
+  }
+
+  return { buffer: output, contentType: "image/jpeg", filename: `${baseName}.jpg` };
+}
+
+async function finalizeImagePayload(
+  buffer: Buffer,
+  contentType: string,
+  filename: string
+): Promise<TelegramMediaPayload> {
+  const compressed = await compressImageForTelegram(buffer, filename);
+  return {
+    buffer: compressed.buffer,
+    contentType: compressed.contentType,
+    filename: compressed.filename,
+    kind: "image"
+  };
+}
 
 function filenameFromUrl(url: string, kind: "image" | "video"): string {
   try {
@@ -56,13 +142,15 @@ export async function loadTelegramMediaPayload(
     if (buffer.length < MIN_MEDIA_BYTES) {
       throw new Error(`Файл слишком маленький или пустой: ${publicUrl}`);
     }
-    const folder = kind === "image" ? "images" : "videos";
-    const contentType = guessContentType(kind, path.basename(localPath));
+    const basename = path.basename(localPath);
+    if (kind === "image") {
+      return finalizeImagePayload(buffer, guessContentType("image", basename), basename);
+    }
     return {
       buffer,
-      contentType,
-      filename: path.basename(localPath),
-      kind
+      contentType: guessContentType("video", basename),
+      filename: basename,
+      kind: "video"
     };
   }
 
@@ -87,15 +175,20 @@ export async function loadTelegramMediaPayload(
       throw new Error(`Медиа пустое или слишком маленькое (${buffer.length} B): ${publicUrl}`);
     }
 
+    const filename = filenameFromUrl(publicUrl, kind);
     const contentType =
       (response.headers.get("content-type") ?? "").split(";")[0].trim() ||
-      guessContentType(kind, filenameFromUrl(publicUrl, kind));
+      guessContentType(kind, filename);
+
+    if (kind === "image") {
+      return finalizeImagePayload(buffer, contentType, filename);
+    }
 
     return {
       buffer,
       contentType,
-      filename: filenameFromUrl(publicUrl, kind),
-      kind
+      filename,
+      kind: "video"
     };
   } catch (error) {
     if (error instanceof Error && error.name === "AbortError") {

@@ -105,6 +105,11 @@ export function humanizeTelegramApiError(message: string): string {
       "Проверьте WEBAPP_URL (mini app) и PUBLIC_BACKEND_URL (backend с /uploads) на Railway."
     );
   }
+  if (/too big for a photo/i.test(message) || /file of size .* is too big/i.test(message)) {
+    return (
+      "Фото больше 10 МБ — лимит Telegram. Повторите публикацию: изображение будет автоматически сжато перед отправкой."
+    );
+  }
   if (/WEBPAGE_MEDIA_EMPTY/i.test(message)) {
     const indexMatch = /message #(\d+)/i.exec(message);
     const indexHint = indexMatch ? ` (файл №${indexMatch[1]} в альбоме)` : "";
