@@ -1,7 +1,7 @@
 import type { Prompt } from "../types";
 import { resolvePostMedia } from "./resolvePostMedia";
 
-export function estimatePinterestCardHeight(prompt: Prompt): number {
+export function estimatePinterestCardHeight(prompt: Prompt, columnWidthPx?: number): number {
   const media = resolvePostMedia(prompt);
   const metaHeight = 0;
 
@@ -15,27 +15,49 @@ export function estimatePinterestCardHeight(prompt: Prompt): number {
 
   const aspectBucket = prompt.id % 4;
   const aspectRatios = [1.25, 1.55, 0.85, 1.1];
-  return Math.round(PINTEREST_COLUMN_WIDTH_WEB * aspectRatios[aspectBucket]) + metaHeight;
+  const columnWidth = columnWidthPx ?? PINTEREST_MIN_COLUMN_WIDTH_WEB;
+  return Math.round(columnWidth * aspectRatios[aspectBucket]) + metaHeight;
 }
 
 export const PINTEREST_COLUMN_GAP = 18;
 export const PINTEREST_COLUMN_GAP_MINI = 14;
-export const PINTEREST_COLUMN_WIDTH_WEB = 280;
-export const PINTEREST_COLUMN_WIDTH_MINI = 280;
+export const PINTEREST_MIN_COLUMN_WIDTH_WEB = 200;
+export const PINTEREST_MIN_COLUMN_WIDTH_MINI = 160;
+export const PINTEREST_MAX_COLUMNS_WEB = 8;
+export const PINTEREST_MAX_COLUMNS_MINI = 2;
+
+/** @deprecated use PINTEREST_MIN_COLUMN_WIDTH_WEB */
+export const PINTEREST_COLUMN_WIDTH_WEB = PINTEREST_MIN_COLUMN_WIDTH_WEB;
+export const PINTEREST_COLUMN_WIDTH_MINI = PINTEREST_MIN_COLUMN_WIDTH_MINI;
 
 export function resolveColumnCountForWidth(containerWidth: number, miniAppSingleColumn = false): number {
   if (containerWidth <= 0) return 1;
 
   const gap = miniAppSingleColumn ? PINTEREST_COLUMN_GAP_MINI : PINTEREST_COLUMN_GAP;
-  const colWidth = miniAppSingleColumn ? PINTEREST_COLUMN_WIDTH_MINI : PINTEREST_COLUMN_WIDTH_WEB;
-  const fit = Math.floor((containerWidth + gap) / (colWidth + gap));
+  const minWidth = miniAppSingleColumn ? PINTEREST_MIN_COLUMN_WIDTH_MINI : PINTEREST_MIN_COLUMN_WIDTH_WEB;
+  const fit = Math.floor((containerWidth + gap) / (minWidth + gap));
 
   if (miniAppSingleColumn && containerWidth < 480) {
     return 1;
   }
 
-  const maxColumns = miniAppSingleColumn ? 2 : 5;
+  const maxColumns = miniAppSingleColumn ? PINTEREST_MAX_COLUMNS_MINI : PINTEREST_MAX_COLUMNS_WEB;
   return Math.max(1, Math.min(fit, maxColumns));
+}
+
+/** Ширина колонки, чтобы N колонок + зазоры заняли всю ширину контейнера. */
+export function resolvePinterestColumnWidth(
+  containerWidth: number,
+  columnCount: number,
+  miniAppSingleColumn = false
+): number {
+  const count = Math.max(1, columnCount);
+  const gap = miniAppSingleColumn ? PINTEREST_COLUMN_GAP_MINI : PINTEREST_COLUMN_GAP;
+  const minWidth = miniAppSingleColumn ? PINTEREST_MIN_COLUMN_WIDTH_MINI : PINTEREST_MIN_COLUMN_WIDTH_WEB;
+
+  if (containerWidth <= 0) return minWidth;
+
+  return Math.max(1, Math.floor((containerWidth - gap * (count - 1)) / count));
 }
 
 /** Колонок для раскладки: не больше, чем карточек (1–2 в избранном не растягиваются). */

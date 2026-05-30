@@ -1,11 +1,14 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import type { Prompt } from "../types";
 import { useLoadMoreOnScroll } from "../hooks/useLoadMoreOnScroll";
 import { usePinterestColumnCount } from "../hooks/usePinterestColumnCount";
 import {
   distributeToMasonryColumns,
   estimatePinterestCardHeight,
-  resolveDistributionColumnCount
+  PINTEREST_COLUMN_GAP,
+  PINTEREST_COLUMN_GAP_MINI,
+  resolveDistributionColumnCount,
+  resolvePinterestColumnWidth
 } from "../utils/masonryColumns";
 import { PinterestPromptCard } from "./PinterestPromptCard";
 
@@ -41,13 +44,31 @@ function PinterestSkeletonCard({ height }: { height: number }) {
   );
 }
 
+function pinterestMasonryStyle(
+  containerWidth: number,
+  fitColumns: number,
+  miniAppSingleColumn?: boolean
+): CSSProperties | undefined {
+  if (containerWidth <= 0 || fitColumns <= 0) return undefined;
+
+  const gap = miniAppSingleColumn ? PINTEREST_COLUMN_GAP_MINI : PINTEREST_COLUMN_GAP;
+  const columnWidth = resolvePinterestColumnWidth(containerWidth, fitColumns, miniAppSingleColumn);
+
+  return {
+    "--pinterest-col-width": `${columnWidth}px`,
+    "--pinterest-col-gap": `${gap}px`
+  } as CSSProperties;
+}
+
 function PinterestSkeletonColumns({
   count,
   fitColumns,
+  containerWidth,
   miniAppSingleColumn
 }: {
   count: number;
   fitColumns: number;
+  containerWidth: number;
   miniAppSingleColumn?: boolean;
 }) {
   const skeletons = Array.from({ length: count }, (_, index) => ({
@@ -104,11 +125,16 @@ export function PinterestMasonryGrid({
   }, [loading, prompts.length]);
 
   const fitColumns = usePinterestColumnCount(containerWidth, miniAppSingleColumn);
+  const columnWidth = resolvePinterestColumnWidth(containerWidth, fitColumns, miniAppSingleColumn);
   const distributionColumns = resolveDistributionColumnCount(fitColumns, prompts.length);
+  const masonryStyle = pinterestMasonryStyle(containerWidth, fitColumns, miniAppSingleColumn);
 
   const columns = useMemo(
-    () => distributeToMasonryColumns(prompts, distributionColumns, estimatePinterestCardHeight),
-    [prompts, distributionColumns]
+    () =>
+      distributeToMasonryColumns(prompts, distributionColumns, (prompt) =>
+        estimatePinterestCardHeight(prompt, columnWidth)
+      ),
+    [prompts, distributionColumns, columnWidth]
   );
 
   const sentinelRef = useLoadMoreOnScroll({
@@ -125,8 +151,13 @@ export function PinterestMasonryGrid({
 
   if (loading && !prompts.length) {
     return (
-      <div ref={masonryRef} className={masonryClass}>
-        <PinterestSkeletonColumns count={skeletonCount} fitColumns={fitColumns || 2} miniAppSingleColumn={miniAppSingleColumn} />
+      <div ref={masonryRef} className={masonryClass} style={masonryStyle}>
+        <PinterestSkeletonColumns
+          count={skeletonCount}
+          fitColumns={fitColumns || 2}
+          containerWidth={containerWidth}
+          miniAppSingleColumn={miniAppSingleColumn}
+        />
       </div>
     );
   }
@@ -148,7 +179,7 @@ export function PinterestMasonryGrid({
 
   return (
     <>
-      <div ref={masonryRef} className={masonryClass}>
+      <div ref={masonryRef} className={masonryClass} style={masonryStyle}>
         {columns.map((column, columnIndex) => (
           <div key={`pinterest-col-${columnIndex}`} className="pinterest-masonry-column">
             {column.map((prompt) => {
@@ -172,7 +203,12 @@ export function PinterestMasonryGrid({
       </div>
 
       {loadingMore ? (
-        <PinterestSkeletonColumns count={4} fitColumns={fitColumns || 2} miniAppSingleColumn={miniAppSingleColumn} />
+        <PinterestSkeletonColumns
+          count={4}
+          fitColumns={fitColumns || 2}
+          containerWidth={containerWidth}
+          miniAppSingleColumn={miniAppSingleColumn}
+        />
       ) : null}
 
       {hasMore && onLoadMore ? (

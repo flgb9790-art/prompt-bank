@@ -40,7 +40,7 @@ export function PromptGrid({
 
   if (view === "pinterest") {
     return (
-      <div className="mt-4">
+      <div className="pinterest-masonry-outer mt-4">
         <PinterestMasonryGrid
           prompts={prompts}
           loading={pinterestLoading}
