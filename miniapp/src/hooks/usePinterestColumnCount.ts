@@ -8,8 +8,9 @@ function resolveColumnCount(miniAppSingleColumn: boolean) {
     return 1;
   }
 
-  if (window.matchMedia("(min-width: 1440px)").matches) return 5;
-  if (window.matchMedia("(min-width: 1200px)").matches) return 3;
+  if (window.matchMedia("(min-width: 1280px)").matches) return 4;
+  if (window.matchMedia("(min-width: 1024px)").matches) return 3;
+  if (window.matchMedia("(min-width: 768px)").matches) return 2;
   if (window.matchMedia("(min-width: 480px)").matches) return 2;
   return 1;
 }
@@ -19,8 +20,8 @@ export function usePinterestColumnCount(miniAppSingleColumn = false) {
 
   useEffect(() => {
     const queries = [
-      window.matchMedia("(min-width: 1440px)"),
-      window.matchMedia("(min-width: 1200px)"),
+      window.matchMedia("(min-width: 1280px)"),
+      window.matchMedia("(min-width: 1024px)"),
       window.matchMedia("(min-width: 768px)"),
       window.matchMedia("(min-width: 480px)")
     ];
