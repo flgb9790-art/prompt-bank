@@ -1486,33 +1486,24 @@ button.brand-logo {
   border-top: 1px solid var(--border-soft);
 }
 
+.sidebar-telegram {
+  margin-bottom: 14px;
+}
+
 .sidebar-telegram-card {
-  position: relative;
-  overflow: hidden;
-  border-radius: 16px;
-  border: 1px solid var(--border);
-  background: linear-gradient(145deg, #ffffff 0%, #f8f6ff 55%, #f3f7ff 100%);
-  box-shadow: var(--shadow-card);
-  padding: 12px 10px 10px;
+  border-radius: 14px;
+  border: 1px solid var(--border-soft);
+  background: #fafbfc;
+  padding: 10px 8px 8px;
 }
 
 .sidebar-telegram-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 0 6px 8px;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  color: var(--muted);
-  text-transform: uppercase;
-}
-
-.sidebar-telegram-sparkle {
-  color: var(--primary);
-  flex-shrink: 0;
-  opacity: 0.85;
+  margin: 0 0 6px;
+  padding: 0 8px;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  color: var(--muted-light);
 }
 
 .sidebar-telegram-link {
@@ -1520,45 +1511,43 @@ button.brand-logo {
   align-items: center;
   gap: 10px;
   width: 100%;
-  padding: 9px 8px;
-  border-radius: 12px;
+  padding: 8px;
+  border-radius: 10px;
   color: var(--text);
   text-decoration: none;
-  transition: background 0.16s ease, transform 0.16s ease;
+  transition: background 0.16s ease;
 }
 
 .sidebar-telegram-link + .sidebar-telegram-link {
-  margin-top: 4px;
-  padding-top: 11px;
+  margin-top: 2px;
+  padding-top: 9px;
   border-top: 1px solid var(--border-soft);
 }
 
 .sidebar-telegram-link:hover {
-  background: rgba(109, 93, 252, 0.08);
-}
-
-.sidebar-telegram-link:active {
-  transform: scale(0.99);
+  background: rgba(109, 93, 252, 0.06);
 }
 
 .sidebar-telegram-icon {
-  width: 34px;
-  height: 34px;
+  width: 32px;
+  height: 32px;
   border-radius: 999px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: grid;
+  place-items: center;
   flex-shrink: 0;
-  color: #ffffff;
-  background: linear-gradient(135deg, #6d5dfc, #7c3aed);
-  box-shadow: 0 8px 18px rgba(109, 93, 252, 0.28);
+  color: var(--primary);
+  background: var(--primary-soft);
+}
+
+.sidebar-telegram-icon svg {
+  display: block;
 }
 
 .sidebar-telegram-label {
   flex: 1;
   min-width: 0;
   font-size: 14px;
-  font-weight: 650;
+  font-weight: 500;
   color: var(--text-soft);
 }
 

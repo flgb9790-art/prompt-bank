@@ -1,4 +1,4 @@
-import { Bot, ChevronRight, Hash, Heart, Home, LayoutGrid, Plus, Send, Settings, Sparkles, Timer } from "lucide-react";
+import { ChevronRight, Hash, Heart, Home, LayoutGrid, Plus, Settings, Timer } from "lucide-react";
 import type { Category } from "../../types";
 import { BrandLogo } from "../BrandLogo";
 
@@ -16,6 +16,33 @@ type Props = {
 
 const TELEGRAM_CHANNEL_URL = "https://t.me/prmpt_bank";
 const TELEGRAM_BOT_URL = "https://t.me/prmtb_bot";
+
+function TelegramChannelIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path
+        d="m22 2-7 20-4-9-9-4 20-7Z"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path d="M15 9l-6 3" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function TelegramBotIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <rect x="5" y="10" width="14" height="10" rx="2" stroke="currentColor" strokeWidth="1.75" />
+      <path d="M9 10V8a3 3 0 0 1 6 0v2" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
+      <circle cx="10" cy="15" r="1" fill="currentColor" />
+      <circle cx="14" cy="15" r="1" fill="currentColor" />
+      <path d="M10 18h4" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
+    </svg>
+  );
+}
 
 const navItems: Array<{ path: RouteKey; label: string; icon: typeof Home }> = [
   { path: "/", label: "Главная", icon: Home },
@@ -93,28 +120,25 @@ export function Sidebar({
 
       <div className="sidebar-telegram mt-4 shrink-0">
         <div className="sidebar-telegram-card">
-          <div className="sidebar-telegram-header">
-            <span>Открыть в Telegram</span>
-            <Sparkles size={14} className="sidebar-telegram-sparkle" aria-hidden />
-          </div>
+          <p className="sidebar-telegram-header">Открыть в Telegram</p>
           <a
             href={TELEGRAM_CHANNEL_URL}
             target="_blank"
             rel="noopener noreferrer"
             className="sidebar-telegram-link"
           >
-            <span className="sidebar-telegram-icon sidebar-telegram-icon--channel" aria-hidden>
-              <Send size={16} strokeWidth={2.2} />
+            <span className="sidebar-telegram-icon" aria-hidden>
+              <TelegramChannelIcon />
             </span>
             <span className="sidebar-telegram-label">Telegram канал</span>
-            <ChevronRight size={16} className="sidebar-telegram-chevron" aria-hidden />
+            <ChevronRight size={15} strokeWidth={1.75} className="sidebar-telegram-chevron" aria-hidden />
           </a>
           <a href={TELEGRAM_BOT_URL} target="_blank" rel="noopener noreferrer" className="sidebar-telegram-link">
-            <span className="sidebar-telegram-icon sidebar-telegram-icon--bot" aria-hidden>
-              <Bot size={16} strokeWidth={2.2} />
+            <span className="sidebar-telegram-icon" aria-hidden>
+              <TelegramBotIcon />
             </span>
             <span className="sidebar-telegram-label">Telegram бот</span>
-            <ChevronRight size={16} className="sidebar-telegram-chevron" aria-hidden />
+            <ChevronRight size={15} strokeWidth={1.75} className="sidebar-telegram-chevron" aria-hidden />
           </a>
         </div>
       </div>
