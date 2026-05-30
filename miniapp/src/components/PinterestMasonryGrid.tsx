@@ -11,7 +11,6 @@ import {
   resolvePinterestColumnWidth
 } from "../utils/masonryColumns";
 import { PinterestPromptCard } from "./PinterestPromptCard";
-import { preloadPromptCovers } from "../utils/preloadCovers";
 
 const SKELETON_HEIGHTS = [180, 240, 300, 220];
 
@@ -148,12 +147,6 @@ export function PinterestMasonryGrid({
       ),
     [layoutKey, prompts, distributionColumns]
   );
-
-  useEffect(() => {
-    if (!prompts.length || loading) return;
-    const preloadCount = Math.min(prompts.length, Math.max(fitColumns * 3, 8));
-    preloadPromptCovers(prompts, preloadCount);
-  }, [prompts, fitColumns, loading]);
 
   const sentinelRef = useLoadMoreOnScroll({
     enabled: Boolean(onLoadMore) && !loading && prompts.length > 0,

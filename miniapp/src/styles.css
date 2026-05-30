@@ -4404,6 +4404,14 @@ html.web-mode .pinterest-masonry-outer {
   color: #6d5dfc;
 }
 
+.pinterest-media-skeleton {
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  background: linear-gradient(90deg, #eef2f7 0%, #f8fafc 45%, #eef2f7 100%);
+  background-size: 200% 100%;
+  animation: prompt-details-shimmer 1.35s ease-in-out infinite;
+}
+
 .pinterest-video-badge {
   position: absolute;
   top: 10px;

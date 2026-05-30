@@ -1,4 +1,5 @@
-import { memo, useEffect, useMemo, useState, type MouseEvent } from "react";
+import { memo, useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
+import { useNearViewport } from "../hooks/useNearViewport";
 import { Copy, Sparkles, Star } from "lucide-react";
 import { api, resolveCardMediaUrl, resolveMediaUrl } from "../api";
 import type { Prompt } from "../types";
@@ -76,11 +77,13 @@ export const PinterestPromptCard = memo(function PinterestPromptCard({
         }
       }}
     >
-      <div className="pinterest-media">
+      <div className="pinterest-media" ref={mediaRef}>
         {!media ? (
           <div className="pinterest-placeholder" aria-hidden>
             <Sparkles size={38} strokeWidth={2} />
           </div>
+        ) : !shouldLoadMedia ? (
+          <div className="pinterest-media-skeleton" aria-hidden />
         ) : media.type === "video" ? (
           <>
             <video src={resolveMediaUrl(media.url)} muted playsInline preload="metadata" />
