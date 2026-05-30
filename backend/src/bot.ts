@@ -1,5 +1,6 @@
 import { Markup, Telegraf } from "telegraf";
 import { config } from "./config";
+import { assertTelegramWebAppPage } from "./utils/telegramWebContent";
 import { prisma } from "./db";
 import { PromptService } from "./services/prompt.service";
 import { extractKeywords } from "./keywordExtractor";
@@ -237,14 +238,17 @@ export async function startBot() {
     { command: "start", description: "Открыть главное меню Prompt Bank" }
   ]);
 
+  const miniAppUrl = buildMiniAppUrl();
   try {
+    await assertTelegramWebAppPage(miniAppUrl);
     await bot.telegram.setChatMenuButton({
       menuButton: {
         type: "web_app",
         text: "Prompt Bank",
-        web_app: { url: buildMiniAppUrl() }
+        web_app: { url: miniAppUrl }
       }
     });
+    console.info("Chat menu WebApp URL:", miniAppUrl);
   } catch (error) {
     console.warn("Failed to set chat menu button:", error);
   }

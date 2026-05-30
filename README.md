@@ -57,7 +57,14 @@ npm run dev
 
 ## 7) Как указать URL mini app
 
-В BotFather используйте `/setmenubutton` и укажите `WEBAPP_URL`.
+На **backend-сервисе** Railway задайте отдельно:
+
+- `WEBAPP_URL` — mini app (HTML), например `https://diplomatic-communication-production-6b54.up.railway.app`
+- `PUBLIC_BACKEND_URL` — API с `/uploads`, например `https://prompt-bank-production.up.railway.app`
+
+Не подставляйте URL API в `WEBAPP_URL` — Telegram вернёт `wrong type of the web page content`.
+
+В BotFather `/setmenubutton` можно указать тот же URL, что и `WEBAPP_URL` (бот также синхронизирует кнопку при старте).
 
 ## 8) Как использовать через ngrok для Telegram Mini App
 

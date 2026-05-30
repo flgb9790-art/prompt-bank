@@ -1,5 +1,6 @@
 import dotenv from "dotenv";
 import path from "path";
+import { isSamePublicHost, urlHostname } from "./utils/telegramWebContent";
 
 const isProduction = process.env.NODE_ENV === "production";
 if (!isProduction) {
@@ -7,22 +8,59 @@ if (!isProduction) {
   dotenv.config();
 }
 
+/** Railway: mini app (статика, HTML). */
+const PRODUCTION_MINIAPP_URL = "https://diplomatic-communication-production-6b54.up.railway.app";
+/** Railway: Express API + /uploads. */
+const PRODUCTION_BACKEND_URL = "https://prompt-bank-production.up.railway.app";
+
 function normalizeUrl(input: string, fallback: string): string {
   const value = input.trim();
-  if (!value) return fallback;
-  if (/^https?:\/\//i.test(value)) return value;
-  return `https://${value}`;
+  if (!value) return fallback.replace(/\/$/, "");
+  const withScheme = /^https?:\/\//i.test(value) ? value : `https://${value}`;
+  return withScheme.replace(/\/$/, "");
 }
 
 function resolveWebAppUrl(): string {
-  const productionFallback = "https://diplomatic-communication-production-6b54.up.railway.app";
   const raw = process.env.WEBAPP_URL ?? "";
-  const normalized = normalizeUrl(raw, isProduction ? productionFallback : "http://localhost:5173");
-  if (isProduction && /ngrok-free\.dev/i.test(normalized)) {
-    return productionFallback;
+  let url = normalizeUrl(raw, isProduction ? PRODUCTION_MINIAPP_URL : "http://localhost:5173");
+
+  if (isProduction && /ngrok-free\.dev/i.test(url)) {
+    url = PRODUCTION_MINIAPP_URL;
   }
-  return normalized;
+
+  if (isProduction && isSamePublicHost(url, PRODUCTION_BACKEND_URL)) {
+    console.warn(
+      "[config] WEBAPP_URL указывает на backend API; подставляем URL mini app:",
+      PRODUCTION_MINIAPP_URL
+    );
+    url = PRODUCTION_MINIAPP_URL;
+  }
+
+  return url;
 }
+
+function resolvePublicBackendUrl(webAppUrl: string): string {
+  const raw =
+    process.env.PUBLIC_BACKEND_URL?.trim() ||
+    process.env.MEDIA_PUBLIC_URL?.trim() ||
+    process.env.BACKEND_URL?.trim() ||
+    "";
+
+  let url = normalizeUrl(raw, isProduction ? PRODUCTION_BACKEND_URL : "http://localhost:3001");
+
+  if (isProduction && isSamePublicHost(url, webAppUrl)) {
+    console.warn(
+      "[config] PUBLIC_BACKEND_URL/BACKEND_URL указывает на mini app; подставляем API:",
+      PRODUCTION_BACKEND_URL
+    );
+    url = PRODUCTION_BACKEND_URL;
+  }
+
+  return url;
+}
+
+const webAppUrl = resolveWebAppUrl();
+const publicBackendUrl = resolvePublicBackendUrl(webAppUrl);
 
 export const config = {
   port: Number(process.env.PORT ?? 3001),
@@ -36,17 +74,14 @@ export const config = {
   pinterestApiBaseUrl: normalizeUrl(
     process.env.PINTEREST_API_BASE_URL ?? "",
     "https://api.pinterest.com/v5"
-  ).replace(/\/$/, ""),
-  webAppUrl: resolveWebAppUrl(),
-  backendUrl: normalizeUrl(process.env.BACKEND_URL ?? "", "http://localhost:3001"),
+  ),
+  webAppUrl,
+  backendUrl: normalizeUrl(process.env.BACKEND_URL ?? "", isProduction ? publicBackendUrl : "http://localhost:3001"),
   publicSiteUrl: normalizeUrl(
     process.env.PUBLIC_SITE_URL ?? process.env.WEBAPP_URL ?? "",
-    isProduction ? "https://diplomatic-communication-production-6b54.up.railway.app" : "http://localhost:5173"
+    webAppUrl
   ),
-  publicBackendUrl: normalizeUrl(
-    process.env.PUBLIC_BACKEND_URL ?? process.env.MEDIA_PUBLIC_URL ?? process.env.BACKEND_URL ?? "",
-    "http://localhost:3001"
-  ),
+  publicBackendUrl,
   seedDemoData: process.env.SEED_DEMO_DATA === "true",
   adminTelegramIds: (process.env.ADMIN_TELEGRAM_IDS ?? "")
     .split(",")
@@ -56,8 +91,8 @@ export const config = {
   supabaseServiceKey: process.env.SUPABASE_SERVICE_ROLE_KEY ?? "",
   supabaseStorageBucket: process.env.SUPABASE_STORAGE_BUCKET ?? "uploads",
   mediaPublicUrl: normalizeUrl(
-    process.env.MEDIA_PUBLIC_URL ?? process.env.PUBLIC_BACKEND_URL ?? process.env.VITE_MEDIA_CDN_URL ?? process.env.BACKEND_URL ?? "",
-    ""
+    process.env.MEDIA_PUBLIC_URL?.trim() || publicBackendUrl,
+    publicBackendUrl
   )
 };
 
@@ -67,4 +102,12 @@ export const uploadsDir = process.env.UPLOADS_DIR?.trim()
 
 export function isSupabaseStorageEnabled() {
   return Boolean(config.supabaseUrl && config.supabaseServiceKey && config.supabaseStorageBucket);
+}
+
+export function logResolvedPublicUrls() {
+  console.info("[config] WEBAPP_URL (mini app):", config.webAppUrl);
+  console.info("[config] PUBLIC_BACKEND_URL (media API):", config.publicBackendUrl);
+  if (isProduction && urlHostname(config.webAppUrl) === urlHostname(config.publicBackendUrl)) {
+    console.warn("[config] WEBAPP_URL и PUBLIC_BACKEND_URL на одном хосте — проверьте переменные Railway");
+  }
 }

@@ -3,7 +3,7 @@ import cors from "cors";
 import express from "express";
 import fs from "fs";
 import path from "path";
-import { config, uploadsDir } from "./config";
+import { config, logResolvedPublicUrls, uploadsDir } from "./config";
 import { prisma } from "./db";
 import promptsRouter from "./routes/prompts.routes";
 import categoriesRouter from "./routes/categories.routes";
@@ -175,6 +175,7 @@ async function ensureSearchExtensions() {
 }
 
 async function bootstrap() {
+  logResolvedPublicUrls();
   // Schema: `npx prisma db push` against Railway Postgres (DATABASE_PUBLIC_URL from local).
   await seedInitialData();
   await ensureSearchExtensions();

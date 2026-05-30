@@ -13,6 +13,7 @@ import {
   plainTemplateToHtml,
   renderPublicationTemplateHtml
 } from "../utils/templateHtml";
+import { assertTelegramMediaUrl, humanizeTelegramApiError, isSamePublicHost } from "../utils/telegramWebContent";
 
 const TELEGRAM_CAPTION_MAX = 1024;
 const TELEGRAM_MEDIA_GROUP_MAX = 10;
@@ -107,9 +108,18 @@ export function buildTelegramPostHtml(prompt: PromptForPost): string {
 
 export function resolvePublicMediaUrl(url: string | null | undefined): string | null {
   if (!url?.trim()) return null;
-  if (/^https?:\/\//i.test(url)) return url;
-  const base = (config.publicBackendUrl || config.mediaPublicUrl || config.backendUrl).replace(/\/$/, "");
-  if (!base) return url.startsWith("/") ? url : `/${url}`;
+  if (/^https?:\/\//i.test(url)) {
+    if (isSamePublicHost(url, config.webAppUrl)) {
+      throw new Error(
+        "Абсолютный URL медиа ведёт на mini app. Сохраните относительный путь /uploads/... или задайте PUBLIC_BACKEND_URL на API."
+      );
+    }
+    return url;
+  }
+  const base = config.publicBackendUrl.replace(/\/$/, "");
+  if (!base) {
+    throw new Error("PUBLIC_BACKEND_URL не задан — нельзя собрать публичный URL медиа");
+  }
   const mediaPath = url.startsWith("/") ? url : `/${url}`;
   return `${base}${mediaPath}`;
 }
@@ -160,19 +170,27 @@ async function callTelegramApi<T>(method: string, payload: Record<string, unknow
   }
 
   if (!response.ok || !data.ok || data.result === undefined) {
-    throw new Error((data as { description?: string }).description || `Telegram API error (${method})`);
+    const description = (data as { description?: string }).description || `Telegram API error (${method})`;
+    throw new Error(humanizeTelegramApiError(description));
   }
 
   return data.result;
 }
 
 async function sendTelegramPost(chatId: string, postHtml: string, mediaItems: PostMediaItem[]): Promise<TelegramMessage> {
+  const linkPreviewOff = { link_preview_options: { is_disabled: true } };
+
+  for (const item of mediaItems) {
+    await assertTelegramMediaUrl(item.url, item.type);
+  }
+
   if (mediaItems.length === 0) {
     return callTelegramApi<TelegramMessage>("sendMessage", {
       chat_id: chatId,
       text: postHtml,
       parse_mode: "HTML",
-      disable_web_page_preview: true
+      disable_web_page_preview: true,
+      ...linkPreviewOff
     });
   }
 
@@ -184,7 +202,8 @@ async function sendTelegramPost(chatId: string, postHtml: string, mediaItems: Po
       chat_id: chatId,
       [mediaKey]: item.url,
       caption: postHtml,
-      parse_mode: "HTML"
+      parse_mode: "HTML",
+      ...linkPreviewOff
     });
   }
 
@@ -271,7 +290,8 @@ export async function sendPromptToTelegram(promptId: number) {
     PromptService.invalidateDetailCache(promptId);
     return { status: "published" as const, publication: updated };
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    const raw = error instanceof Error ? error.message : String(error);
+    const message = humanizeTelegramApiError(raw);
     console.error(`Telegram publish failed for prompt ${promptId}:`, message);
 
     await prisma.$transaction([
