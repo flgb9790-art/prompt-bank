@@ -1,8 +1,6 @@
-import { useMemo, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import type { Prompt } from "../types";
 import { useLoadMoreOnScroll } from "../hooks/useLoadMoreOnScroll";
-import { usePinterestColumnCount } from "../hooks/usePinterestColumnCount";
-import { distributeToMasonryColumns, estimatePinterestCardHeight } from "../utils/masonryColumns";
 import { PinterestPromptCard } from "./PinterestPromptCard";
 
 const SKELETON_HEIGHTS = [180, 240, 300, 220];
@@ -37,25 +35,20 @@ function PinterestSkeletonCard({ height }: { height: number }) {
   );
 }
 
-function PinterestSkeletonColumns({ count, columnCount }: { count: number; columnCount: number }) {
-  const skeletons = Array.from({ length: count }, (_, index) => ({
-    id: index,
-    height: SKELETON_HEIGHTS[index % SKELETON_HEIGHTS.length]
-  }));
-  const columns = distributeToMasonryColumns(
-    skeletons,
-    columnCount,
-    (item) => item.height
-  );
-
+function PinterestSkeletonGrid({
+  count,
+  miniAppSingleColumn
+}: {
+  count: number;
+  miniAppSingleColumn?: boolean;
+}) {
   return (
-    <div className="pinterest-masonry">
-      {columns.map((column, columnIndex) => (
-        <div key={`skeleton-col-${columnIndex}`} className="pinterest-masonry-column">
-          {column.map((item) => (
-            <PinterestSkeletonCard key={item.id} height={item.height} />
-          ))}
-        </div>
+    <div
+      className={`pinterest-masonry ${miniAppSingleColumn ? "pinterest-masonry--mini-app" : ""}`.trim()}
+      aria-hidden
+    >
+      {Array.from({ length: count }, (_, index) => (
+        <PinterestSkeletonCard key={index} height={SKELETON_HEIGHTS[index % SKELETON_HEIGHTS.length]} />
       ))}
     </div>
   );
@@ -76,12 +69,6 @@ export function PinterestMasonryGrid({
   emptyState,
   skeletonCount = 8
 }: Props) {
-  const columnCount = usePinterestColumnCount(miniAppSingleColumn);
-  const columns = useMemo(
-    () => distributeToMasonryColumns(prompts, columnCount, estimatePinterestCardHeight),
-    [prompts, columnCount]
-  );
-
   const sentinelRef = useLoadMoreOnScroll({
     enabled: Boolean(onLoadMore) && !loading && prompts.length > 0,
     loading: Boolean(loadingMore),
@@ -92,8 +79,10 @@ export function PinterestMasonryGrid({
     itemCount: prompts.length
   });
 
+  const masonryClass = `pinterest-masonry ${miniAppSingleColumn ? "pinterest-masonry--mini-app" : ""}`.trim();
+
   if (loading && !prompts.length) {
-    return <PinterestSkeletonColumns count={skeletonCount} columnCount={columnCount} />;
+    return <PinterestSkeletonGrid count={skeletonCount} miniAppSingleColumn={miniAppSingleColumn} />;
   }
 
   if (!prompts.length) {
@@ -109,34 +98,24 @@ export function PinterestMasonryGrid({
     );
   }
 
-  let cardIndex = 0;
-
   return (
     <>
-      <div className={`pinterest-masonry ${miniAppSingleColumn ? "pinterest-masonry--mini-app" : ""}`.trim()}>
-        {columns.map((column, columnIndex) => (
-          <div key={`pinterest-col-${columnIndex}`} className="pinterest-masonry-column">
-            {column.map((prompt) => {
-              const index = cardIndex;
-              cardIndex += 1;
-              return (
-                <div key={prompt.id} className="pinterest-item">
-                  <PinterestPromptCard
-                    prompt={prompt}
-                    imagePriority={index < columnCount * 2}
-                    onOpen={onOpen}
-                    onCopy={onCopy}
-                    onToggleFavorite={onToggleFavorite}
-                    onTagClick={onTagClick}
-                  />
-                </div>
-              );
-            })}
+      <div className={masonryClass}>
+        {prompts.map((prompt, index) => (
+          <div key={prompt.id} className="pinterest-item">
+            <PinterestPromptCard
+              prompt={prompt}
+              imagePriority={index < 6}
+              onOpen={onOpen}
+              onCopy={onCopy}
+              onToggleFavorite={onToggleFavorite}
+              onTagClick={onTagClick}
+            />
           </div>
         ))}
       </div>
 
-      {loadingMore ? <PinterestSkeletonColumns count={4} columnCount={columnCount} /> : null}
+      {loadingMore ? <PinterestSkeletonGrid count={4} miniAppSingleColumn={miniAppSingleColumn} /> : null}
 
       {hasMore && onLoadMore ? (
         <div ref={sentinelRef} className="pinterest-sentinel-wrap" aria-hidden>

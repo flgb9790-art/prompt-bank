@@ -3780,31 +3780,55 @@ html.telegram-mini-app .media-lightbox-nav {
   transform: scale(0.98);
 }
 
-/* Pinterest masonry — columns with staggered card heights */
+/* Pinterest masonry — CSS columns, natural image heights */
 .pinterest-masonry {
-  display: flex;
-  align-items: flex-start;
-  gap: 18px;
-}
-
-.pinterest-masonry-column {
-  flex: 1 1 0;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
+  width: 100%;
+  column-gap: 18px;
+  columns: 1;
 }
 
 .pinterest-masonry--mini-app {
-  gap: 14px;
-}
-
-.pinterest-masonry--mini-app .pinterest-masonry-column {
-  gap: 14px;
+  column-gap: 14px;
 }
 
 .pinterest-item {
+  break-inside: avoid;
+  -webkit-column-break-inside: avoid;
+  page-break-inside: avoid;
+  display: inline-block;
+  width: 100%;
   min-width: 0;
+  margin-bottom: 18px;
+  box-sizing: border-box;
+  vertical-align: top;
+}
+
+.pinterest-masonry--mini-app .pinterest-item {
+  margin-bottom: 14px;
+}
+
+@media (min-width: 480px) {
+  .pinterest-masonry--mini-app:not(.pinterest-masonry--force-single) {
+    columns: 2;
+  }
+}
+
+@media (min-width: 768px) {
+  html.web-mode .pinterest-masonry:not(.pinterest-masonry--mini-app) {
+    columns: 2;
+  }
+}
+
+@media (min-width: 1024px) {
+  html.web-mode .pinterest-masonry:not(.pinterest-masonry--mini-app) {
+    columns: 3;
+  }
+}
+
+@media (min-width: 1280px) {
+  html.web-mode .pinterest-masonry:not(.pinterest-masonry--mini-app) {
+    columns: 4;
+  }
 }
 
 .pinterest-card {
@@ -4160,12 +4184,13 @@ html.telegram-mini-app .media-lightbox-nav {
 }
 
 @media (min-width: 1440px) {
-  .pinterest-masonry {
-    gap: 16px;
+  html.web-mode .pinterest-masonry:not(.pinterest-masonry--mini-app) {
+    column-gap: 16px;
+    columns: 4;
   }
 
-  .pinterest-masonry-column {
-    gap: 16px;
+  html.web-mode .pinterest-masonry:not(.pinterest-masonry--mini-app) .pinterest-item {
+    margin-bottom: 16px;
   }
 }
 
@@ -4201,15 +4226,6 @@ html.telegram-mini-app .media-lightbox-nav {
   }
 }
 
-@media (min-width: 480px) {
-  .pinterest-masonry--mini-app:not(.pinterest-masonry--force-single) {
-    gap: 12px;
-  }
-
-  .pinterest-masonry--mini-app:not(.pinterest-masonry--force-single) .pinterest-masonry-column {
-    gap: 12px;
-  }
-}
 
 .mini-pagination {
   margin-top: 14px;
