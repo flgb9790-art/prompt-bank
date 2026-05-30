@@ -1728,27 +1728,29 @@ html.web-mode .prompt-form-modal-body {
 }
 
 html.web-mode .prompt-form--web-fullscreen .prompt-form-layout {
-  display: grid;
-  grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
-  gap: 1.25rem 3rem;
   max-width: 1120px;
   margin: 0 auto;
   padding-top: 2rem;
+}
+
+html.web-mode .prompt-form--web-fullscreen .prompt-form-layout--with-publish {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 360px);
+  gap: 1.25rem 2.5rem;
   align-items: start;
 }
 
-html.web-mode .prompt-form-aside {
+html.web-mode .prompt-form-primary {
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
   min-width: 0;
 }
 
-html.web-mode .prompt-form-main {
-  display: flex;
-  flex-direction: column;
-  gap: 1.25rem;
+html.web-mode .prompt-form-publish {
   min-width: 0;
+  position: sticky;
+  top: 1.25rem;
 }
 
 html.web-mode .prompt-form-section {
@@ -1774,7 +1776,7 @@ html.web-mode .prompt-form--web-fullscreen .prompt-content-textarea {
 }
 
 html.web-mode .prompt-form--web-fullscreen .prompt-form-media-block .prompt-media-grid {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(108px, 1fr));
 }
 
 html.web-mode .prompt-form-footer {
@@ -1782,7 +1784,20 @@ html.web-mode .prompt-form-footer {
 }
 
 html.web-mode .prompt-form--web-fullscreen .prompt-form-actions {
-  max-width: 420px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  max-width: none;
+}
+
+html.web-mode .prompt-form--web-fullscreen .prompt-form-actions > .btn-primary {
+  flex: 1 1 200px;
+  max-width: 280px;
+}
+
+html.web-mode .prompt-form--web-fullscreen .prompt-form-actions > .btn-secondary {
+  flex: 0 1 auto;
+  min-width: 132px;
 }
 
 @media (max-width: 1023px) {
@@ -1792,13 +1807,17 @@ html.web-mode .prompt-form--web-fullscreen .prompt-form-actions {
     padding-right: 1.25rem;
   }
 
-  html.web-mode .prompt-form--web-fullscreen .prompt-form-layout {
+  html.web-mode .prompt-form--web-fullscreen .prompt-form-layout--with-publish {
     grid-template-columns: 1fr;
     gap: 1.25rem;
     padding-top: 1.25rem;
   }
 
-  html.web-mode .prompt-form--web-fullscreen .prompt-form-actions {
+  html.web-mode .prompt-form-publish {
+    position: static;
+  }
+
+  html.web-mode .prompt-form--web-fullscreen .prompt-form-actions > .btn-primary {
     max-width: none;
   }
 }

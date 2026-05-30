@@ -169,18 +169,20 @@ export function PromptForm({
   if (isWebFullscreen) {
     return (
       <form onSubmit={handleSubmit} className="prompt-form prompt-form--web-fullscreen">
-        <div className="prompt-form-layout">
-          <aside className="prompt-form-aside">
+        <div className={`prompt-form-layout${publishField ? " prompt-form-layout--with-publish" : ""}`}>
+          <div className="prompt-form-primary">
             <FormSection>{categoryField}</FormSection>
-            <FormSection>{mediaField}</FormSection>
-          </aside>
-          <div className="prompt-form-main">
             <FormSection>{contentField}</FormSection>
             {keywordsField ? <FormSection>{keywordsField}</FormSection> : null}
-            {publishField ? <FormSection className="prompt-form-section--plain">{publishField}</FormSection> : null}
+            <FormSection>{mediaField}</FormSection>
             {error ? <p className="text-xs text-[var(--red)]">{error}</p> : null}
             <footer className="prompt-form-footer">{actionsField}</footer>
           </div>
+          {publishField ? (
+            <aside className="prompt-form-publish">
+              <FormSection className="prompt-form-section--plain">{publishField}</FormSection>
+            </aside>
+          ) : null}
         </div>
       </form>
     );
