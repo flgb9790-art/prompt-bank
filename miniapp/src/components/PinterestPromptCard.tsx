@@ -32,6 +32,9 @@ export const PinterestPromptCard = memo(function PinterestPromptCard({
     () => (media?.type === "image" ? resolveCardMediaUrl(media.url, "image") : null),
     [media?.type, media?.url]
   );
+  const mediaRef = useRef<HTMLDivElement>(null);
+  const nearViewport = useNearViewport(mediaRef, { enabled: !imagePriority, rootMargin: "360px 0px" });
+  const shouldLoadMedia = imagePriority || nearViewport;
   const [tooTall, setTooTall] = useState(false);
   const [favoriteBump, setFavoriteBump] = useState(false);
 
