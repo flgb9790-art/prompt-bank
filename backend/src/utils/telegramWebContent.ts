@@ -105,5 +105,13 @@ export function humanizeTelegramApiError(message: string): string {
       "Проверьте WEBAPP_URL (mini app) и PUBLIC_BACKEND_URL (backend с /uploads) на Railway."
     );
   }
+  if (/WEBPAGE_MEDIA_EMPTY/i.test(message)) {
+    const indexMatch = /message #(\d+)/i.exec(message);
+    const indexHint = indexMatch ? ` (файл №${indexMatch[1]} в альбоме)` : "";
+    return (
+      `Telegram не смог загрузить медиа${indexHint}: файл пустой, недоступен или неподходящий формат. ` +
+      "Проверьте, что все примеры — полноразмерные фото/видео, а не превью /thumbs/."
+    );
+  }
   return message;
 }

@@ -13,7 +13,12 @@ import {
   plainTemplateToHtml,
   renderPublicationTemplateHtml
 } from "../utils/templateHtml";
-import { assertTelegramMediaUrl, humanizeTelegramApiError, isSamePublicHost } from "../utils/telegramWebContent";
+import { humanizeTelegramApiError, isSamePublicHost } from "../utils/telegramWebContent";
+import {
+  callTelegramMultipart,
+  loadTelegramMediaPayload,
+  type TelegramMediaPayload
+} from "./telegramMediaUpload.service";
 
 const TELEGRAM_CAPTION_MAX = 1024;
 const TELEGRAM_MEDIA_GROUP_MAX = 10;
@@ -130,6 +135,8 @@ export function collectPostMedia(prompt: PromptForPost): PostMediaItem[] {
 
   function add(url: string | null | undefined, type: string | null | undefined) {
     if (type !== "image" && type !== "video") return;
+    const trimmed = url?.trim() ?? "";
+    if (trimmed.includes("/thumbs/")) return;
     const resolved = resolvePublicMediaUrl(url);
     if (!resolved || seen.has(resolved)) return;
     seen.add(resolved);
@@ -177,12 +184,21 @@ async function callTelegramApi<T>(method: string, payload: Record<string, unknow
   return data.result;
 }
 
-async function sendTelegramPost(chatId: string, postHtml: string, mediaItems: PostMediaItem[]): Promise<TelegramMessage> {
-  const linkPreviewOff = { link_preview_options: { is_disabled: true } };
-
+async function loadAllMediaPayloads(mediaItems: PostMediaItem[]): Promise<TelegramMediaPayload[]> {
+  const payloads: TelegramMediaPayload[] = [];
   for (const item of mediaItems) {
-    await assertTelegramMediaUrl(item.url, item.type);
+    payloads.push(await loadTelegramMediaPayload(item.url, item.type));
   }
+  return payloads;
+}
+
+async function sendTelegramPost(chatId: string, postHtml: string, mediaItems: PostMediaItem[]): Promise<TelegramMessage> {
+  const token = config.telegramBotToken;
+  if (!token) {
+    throw new Error("TELEGRAM_BOT_TOKEN не указан");
+  }
+
+  const linkPreviewOff = { link_preview_options: { is_disabled: true } };
 
   if (mediaItems.length === 0) {
     return callTelegramApi<TelegramMessage>("sendMessage", {
@@ -194,38 +210,131 @@ async function sendTelegramPost(chatId: string, postHtml: string, mediaItems: Po
     });
   }
 
-  if (mediaItems.length === 1) {
-    const [item] = mediaItems;
-    const method = item.type === "video" ? "sendVideo" : "sendPhoto";
-    const mediaKey = item.type === "video" ? "video" : "photo";
-    return callTelegramApi<TelegramMessage>(method, {
-      chat_id: chatId,
-      [mediaKey]: item.url,
-      caption: postHtml,
-      parse_mode: "HTML",
-      ...linkPreviewOff
-    });
+  const payloads = await loadAllMediaPayloads(mediaItems);
+  const photos = payloads.filter((item) => item.kind === "image");
+  const videos = payloads.filter((item) => item.kind === "video");
+
+  if (photos.length >= 2) {
+    const media = photos.map((_, index) => ({
+      type: "photo" as const,
+      media: `attach://photo${index}`,
+      ...(index === 0 ? { caption: postHtml, parse_mode: "HTML" as const } : {})
+    }));
+
+    const messages = await callTelegramMultipart<TelegramMessage[]>(
+      token,
+      "sendMediaGroup",
+      {
+        chat_id: String(chatId),
+        media: JSON.stringify(media)
+      },
+      photos.map((payload, index) => ({ field: `photo${index}`, payload }))
+    );
+
+    if (!messages.length) {
+      throw new Error("Telegram API error (sendMediaGroup): empty result");
+    }
+
+    for (const video of videos) {
+      await callTelegramMultipart<TelegramMessage>(
+        token,
+        "sendVideo",
+        {
+          chat_id: String(chatId),
+          video: "attach://video"
+        },
+        [{ field: "video", payload: video }]
+      );
+    }
+
+    return messages[0];
   }
 
-  const messages = await callTelegramApi<TelegramMessage[]>("sendMediaGroup", {
-    chat_id: chatId,
-    media: mediaItems.map((item, index) => ({
-      type: item.type === "video" ? "video" : "photo",
-      media: item.url,
-      ...(index === 0
-        ? {
-            caption: postHtml,
-            parse_mode: "HTML"
-          }
-        : {})
-    }))
-  });
-
-  if (!messages.length) {
-    throw new Error("Telegram API error (sendMediaGroup): empty result");
+  if (photos.length === 1 && videos.length === 0) {
+    return callTelegramMultipart<TelegramMessage>(
+      token,
+      "sendPhoto",
+      {
+        chat_id: String(chatId),
+        photo: "attach://photo",
+        caption: postHtml,
+        parse_mode: "HTML"
+      },
+      [{ field: "photo", payload: photos[0] }]
+    );
   }
 
-  return messages[0];
+  if (photos.length === 1 && videos.length > 0) {
+    const first = await callTelegramMultipart<TelegramMessage>(
+      token,
+      "sendPhoto",
+      {
+        chat_id: String(chatId),
+        photo: "attach://photo",
+        caption: postHtml,
+        parse_mode: "HTML"
+      },
+      [{ field: "photo", payload: photos[0] }]
+    );
+
+    for (const video of videos) {
+      await callTelegramMultipart<TelegramMessage>(
+        token,
+        "sendVideo",
+        {
+          chat_id: String(chatId),
+          video: "attach://video"
+        },
+        [{ field: "video", payload: video }]
+      );
+    }
+
+    return first;
+  }
+
+  if (videos.length === 1) {
+    return callTelegramMultipart<TelegramMessage>(
+      token,
+      "sendVideo",
+      {
+        chat_id: String(chatId),
+        video: "attach://video",
+        caption: postHtml,
+        parse_mode: "HTML"
+      },
+      [{ field: "video", payload: videos[0] }]
+    );
+  }
+
+  if (videos.length > 1) {
+    const first = await callTelegramMultipart<TelegramMessage>(
+      token,
+      "sendVideo",
+      {
+        chat_id: String(chatId),
+        video: "attach://video",
+        caption: postHtml,
+        parse_mode: "HTML"
+      },
+      [{ field: "video", payload: videos[0] }]
+    );
+
+    for (const video of videos.slice(1)) {
+      await callTelegramMultipart<TelegramMessage>(
+        token,
+        "sendVideo",
+        {
+          chat_id: String(chatId),
+          video: "attach://video"
+        },
+        [{ field: "video", payload: video }]
+      );
+    }
+
+    return first;
+  }
+
+  throw new Error("Не удалось подготовить медиа для публикации в Telegram");
 }
 
 export async function getLatestTelegramPublication(promptId: number) {
