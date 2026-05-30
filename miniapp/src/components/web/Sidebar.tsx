@@ -1,4 +1,4 @@
-import { Hash, Heart, Home, LayoutGrid, Plus, Settings, Timer } from "lucide-react";
+import { Bot, ChevronRight, Hash, Heart, Home, LayoutGrid, Plus, Send, Settings, Sparkles, Timer } from "lucide-react";
 import type { Category } from "../../types";
 import { BrandLogo } from "../BrandLogo";
 
@@ -13,6 +13,9 @@ type Props = {
   onSelectCategory: (slug?: string) => void;
   onLogin: () => void;
 };
+
+const TELEGRAM_CHANNEL_URL = "https://t.me/prmpt_bank";
+const TELEGRAM_BOT_URL = "https://t.me/prmtb_bot";
 
 const navItems: Array<{ path: RouteKey; label: string; icon: typeof Home }> = [
   { path: "/", label: "Главная", icon: Home },
@@ -85,6 +88,34 @@ export function Sidebar({
           ) : (
             <p className="px-2 text-xs text-[var(--muted)]">Пока нет опубликованных промптов.</p>
           )}
+        </div>
+      </div>
+
+      <div className="sidebar-telegram mt-4 shrink-0">
+        <div className="sidebar-telegram-card">
+          <div className="sidebar-telegram-header">
+            <span>Открыть в Telegram</span>
+            <Sparkles size={14} className="sidebar-telegram-sparkle" aria-hidden />
+          </div>
+          <a
+            href={TELEGRAM_CHANNEL_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="sidebar-telegram-link"
+          >
+            <span className="sidebar-telegram-icon sidebar-telegram-icon--channel" aria-hidden>
+              <Send size={16} strokeWidth={2.2} />
+            </span>
+            <span className="sidebar-telegram-label">Telegram канал</span>
+            <ChevronRight size={16} className="sidebar-telegram-chevron" aria-hidden />
+          </a>
+          <a href={TELEGRAM_BOT_URL} target="_blank" rel="noopener noreferrer" className="sidebar-telegram-link">
+            <span className="sidebar-telegram-icon sidebar-telegram-icon--bot" aria-hidden>
+              <Bot size={16} strokeWidth={2.2} />
+            </span>
+            <span className="sidebar-telegram-label">Telegram бот</span>
+            <ChevronRight size={16} className="sidebar-telegram-chevron" aria-hidden />
+          </a>
         </div>
       </div>
 
