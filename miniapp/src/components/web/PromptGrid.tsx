@@ -30,6 +30,8 @@ export function PromptGrid({
   pinterestHasMore = false,
   onPinterestLoadMore
 }: Props) {
+  const isWideWeb = useMediaMinWidth(1024);
+
   if (!prompts.length && view !== "pinterest") {
     return (
       <div className="surface-card empty-state mt-5">
