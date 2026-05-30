@@ -1716,24 +1716,42 @@ html.web-mode .modal-panel--prompt-web-mobile {
 
 html.web-mode .prompt-details-layout--desktop {
   display: grid;
-  grid-template-columns: minmax(240px, 40%) minmax(0, 1fr);
+  grid-template-columns: minmax(300px, 48%) minmax(0, 1fr);
   gap: 20px;
   align-items: start;
 }
 
+html.web-mode .prompt-details-layout--desktop > div:first-child {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+
+html.web-mode .prompt-gallery--desktop {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 100%;
+}
+
 html.web-mode .prompt-gallery--desktop .prompt-gallery-main {
+  display: flex;
+  width: fit-content;
+  max-width: 100%;
+  margin-inline: auto;
   justify-content: center;
 }
 
 html.web-mode .prompt-gallery-preview--fit,
 html.web-mode .prompt-gallery-preview--fit.preview-unframed,
 html.web-mode .prompt-gallery-preview--fit.preview-fit-contain {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: auto;
+  display: block;
+  width: fit-content;
   max-width: 100%;
   min-height: 0;
+  line-height: 0;
   background: #f2f4f7;
   border-radius: 14px;
   overflow: hidden;
@@ -1744,15 +1762,36 @@ html.web-mode .prompt-gallery-preview--fit video {
   display: block;
   width: auto;
   height: auto;
-  max-width: min(100%, 340px);
-  max-height: min(36vh, 360px);
+  max-width: min(100%, 560px);
+  max-height: min(58vh, 560px);
   object-fit: contain;
   object-position: center;
 }
 
-html.web-mode .prompt-gallery--desktop .prompt-gallery-preview--fit img,
-html.web-mode .prompt-gallery--desktop .prompt-gallery-preview--fit video {
-  max-height: min(34vh, 340px);
+html.web-mode .prompt-gallery--desktop .prompt-gallery-thumbs {
+  justify-content: center;
+  width: 100%;
+  max-width: min(100%, 560px);
+  margin-inline: auto;
+}
+
+html.web-mode .prompt-gallery--desktop .prompt-gallery-preview.prompt-gallery-preview--fit.preview-unframed,
+html.web-mode .prompt-gallery--desktop .prompt-gallery-preview.prompt-gallery-preview--fit.preview-fit-contain {
+  width: fit-content !important;
+  min-height: 0 !important;
+  max-height: none;
+  flex: 0 0 auto;
+}
+
+html.web-mode .prompt-gallery--desktop .prompt-gallery-preview.prompt-gallery-preview--fit.preview-unframed img,
+html.web-mode .prompt-gallery--desktop .prompt-gallery-preview.prompt-gallery-preview--fit.preview-unframed video,
+html.web-mode .prompt-gallery--desktop .prompt-gallery-preview.prompt-gallery-preview--fit.preview-fit-contain img,
+html.web-mode .prompt-gallery--desktop .prompt-gallery-preview.prompt-gallery-preview--fit.preview-fit-contain video {
+  position: static;
+  width: auto !important;
+  height: auto !important;
+  max-width: min(100%, 560px);
+  max-height: min(58vh, 560px);
 }
 
 html.web-mode .prompt-content-text--collapsed {
@@ -1779,21 +1818,39 @@ html.web-mode .prompt-content-expand-btn:hover {
 }
 
 @media (max-width: 1023px) {
+  html.web-mode .prompt-gallery--mobile {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+  }
+
   html.web-mode .prompt-gallery--mobile .prompt-gallery-preview--fit {
-    display: inline-flex;
-    width: auto;
+    display: block;
+    width: fit-content;
     max-width: 100%;
     margin: 0 auto;
+    line-height: 0;
   }
 
   html.web-mode .prompt-gallery--mobile .prompt-gallery-preview--fit img,
   html.web-mode .prompt-gallery--mobile .prompt-gallery-preview--fit video {
+    width: auto;
+    height: auto;
     max-width: 100%;
-    max-height: min(42vh, 320px);
+    max-height: min(48vh, 440px);
   }
 
   html.web-mode .prompt-gallery--mobile .prompt-gallery-main {
     justify-content: center;
+    width: fit-content;
+    max-width: 100%;
+    margin-inline: auto;
+  }
+
+  html.web-mode .prompt-gallery--mobile .prompt-gallery-thumbs {
+    justify-content: center;
+    width: 100%;
   }
 }
 
