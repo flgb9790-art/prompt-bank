@@ -14,16 +14,34 @@ export function estimatePinterestCardHeight(prompt: Prompt): number {
   }
 
   const aspectBucket = prompt.id % 4;
-  const imageHeights = [240, 300, 380, 460];
-  return imageHeights[aspectBucket] + metaHeight;
+  const aspectRatios = [1.25, 1.55, 0.85, 1.1];
+  return Math.round(PINTEREST_COLUMN_WIDTH_WEB * aspectRatios[aspectBucket]) + metaHeight;
 }
 
 export const PINTEREST_COLUMN_GAP = 18;
+export const PINTEREST_COLUMN_GAP_MINI = 14;
+export const PINTEREST_COLUMN_WIDTH_WEB = 280;
+export const PINTEREST_COLUMN_WIDTH_MINI = 280;
 
-/** Не создаём больше колонок, чем карточек — иначе пустые flex-колонки и «дыры» в сетке. */
-export function resolveEffectiveColumnCount(requested: number, itemCount: number): number {
+export function resolveColumnCountForWidth(containerWidth: number, miniAppSingleColumn = false): number {
+  if (containerWidth <= 0) return 1;
+
+  const gap = miniAppSingleColumn ? PINTEREST_COLUMN_GAP_MINI : PINTEREST_COLUMN_GAP;
+  const colWidth = miniAppSingleColumn ? PINTEREST_COLUMN_WIDTH_MINI : PINTEREST_COLUMN_WIDTH_WEB;
+  const fit = Math.floor((containerWidth + gap) / (colWidth + gap));
+
+  if (miniAppSingleColumn && containerWidth < 480) {
+    return 1;
+  }
+
+  const maxColumns = miniAppSingleColumn ? 2 : 5;
+  return Math.max(1, Math.min(fit, maxColumns));
+}
+
+/** Колонок для раскладки: не больше, чем карточек (1–2 в избранном не растягиваются). */
+export function resolveDistributionColumnCount(fitColumns: number, itemCount: number): number {
   if (itemCount <= 0) return 1;
-  return Math.max(1, Math.min(requested, itemCount));
+  return Math.max(1, Math.min(fitColumns, itemCount));
 }
 
 export function distributeToMasonryColumns<T>(

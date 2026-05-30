@@ -3780,33 +3780,56 @@ html.telegram-mini-app .media-lightbox-nav {
   transform: scale(0.98);
 }
 
-/* Pinterest masonry — shortest column (слева направо по рядам) */
+/* Pinterest masonry — фиксированная ширина колонки, высота по формату фото */
 .pinterest-masonry {
+  --pinterest-col-width: 280px;
+  --pinterest-col-gap: 18px;
   display: flex;
   align-items: flex-start;
-  gap: 18px;
+  justify-content: flex-start;
+  gap: var(--pinterest-col-gap);
   width: 100%;
 }
 
 .pinterest-masonry-column {
-  flex: 1 1 0;
-  min-width: 0;
+  width: var(--pinterest-col-width);
+  flex: 0 0 var(--pinterest-col-width);
+  max-width: var(--pinterest-col-width);
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: var(--pinterest-col-gap);
 }
 
 .pinterest-masonry--mini-app {
-  gap: 14px;
+  --pinterest-col-width: 280px;
+  --pinterest-col-gap: 14px;
 }
 
-.pinterest-masonry--mini-app .pinterest-masonry-column {
-  gap: 14px;
+.pinterest-masonry--mini-app.pinterest-masonry--force-single {
+  --pinterest-col-width: 100%;
+}
+
+.pinterest-masonry--mini-app.pinterest-masonry--force-single .pinterest-masonry-column {
+  width: 100%;
+  flex: 1 1 100%;
+  max-width: 100%;
+}
+
+@media (max-width: 479px) {
+  html:not(.web-mode) .pinterest-masonry--mini-app:not(.pinterest-masonry--force-single) {
+    --pinterest-col-width: calc((100% - var(--pinterest-col-gap)) / 2);
+  }
+
+  html:not(.web-mode) .pinterest-masonry--mini-app:not(.pinterest-masonry--force-single) .pinterest-masonry-column {
+    width: var(--pinterest-col-width);
+    flex: 0 0 var(--pinterest-col-width);
+    max-width: var(--pinterest-col-width);
+  }
 }
 
 .pinterest-item {
-  min-width: 0;
   width: 100%;
+  min-width: 0;
 }
 
 .pinterest-card {
