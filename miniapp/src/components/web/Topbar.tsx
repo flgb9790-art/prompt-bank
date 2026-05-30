@@ -1,28 +1,22 @@
 import { Menu, Plus, Search } from "lucide-react";
-import type { TelegramUser } from "../../types";
-import { AuthButton } from "./AuthButton";
 
 type Props = {
   search: string;
   onSearchChange: (value: string) => void;
-  user: TelegramUser | null;
+  isAuthenticated?: boolean;
   canCreate?: boolean;
   onCreatePrompt: () => void;
   onLoginTelegram: () => void;
-  onOpenSettings: () => void;
-  onLogout: () => void;
   onMenuClick?: () => void;
 };
 
 export function Topbar({
   search,
   onSearchChange,
-  user,
+  isAuthenticated = false,
   canCreate = false,
   onCreatePrompt,
   onLoginTelegram,
-  onOpenSettings,
-  onLogout,
   onMenuClick
 }: Props) {
   return (
@@ -51,7 +45,11 @@ export function Topbar({
             <span className="lg:hidden">Новый</span>
           </button>
         ) : null}
-        <AuthButton user={user} onLoginTelegram={onLoginTelegram} onOpenSettings={onOpenSettings} onLogout={onLogout} />
+        {!isAuthenticated ? (
+          <button type="button" onClick={onLoginTelegram} className="btn-secondary">
+            Войти
+          </button>
+        ) : null}
       </div>
     </div>
   );

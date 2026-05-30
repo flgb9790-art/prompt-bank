@@ -8,7 +8,7 @@ export const MINI_APP_PAGE_SIZE = 12;
 const VALID_MODES: ViewMode[] = ["grid", "list", "pinterest"];
 const MINI_APP_MODES: MiniAppViewMode[] = ["grid", "list"];
 
-export function readViewMode(defaultMode: ViewMode = "grid"): ViewMode {
+export function readViewMode(defaultMode: ViewMode = "pinterest"): ViewMode {
   if (typeof window === "undefined") return defaultMode;
   try {
     const raw = localStorage.getItem(VIEW_MODE_STORAGE_KEY);

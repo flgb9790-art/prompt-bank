@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
-import { BarChart3, Heart, Layers, Sparkles, X } from "lucide-react";
+import { X } from "lucide-react";
 import { api, ApiError, invalidateReferenceCaches, setAuthTelegramId } from "./api";
 import type { Category, MeResponse, Prompt, PromptCreatePayload, TagStat, TelegramUser, CreatePromptResponse } from "./types";
 import { SettingsScreen } from "./components/settings/SettingsScreen";
@@ -24,18 +24,15 @@ import { AuthRequiredModal } from "./components/web/AuthRequiredModal";
 import { PromptGrid } from "./components/web/PromptGrid";
 import { Sidebar } from "./components/web/Sidebar";
 import { SortSelect } from "./components/web/SortSelect";
-import { StatsCard } from "./components/web/StatsCard";
 import { TelegramAuthModal } from "./components/web/TelegramAuthModal";
 import { Topbar } from "./components/web/Topbar";
 import { Pagination } from "./components/web/Pagination";
 import { ViewModeSwitcher } from "./components/web/ViewModeSwitcher";
 import { WebLayout } from "./components/web/WebLayout";
 import { MobileWebShell } from "./components/web/MobileWebShell";
-import { AuthButton } from "./components/web/AuthButton";
 import { clearPromptShareUrl, parsePromptIdFromLocation, setPromptShareUrl } from "./utils/promptShare";
 import { mergePromptUpdate } from "./utils/mergePrompt";
 import { normalizeTagName } from "./utils/tagFilter";
-import { countCategoriesWithPromptCount, countCategoriesWithPrompts } from "./utils/stats";
 import type { GetPromptsParams } from "./api";
 import { useLoadMoreOnScroll } from "./hooks/useLoadMoreOnScroll";
 import { prefetchPromptsPage, takePrefetchedPromptsPage } from "./utils/promptsPrefetch";
@@ -91,7 +88,7 @@ export function WebApp() {
   const [activeCategory, setActiveCategory] = useState<string>();
   const [activeTag, setActiveTag] = useState<string>();
   const [sort, setSort] = useState<SortValue>("new");
-  const [viewMode, setViewMode] = useState<ViewMode>(() => readViewMode("grid"));
+  const [viewMode, setViewMode] = useState<ViewMode>(() => readViewMode("pinterest"));
   const [prompts, setPrompts] = useState<Prompt[]>([]);
   const [promptsTotal, setPromptsTotal] = useState(0);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -172,16 +169,6 @@ export function WebApp() {
 
   const tagsWithPrompts = useMemo(() => tags.filter((tag) => tag.count > 0), [tags]);
 
-  const stats = useMemo(
-    () => ({
-      total: promptsTotal || prompts.length,
-      favorites: favoritePrompts.length || prompts.filter((prompt) => prompt.isFavorite).length,
-      categories: countCategoriesWithPromptCount(categories) || countCategoriesWithPrompts(prompts),
-      usage: isAuthenticated ? userUsageTotal : 0
-    }),
-    [categories, favoritePrompts.length, isAuthenticated, prompts, promptsTotal, userUsageTotal]
-  );
-
   const documentTitleSuffix = useMemo(
     () =>
       webRouteDocumentTitle({
@@ -237,12 +224,14 @@ export function WebApp() {
     }
   }
 
+  const listViewMode: ViewMode = path === "/prompts" ? viewMode : "pinterest";
+
   const hasMoreRemote =
-    viewMode === "pinterest"
+    listViewMode === "pinterest"
       ? computePagedHasMore(prompts.length, promptsTotal, lastPromptBatchSize, PINTEREST_PAGE_SIZE)
       : prompts.length < promptsTotal;
   const hasMoreFavorites =
-    viewMode === "pinterest"
+    listViewMode === "pinterest"
       ? computePagedHasMore(favoritePrompts.length, favoritesTotal, lastFavoriteBatchSize, PINTEREST_PAGE_SIZE)
       : favoritePrompts.length < favoritesTotal;
 
@@ -274,7 +263,7 @@ export function WebApp() {
   }
 
   const loadMoreRef = useLoadMoreOnScroll({
-    enabled: viewMode !== "pinterest" && !loading && prompts.length > 0,
+    enabled: listViewMode !== "pinterest" && !loading && prompts.length > 0,
     loading: loadingMoreRemote || promptsLoading,
     hasMore: hasMoreRemote,
     onLoadMore: () => void loadMoreRemotePrompts(),
@@ -347,7 +336,7 @@ export function WebApp() {
         setIsAdmin(Boolean(data.me.isAdmin));
         setDbUserId(data.me.user?.id ?? null);
         bootstrappedRef.current = true;
-        if (viewMode === "pinterest") {
+        if (listViewMode === "pinterest") {
           void loadPrompts();
         } else {
           scheduleWebPrefetch(mapped.length, data.prompts.total);
@@ -431,7 +420,7 @@ export function WebApp() {
     if (!isAuthenticated) return;
     if (showSpinner && !append) setFavoritesLoading(true);
     if (append) setLoadingMoreFavorites(true);
-    const limit = viewMode === "pinterest" ? PINTEREST_PAGE_SIZE : FAVORITES_FETCH_LIMIT;
+    const limit = PINTEREST_PAGE_SIZE;
     const offset = append ? favoritePrompts.length : 0;
     try {
       const data = await api.getPrompts({ favorite: true, limit, offset, lite: true, sort });
@@ -456,13 +445,8 @@ export function WebApp() {
 
   useEffect(() => {
     if (path !== "/favorites" || !isAuthenticated) return;
-    const cached = readFavoritesCache();
-    if (cached && viewMode !== "pinterest") {
-      setFavoritePrompts(cached);
-      return;
-    }
     void refreshWebFavorites(true);
-  }, [path, isAuthenticated, sort, viewMode]);
+  }, [path, isAuthenticated, sort]);
 
   function syncFavoritePrompts(next: Prompt) {
     setFavoritePrompts((prev) => {
@@ -845,7 +829,9 @@ export function WebApp() {
   function renderPromptList(list: Prompt[], options?: { favorites?: boolean }) {
     const isFavorites = Boolean(options?.favorites);
 
-    if (viewMode === "pinterest") {
+    const displayView = path === "/prompts" ? viewMode : "pinterest";
+
+    if (displayView === "pinterest") {
       return (
         <PromptGrid
           prompts={list}
@@ -877,7 +863,7 @@ export function WebApp() {
       <>
         <PromptGrid
           prompts={pageItems}
-          view={viewMode}
+          view={displayView}
           onOpenPrompt={openPrompt}
           onCopyPrompt={handleCopy}
           onToggleFavorite={handleToggleFavorite}
@@ -907,52 +893,7 @@ export function WebApp() {
 
   const content = (
     <>
-      {path === "/" ? (
-        <div>
-          <div className="welcome-block">
-            <h1 className="welcome-title lg:text-[24px]">Добро пожаловать! 👋</h1>
-            <p className="welcome-subtitle">
-              {isAdmin
-                ? "Здесь хранятся все промпты банка. Легко находите, копируйте и управляйте контентом."
-                : "Готовые промпты для работы. Ищите по категориям и тегам, копируйте и сохраняйте в избранное."}
-            </p>
-          </div>
-
-          <div className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-[18px]">
-            <StatsCard icon={<Layers size={22} />} label="Всего промптов" value={stats.total} iconBg="bg-[var(--primary-soft)] text-[var(--primary)]" />
-            <StatsCard icon={<Heart size={22} />} label="Избранных" value={isAuthenticated ? stats.favorites : 0} iconBg="bg-[#fdf2f8] text-pink-600" />
-            <StatsCard icon={<Sparkles size={22} />} label="Категории" value={stats.categories} iconBg="bg-[var(--blue-soft)] text-[var(--blue)]" />
-            <StatsCard icon={<BarChart3 size={22} />} label="Использований" value={stats.usage} iconBg="bg-[var(--purple-soft)] text-[var(--purple)]" />
-          </div>
-
-          <div className="mt-8">
-            <h2 className="section-title">Недавние промпты</h2>
-            <div className="mt-3.5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-              <div className="no-scrollbar flex gap-2.5 overflow-x-auto pb-1">
-                <button className={`chip ${!activeCategory ? "active" : ""}`} onClick={() => setActiveCategory(undefined)} type="button">
-                  Все
-                </button>
-                {categoriesWithPrompts.map((category) => (
-                  <button
-                    key={category.id}
-                    className={`chip ${activeCategory === category.slug ? "active" : ""}`}
-                    onClick={() => setActiveCategory(category.slug)}
-                    type="button"
-                  >
-                    {category.name}
-                  </button>
-                ))}
-              </div>
-              <div className="flex items-center gap-3">
-                <SortSelect value={sort} onChange={setSort} />
-                <ViewModeSwitcher value={viewMode} onChange={handleViewModeChange} />
-              </div>
-            </div>
-          </div>
-
-          {renderPromptList(prompts)}
-        </div>
-      ) : null}
+      {path === "/" ? renderPromptList(prompts) : null}
 
       {path === "/prompts" ? (
         <div>
@@ -998,9 +939,6 @@ export function WebApp() {
       {path === "/favorites" ? (
         isAuthenticated ? (
           <>
-            <div className="mb-4 flex items-center justify-end">
-              <ViewModeSwitcher value={viewMode} onChange={handleViewModeChange} />
-            </div>
             {favoritesLoading && !favoritePrompts.length ? (
             <div className="mt-4 space-y-3">
               {Array.from({ length: 4 }).map((_, idx) => (
@@ -1048,14 +986,7 @@ export function WebApp() {
         </div>
       ) : null}
 
-      {path === "/recent" ? (
-        <div>
-          <div className="mb-4 flex items-center justify-end">
-            <ViewModeSwitcher value={viewMode} onChange={handleViewModeChange} />
-          </div>
-          {renderPromptList(prompts)}
-        </div>
-      ) : null}
+      {path === "/recent" ? renderPromptList(prompts) : null}
 
       {path === "/settings" ? (
         <SettingsScreen
@@ -1192,12 +1123,10 @@ export function WebApp() {
             <Topbar
               search={search}
               onSearchChange={setSearch}
-              user={user}
+              isAuthenticated={isAuthenticated}
               canCreate={isAdmin}
               onCreatePrompt={handleCreateClick}
               onLoginTelegram={loginTelegram}
-              onOpenSettings={() => navigate("/settings")}
-              onLogout={logout}
               onMenuClick={() => setSidebarOpen(true)}
             />
           }
@@ -1214,12 +1143,11 @@ export function WebApp() {
         canCreate={isAdmin}
         onCreatePrompt={handleCreateClick}
         headerRight={
-          <AuthButton
-            user={user}
-            onLoginTelegram={loginTelegram}
-            onOpenSettings={() => navigate("/settings")}
-            onLogout={logout}
-          />
+          !isAuthenticated ? (
+            <button type="button" onClick={loginTelegram} className="btn-secondary shrink-0">
+              Войти
+            </button>
+          ) : null
         }
       >
         {body}
