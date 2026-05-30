@@ -1057,9 +1057,9 @@ export function WebApp() {
         showPublicationTemplates={isAdmin}
       />
       {isAddModalOpen && isAuthenticated && isAdmin ? (
-        <div className="modal-overlay fixed inset-0 z-[75] grid place-items-center p-4">
-          <div className="modal-panel add-prompt-modal max-h-[90vh] w-full overflow-y-auto p-6">
-            <div className="mb-4 flex items-center justify-between gap-3">
+        <div className="modal-overlay modal-overlay--add-prompt-fullscreen fixed inset-0 z-[75] flex items-stretch justify-center">
+          <div className="modal-panel modal-panel--add-prompt-fullscreen fade-up flex h-full w-full flex-col">
+            <div className="prompt-form-modal-header flex shrink-0 items-center justify-between gap-3">
               <h3 className="text-lg font-semibold text-[var(--text)]">Новый промпт</h3>
               <button
                 type="button"
@@ -1070,15 +1070,18 @@ export function WebApp() {
                 <X size={16} />
               </button>
             </div>
-            <Suspense fallback={<div className="skeleton h-64 w-full" />}>
-              <PromptForm
-                categories={categories}
-                user={user!}
-                showTelegramPublish={isAdmin}
-                onSubmit={handleSavePrompt}
-                onCancel={() => setIsAddModalOpen(false)}
-              />
-            </Suspense>
+            <div className="prompt-form-modal-body min-h-0 flex-1 overflow-y-auto">
+              <Suspense fallback={<div className="skeleton mx-auto mt-8 h-64 w-full max-w-3xl" />}>
+                <PromptForm
+                  categories={categories}
+                  user={user!}
+                  showTelegramPublish={isAdmin}
+                  layout="webFullscreen"
+                  onSubmit={handleSavePrompt}
+                  onCancel={() => setIsAddModalOpen(false)}
+                />
+              </Suspense>
+            </div>
           </div>
         </div>
       ) : null}

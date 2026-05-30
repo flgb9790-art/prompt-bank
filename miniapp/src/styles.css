@@ -1702,6 +1702,107 @@ html.web-mode .modal-panel--prompt-fullscreen {
   padding: 1.25rem 3rem 1.25rem;
 }
 
+html.web-mode .modal-overlay--add-prompt-fullscreen {
+  padding: 0;
+  background: rgba(16, 24, 40, 0.45);
+}
+
+html.web-mode .modal-panel--add-prompt-fullscreen {
+  width: 100% !important;
+  max-width: none !important;
+  height: 100%;
+  max-height: none !important;
+  border-radius: 0;
+  border: none;
+  box-shadow: none;
+  background: #ffffff;
+}
+
+html.web-mode .prompt-form-modal-header {
+  padding: 1.25rem 3rem;
+  border-bottom: 1px solid var(--border);
+}
+
+html.web-mode .prompt-form-modal-body {
+  padding: 0 3rem 2rem;
+}
+
+html.web-mode .prompt-form--web-fullscreen .prompt-form-layout {
+  display: grid;
+  grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
+  gap: 1.25rem 3rem;
+  max-width: 1120px;
+  margin: 0 auto;
+  padding-top: 2rem;
+  align-items: start;
+}
+
+html.web-mode .prompt-form-aside {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  min-width: 0;
+}
+
+html.web-mode .prompt-form-main {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  min-width: 0;
+}
+
+html.web-mode .prompt-form-section {
+  padding: 1rem 1.15rem;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: #ffffff;
+}
+
+html.web-mode .prompt-form-section--plain {
+  padding: 0;
+  border: none;
+  background: transparent;
+}
+
+html.web-mode .prompt-form-section--plain .surface-card-soft {
+  border-radius: 14px;
+}
+
+html.web-mode .prompt-form--web-fullscreen .form-select,
+html.web-mode .prompt-form--web-fullscreen .prompt-content-textarea {
+  max-width: 100%;
+}
+
+html.web-mode .prompt-form--web-fullscreen .prompt-form-media-block .prompt-media-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+html.web-mode .prompt-form-footer {
+  padding-top: 0.25rem;
+}
+
+html.web-mode .prompt-form--web-fullscreen .prompt-form-actions {
+  max-width: 420px;
+}
+
+@media (max-width: 1023px) {
+  html.web-mode .prompt-form-modal-header,
+  html.web-mode .prompt-form-modal-body {
+    padding-left: 1.25rem;
+    padding-right: 1.25rem;
+  }
+
+  html.web-mode .prompt-form--web-fullscreen .prompt-form-layout {
+    grid-template-columns: 1fr;
+    gap: 1.25rem;
+    padding-top: 1.25rem;
+  }
+
+  html.web-mode .prompt-form--web-fullscreen .prompt-form-actions {
+    max-width: none;
+  }
+}
+
 html.web-mode .modal-overlay--prompt-web-mobile {
   padding: 0;
   align-items: flex-end;
