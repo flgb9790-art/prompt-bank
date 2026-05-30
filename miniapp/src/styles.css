@@ -4261,7 +4261,11 @@ html.web-mode .pinterest-masonry-outer {
 
 @media (max-width: 1023px) {
   html.web-mode .pinterest-masonry-outer {
-    --pinterest-bleed-inline: 20px;
+    --pinterest-bleed-inline: 0;
+    width: 100%;
+    max-width: 100%;
+    margin-inline: 0;
+    padding-inline: 0;
   }
 }
 

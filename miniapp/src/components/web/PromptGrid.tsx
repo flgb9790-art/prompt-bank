@@ -1,6 +1,7 @@
 import { VirtualPromptGrid } from "../VirtualPromptGrid";
 import { VirtualPromptList } from "../VirtualPromptList";
 import { PinterestMasonryGrid } from "../PinterestMasonryGrid";
+import { useMediaMinWidth } from "../../hooks/useMediaMinWidth";
 import type { Prompt } from "../../types";
 import type { ViewMode } from "../../utils/viewMode";
 
@@ -48,6 +49,7 @@ export function PromptGrid({
           hasMore={pinterestHasMore}
           onLoadMore={onPinterestLoadMore}
           scrollRootSelector=".prompt-scroll-root"
+          webMobileTwoColumns={!isWideWeb}
           onOpen={onOpenPrompt}
           onCopy={onCopyPrompt}
           onToggleFavorite={onToggleFavorite}

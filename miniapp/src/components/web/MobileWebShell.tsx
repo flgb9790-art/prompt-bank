@@ -40,12 +40,14 @@ export function MobileWebShell({
           <BrandLogo size={36} textClassName="text-[22px] font-[760] text-[var(--text)]" />
           {headerRight}
         </div>
-        <input
-          className="search-mobile mt-2.5"
-          value={search}
-          onChange={(event) => onSearchChange(event.target.value)}
-          placeholder="Поиск промптов..."
-        />
+        {currentPath === "/prompts" ? (
+          <input
+            className="search-mobile mt-2.5"
+            value={search}
+            onChange={(event) => onSearchChange(event.target.value)}
+            placeholder="Поиск промптов..."
+          />
+        ) : null}
       </header>
 
       <main className="prompt-scroll-root flex-1 overflow-y-auto px-4 pb-28 pt-4">{children}</main>

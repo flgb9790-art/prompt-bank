@@ -6,14 +6,18 @@ import {
   resolveColumnCountForWidth
 } from "../utils/masonryColumns";
 
-export function usePinterestColumnCount(containerWidth: number, miniAppSingleColumn = false) {
+export function usePinterestColumnCount(
+  containerWidth: number,
+  miniAppSingleColumn = false,
+  webMobileTwoColumns = false
+) {
   const [columnCount, setColumnCount] = useState(() =>
-    resolveColumnCountForWidth(containerWidth, miniAppSingleColumn)
+    resolveColumnCountForWidth(containerWidth, miniAppSingleColumn, webMobileTwoColumns)
   );
 
   useEffect(() => {
-    setColumnCount(resolveColumnCountForWidth(containerWidth, miniAppSingleColumn));
-  }, [containerWidth, miniAppSingleColumn]);
+    setColumnCount(resolveColumnCountForWidth(containerWidth, miniAppSingleColumn, webMobileTwoColumns));
+  }, [containerWidth, miniAppSingleColumn, webMobileTwoColumns]);
 
   return columnCount;
 }
