@@ -336,8 +336,6 @@ export function WebApp() {
       try {
         const data = await api.bootstrap(BOOTSTRAP_PROMPTS_LIMIT);
         if (cancelled) return;
-        const mapped = mapPromptsFromApi(data.prompts.items).map(withPromptDetails);
-        setPrompts(mapped);
         if (data.prompts.total >= 0) {
           setPromptsTotal(data.prompts.total);
         }
@@ -346,9 +344,7 @@ export function WebApp() {
         setIsAdmin(Boolean(data.me.isAdmin));
         setDbUserId(data.me.user?.id ?? null);
         bootstrappedRef.current = true;
-        if (listViewMode !== "pinterest") {
-          scheduleWebPrefetch(mapped.length, data.prompts.total);
-        }
+        setAppBootstrapped(true);
 
         const cachedFavorites = readFavoritesCache();
         if (cachedFavorites) {
