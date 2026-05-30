@@ -55,16 +55,15 @@ npm run dev
 2. Скопируйте токен и вставьте в `BOT_TOKEN`.
 3. Установите кнопку меню/описание при необходимости (`/setdescription`, `/setuserpic`).
 
-## 7) Как указать URL mini app
+## 7) Домен и URL (prompt-bank.one)
 
-На **backend-сервисе** Railway задайте отдельно:
+Полная инструкция: **[docs/DOMAIN.md](docs/DOMAIN.md)** — DNS, переменные Railway (backend + miniapp), BotFather.
 
-- `WEBAPP_URL` — mini app (HTML), например `https://diplomatic-communication-production-6b54.up.railway.app`
-- `PUBLIC_BACKEND_URL` — API с `/uploads`, например `https://prompt-bank-production.up.railway.app`
+Кратко:
 
-Не подставляйте URL API в `WEBAPP_URL` — Telegram вернёт `wrong type of the web page content`.
-
-В BotFather `/setmenubutton` можно указать тот же URL, что и `WEBAPP_URL` (бот также синхронизирует кнопку при старте).
+- `https://prompt-bank.one` — Mini App и кнопка меню в Telegram  
+- `https://api.prompt-bank.one` — API и медиа `/uploads`  
+- Не подставляйте URL API в `WEBAPP_URL` — Telegram вернёт `wrong type of the web page content`
 
 ## 8) Как использовать через ngrok для Telegram Mini App
 

@@ -11,7 +11,7 @@ function mediaPublicUrl() {
   return (
     process.env.MEDIA_PUBLIC_URL ??
     process.env.BACKEND_URL ??
-    "https://prompt-bank-production.up.railway.app"
+    "https://api.prompt-bank.one"
   ).replace(/\/$/, "");
 }
 

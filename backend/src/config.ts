@@ -8,10 +8,10 @@ if (!isProduction) {
   dotenv.config();
 }
 
-/** Railway: mini app (статика, HTML). */
-const PRODUCTION_MINIAPP_URL = "https://diplomatic-communication-production-6b54.up.railway.app";
-/** Railway: Express API + /uploads. */
-const PRODUCTION_BACKEND_URL = "https://prompt-bank-production.up.railway.app";
+/** Продакшен: mini app (статика, HTML). */
+const PRODUCTION_MINIAPP_URL = "https://prompt-bank.one";
+/** Продакшен: Express API + /uploads (поддомен api). */
+const PRODUCTION_BACKEND_URL = "https://api.prompt-bank.one";
 
 function normalizeUrl(input: string, fallback: string): string {
   const value = input.trim();

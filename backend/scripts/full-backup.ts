@@ -4,7 +4,7 @@ import { execSync } from "child_process";
 import { Client } from "pg";
 
 const DATABASE_URL = process.env.DATABASE_URL ?? process.env.DATABASE_PUBLIC_URL;
-const BACKEND_URL = (process.env.BACKEND_URL ?? "https://prompt-bank-production.up.railway.app").replace(
+const BACKEND_URL = (process.env.BACKEND_URL ?? "https://api.prompt-bank.one").replace(
   /\/$/,
   ""
 );
@@ -332,7 +332,7 @@ async function main() {
     createdAt: new Date().toISOString(),
     project: "prompt-bank-telegram-miniapp",
     backendUrl: BACKEND_URL,
-    miniappUrl: "https://diplomatic-communication-production-6b54.up.railway.app",
+    miniappUrl: "https://prompt-bank.one",
     railwayProject: "exemplary-emotion",
     git,
     database: counts,

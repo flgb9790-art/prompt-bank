@@ -79,7 +79,7 @@ export async function assertTelegramMediaUrl(url: string, expected: "image" | "v
     }
     if (isHtmlContentType(contentType)) {
       throw new Error(
-        "Медиа-URL отдаёт HTML (страницу приложения), а не файл. На backend задайте PUBLIC_BACKEND_URL на API с /uploads, например https://prompt-bank-production.up.railway.app"
+        "Медиа-URL отдаёт HTML (страницу приложения), а не файл. Задайте PUBLIC_BACKEND_URL на API, например https://api.prompt-bank.one"
       );
     }
     if (expected === "image" && !isImageContentType(contentType)) {
