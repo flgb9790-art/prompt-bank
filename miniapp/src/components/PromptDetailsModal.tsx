@@ -431,9 +431,9 @@ export function PromptDetailsModal({
                 )}
               </div>
 
-              <div>
+              <div className={webModal ? "prompt-details-meta" : undefined}>
                 <span className={`category-badge ${badgeClass}`}>{prompt.category.name}</span>
-                <div className="mt-3 flex flex-wrap gap-1.5">
+                <div className={`mt-3 flex flex-wrap gap-1.5${webModal ? " prompt-details-tags" : ""}`}>
                   {prompt.keywords.map((item) => (
                     <TagPill
                       key={item.keyword.id}
@@ -464,7 +464,7 @@ export function PromptDetailsModal({
                     </div>
                   </div>
                 ) : showCollapsibleContent ? (
-                  <div className="mt-4">
+                  <div className={webModal ? "mt-3" : "mt-4"}>
                     <PromptContentText
                       content={promptBody}
                       className={`text-sm leading-relaxed text-[var(--text-soft)]${
@@ -482,24 +482,57 @@ export function PromptDetailsModal({
                 ) : (
                   <PromptContentText
                     content={promptBody}
-                    className="mt-4 text-sm leading-relaxed text-[var(--text-soft)]"
+                    className={`${webModal ? "mt-3" : "mt-4"} text-sm leading-relaxed text-[var(--text-soft)]`}
                   />
                 )}
-                <div className="action-button-row mt-5">
+                <div className={webModal ? "prompt-details-actions" : "action-button-row mt-5"}>
                   <button
                     type="button"
                     disabled={loadingDetails}
                     onClick={() => onCopy(prompt)}
-                    className="btn-primary justify-center disabled:opacity-60"
+                    className={
+                      webModal
+                        ? "prompt-detail-action-btn prompt-detail-action-btn--primary"
+                        : "btn-primary justify-center disabled:opacity-60"
+                    }
                   >
                     Скопировать
                   </button>
-                  <button type="button" onClick={() => onToggleFavorite(prompt.id)} className="btn-secondary justify-center">
+                  <button
+                    type="button"
+                    onClick={() => onToggleFavorite(prompt.id)}
+                    className={webModal ? "prompt-detail-action-btn" : "btn-secondary justify-center"}
+                  >
                     В избранное
                   </button>
+                  {canManage && webModal ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          resetEditState(prompt);
+                          setIsEditing(true);
+                        }}
+                        className="prompt-detail-action-btn"
+                      >
+                        Редактировать
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => onDelete(prompt.id)}
+                        className="prompt-detail-action-btn prompt-detail-action-btn--danger"
+                      >
+                        Удалить
+                      </button>
+                    </>
+                  ) : null}
                 </div>
                 {canManage ? (
-                  <div className="prompt-publish-panels mt-4 space-y-3">
+                  <div
+                    className={
+                      webModal ? "prompt-publish-panels prompt-publish-panels--row" : "prompt-publish-panels mt-4 space-y-3"
+                    }
+                  >
                     <div className="surface-card-soft p-3">
                       <p className="text-sm font-medium text-[var(--text)]">
                         {telegramPublicationStatusLabel(
@@ -584,21 +617,23 @@ export function PromptDetailsModal({
                         </button>
                       ) : null}
                     </div>
-                    <div className="action-button-row">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          resetEditState(prompt);
-                          setIsEditing(true);
-                        }}
-                        className="btn-secondary"
-                      >
-                        Редактировать
-                      </button>
-                      <button type="button" onClick={() => onDelete(prompt.id)} className="btn-secondary text-[var(--red)]">
-                        Удалить
-                      </button>
-                    </div>
+                    {!webModal ? (
+                      <div className="action-button-row">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            resetEditState(prompt);
+                            setIsEditing(true);
+                          }}
+                          className="btn-secondary"
+                        >
+                          Редактировать
+                        </button>
+                        <button type="button" onClick={() => onDelete(prompt.id)} className="btn-secondary text-[var(--red)]">
+                          Удалить
+                        </button>
+                      </div>
+                    ) : null}
                   </div>
                 ) : null}
               </div>

@@ -1717,8 +1717,96 @@ html.web-mode .modal-panel--prompt-web-mobile {
 html.web-mode .prompt-details-layout--desktop {
   display: grid;
   grid-template-columns: minmax(300px, 48%) minmax(0, 1fr);
-  gap: 20px;
+  gap: 12px;
   align-items: start;
+}
+
+html.web-mode .prompt-details-meta {
+  min-width: 0;
+  padding-right: 12px;
+}
+
+html.web-mode .prompt-details-tags {
+  margin-bottom: 14px;
+}
+
+html.web-mode .prompt-details-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 14px;
+}
+
+html.web-mode .prompt-details-layout--desktop .prompt-details-actions {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+html.web-mode .prompt-detail-action-btn {
+  min-height: 36px;
+  height: 36px;
+  padding: 0 10px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: #ffffff;
+  color: var(--text-soft);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.2;
+  cursor: pointer;
+  transition: border-color 0.16s ease, background 0.16s ease, color 0.16s ease;
+}
+
+html.web-mode .prompt-detail-action-btn:hover {
+  border-color: var(--primary-border);
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+
+html.web-mode .prompt-detail-action-btn--primary {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: #ffffff;
+}
+
+html.web-mode .prompt-detail-action-btn--primary:hover {
+  background: var(--primary-hover);
+  border-color: var(--primary-hover);
+  color: #ffffff;
+}
+
+html.web-mode .prompt-detail-action-btn--primary:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+html.web-mode .prompt-detail-action-btn--danger {
+  color: var(--red);
+}
+
+html.web-mode .prompt-detail-action-btn--danger:hover {
+  border-color: #fecaca;
+  background: var(--red-soft);
+  color: var(--red);
+}
+
+html.web-mode .prompt-publish-panels--row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+html.web-mode .prompt-publish-panels--row > .surface-card-soft {
+  min-width: 0;
+  padding: 12px;
+}
+
+html.web-mode .prompt-publish-panels--row .btn-secondary {
+  min-height: 36px;
+  height: auto;
+  padding: 8px 10px;
+  font-size: 12px;
+  font-weight: 500;
 }
 
 html.web-mode .prompt-details-layout--desktop > div:first-child {
@@ -1851,6 +1939,14 @@ html.web-mode .prompt-content-expand-btn:hover {
   html.web-mode .prompt-gallery--mobile .prompt-gallery-thumbs {
     justify-content: center;
     width: 100%;
+  }
+
+  html.web-mode .prompt-details-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  html.web-mode .prompt-publish-panels--row {
+    grid-template-columns: 1fr;
   }
 }
 
