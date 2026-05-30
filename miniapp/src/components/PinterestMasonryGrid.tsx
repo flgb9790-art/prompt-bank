@@ -126,15 +126,23 @@ export function PinterestMasonryGrid({
 
   const fitColumns = usePinterestColumnCount(containerWidth, miniAppSingleColumn);
   const columnWidth = resolvePinterestColumnWidth(containerWidth, fitColumns, miniAppSingleColumn);
+  const columnWidthRef = useRef(columnWidth);
+  columnWidthRef.current = columnWidth;
   const distributionColumns = resolveDistributionColumnCount(fitColumns, prompts.length);
   const masonryStyle = pinterestMasonryStyle(containerWidth, fitColumns, miniAppSingleColumn);
+  const layoutReady = containerWidth > 0;
+
+  const layoutKey = useMemo(
+    () => `${distributionColumns}:${prompts.map((prompt) => prompt.id).join(",")}`,
+    [prompts, distributionColumns]
+  );
 
   const columns = useMemo(
     () =>
       distributeToMasonryColumns(prompts, distributionColumns, (prompt) =>
-        estimatePinterestCardHeight(prompt, columnWidth)
+        estimatePinterestCardHeight(prompt, columnWidthRef.current)
       ),
-    [prompts, distributionColumns, columnWidth]
+    [layoutKey, prompts, distributionColumns]
   );
 
   const sentinelRef = useLoadMoreOnScroll({
@@ -173,6 +181,10 @@ export function PinterestMasonryGrid({
         )}
       </>
     );
+  }
+
+  if (!layoutReady) {
+    return <div ref={masonryRef} className={masonryClass} style={{ width: "100%", minHeight: 120 }} aria-busy="true" />;
   }
 
   let cardIndex = 0;

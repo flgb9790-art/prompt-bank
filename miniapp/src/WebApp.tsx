@@ -30,6 +30,7 @@ import { Pagination } from "./components/web/Pagination";
 import { ViewModeSwitcher } from "./components/web/ViewModeSwitcher";
 import { WebLayout } from "./components/web/WebLayout";
 import { MobileWebShell } from "./components/web/MobileWebShell";
+import { useMediaMinWidth } from "./hooks/useMediaMinWidth";
 import { clearPromptShareUrl, parsePromptIdFromLocation, setPromptShareUrl } from "./utils/promptShare";
 import { mergePromptUpdate } from "./utils/mergePrompt";
 import { normalizeTagName } from "./utils/tagFilter";
@@ -112,6 +113,7 @@ export function WebApp() {
   const [userUsageTotal, setUserUsageTotal] = useState(0);
   const [me, setMe] = useState<MeResponse | null>(null);
   const [page, setPage] = useState(1);
+  const isDesktopLayout = useMediaMinWidth(1024);
 
   function scrollWebToTop() {
     document.querySelector<HTMLElement>(".prompt-scroll-root")?.scrollTo({ top: 0, behavior: "smooth" });
@@ -1101,57 +1103,59 @@ export function WebApp() {
 
   return (
     <>
-      <div className="hidden h-full lg:block">
-        <WebLayout
-          sidebarOpen={sidebarOpen}
-          onSidebarClose={() => setSidebarOpen(false)}
-          sidebar={
-            <Sidebar
-              currentPath={path}
-              categories={categories}
-              activeCategory={activeCategory}
-              isAuthenticated={isAuthenticated}
-              onNavigate={(route) => {
-                navigate(route);
-                setSidebarOpen(false);
-              }}
-              onSelectCategory={setActiveCategory}
-              onLogin={loginTelegram}
-            />
-          }
-          topbar={
-            <Topbar
-              search={search}
-              onSearchChange={setSearch}
-              isAuthenticated={isAuthenticated}
-              canCreate={isAdmin}
-              onCreatePrompt={handleCreateClick}
-              onLoginTelegram={loginTelegram}
-              onMenuClick={() => setSidebarOpen(true)}
-            />
+      {isDesktopLayout ? (
+        <div className="h-full">
+          <WebLayout
+            sidebarOpen={sidebarOpen}
+            onSidebarClose={() => setSidebarOpen(false)}
+            sidebar={
+              <Sidebar
+                currentPath={path}
+                categories={categories}
+                activeCategory={activeCategory}
+                isAuthenticated={isAuthenticated}
+                onNavigate={(route) => {
+                  navigate(route);
+                  setSidebarOpen(false);
+                }}
+                onSelectCategory={setActiveCategory}
+                onLogin={loginTelegram}
+              />
+            }
+            topbar={
+              <Topbar
+                search={search}
+                onSearchChange={setSearch}
+                isAuthenticated={isAuthenticated}
+                canCreate={isAdmin}
+                onCreatePrompt={handleCreateClick}
+                onLoginTelegram={loginTelegram}
+                onMenuClick={() => setSidebarOpen(true)}
+              />
+            }
+          >
+            {body}
+          </WebLayout>
+        </div>
+      ) : (
+        <MobileWebShell
+          currentPath={path === "/privacy" ? "/settings" : path}
+          search={search}
+          onSearchChange={setSearch}
+          onNavigate={navigate}
+          canCreate={isAdmin}
+          onCreatePrompt={handleCreateClick}
+          headerRight={
+            !isAuthenticated ? (
+              <button type="button" onClick={loginTelegram} className="btn-secondary shrink-0">
+                Войти
+              </button>
+            ) : null
           }
         >
           {body}
-        </WebLayout>
-      </div>
-
-      <MobileWebShell
-        currentPath={path === "/privacy" ? "/settings" : path}
-        search={search}
-        onSearchChange={setSearch}
-        onNavigate={navigate}
-        canCreate={isAdmin}
-        onCreatePrompt={handleCreateClick}
-        headerRight={
-          !isAuthenticated ? (
-            <button type="button" onClick={loginTelegram} className="btn-secondary shrink-0">
-              Войти
-            </button>
-          ) : null
-        }
-      >
-        {body}
-      </MobileWebShell>
+        </MobileWebShell>
+      )}
 
       {modals}
     </>
