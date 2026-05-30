@@ -1,7 +1,6 @@
 import { VirtualPromptGrid } from "../VirtualPromptGrid";
 import { VirtualPromptList } from "../VirtualPromptList";
-import { PinterestMasonryGrid } from "../PinterestMasonryGrid";
-import { useMediaMinWidth } from "../../hooks/useMediaMinWidth";
+import { PinterestUniformGrid } from "../PinterestUniformGrid";
 import type { Prompt } from "../../types";
 import type { ViewMode } from "../../utils/viewMode";
 
@@ -13,9 +12,7 @@ type Props = {
   onToggleFavorite: (id: number) => void;
   onTagClick?: (tag: string) => void;
   pinterestLoading?: boolean;
-  pinterestLoadingMore?: boolean;
-  pinterestHasMore?: boolean;
-  onPinterestLoadMore?: () => void;
+  pinterestPageSize?: number;
 };
 
 export function PromptGrid({
@@ -26,12 +23,8 @@ export function PromptGrid({
   onToggleFavorite,
   onTagClick,
   pinterestLoading = false,
-  pinterestLoadingMore = false,
-  pinterestHasMore = false,
-  onPinterestLoadMore
+  pinterestPageSize = 18
 }: Props) {
-  const isWideWeb = useMediaMinWidth(1024);
-
   if (!prompts.length && view !== "pinterest") {
     return (
       <div className="surface-card empty-state mt-5">
@@ -43,15 +36,11 @@ export function PromptGrid({
 
   if (view === "pinterest") {
     return (
-      <div className="pinterest-masonry-outer mt-4">
-        <PinterestMasonryGrid
+      <div className="pinterest-uniform-grid-outer mt-4">
+        <PinterestUniformGrid
           prompts={prompts}
           loading={pinterestLoading}
-          loadingMore={pinterestLoadingMore}
-          hasMore={pinterestHasMore}
-          onLoadMore={onPinterestLoadMore}
-          scrollRootSelector=".prompt-scroll-root"
-          webMobileTwoColumns={!isWideWeb}
+          skeletonCount={pinterestPageSize}
           onOpen={onOpenPrompt}
           onCopy={onCopyPrompt}
           onToggleFavorite={onToggleFavorite}

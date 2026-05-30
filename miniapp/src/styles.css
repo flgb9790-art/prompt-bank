@@ -4251,11 +4251,61 @@ html.telegram-mini-app .media-lightbox-nav {
 }
 
 /* Pinterest — ширина совпадает с колонкой контента (без bleed, иначе «дыры» в сетке) */
-html.web-mode .pinterest-masonry-outer {
+html.web-mode .pinterest-masonry-outer,
+html.web-mode .pinterest-uniform-grid-outer {
   width: 100%;
   max-width: 100%;
   margin-inline: 0;
   padding-inline: 0;
+}
+
+.pinterest-uniform-grid {
+  display: grid;
+  gap: 18px;
+  width: 100%;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+html.web-mode .pinterest-uniform-grid {
+  gap: 16px;
+}
+
+@media (min-width: 640px) {
+  html.web-mode .pinterest-uniform-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  html.web-mode .pinterest-uniform-grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 18px;
+  }
+}
+
+.pinterest-uniform-item {
+  min-width: 0;
+}
+
+.pinterest-media--uniform {
+  aspect-ratio: 4 / 5;
+  max-height: none;
+}
+
+.pinterest-media--uniform img,
+.pinterest-media--uniform video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center top;
+}
+
+.pinterest-card--uniform.pinterest-card--visual {
+  height: 100%;
+}
+
+.pinterest-card--uniform .pinterest-media {
+  border-radius: 18px;
 }
 
 .pinterest-masonry {

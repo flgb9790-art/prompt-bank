@@ -49,7 +49,15 @@ import {
   mapPromptsFromApi,
   withPromptDetails
 } from "./utils/promptContent";
-import { PINTEREST_PAGE_SIZE, readViewMode, saveViewMode, computePagedHasMore, type ViewMode } from "./utils/viewMode";
+import {
+  PINTEREST_PAGE_SIZE,
+  WEB_PINTEREST_PAGE_SIZE_DESKTOP,
+  WEB_PINTEREST_PAGE_SIZE_MOBILE,
+  readViewMode,
+  saveViewMode,
+  computePagedHasMore,
+  type ViewMode
+} from "./utils/viewMode";
 import { getPromptLabel } from "./utils/promptTitle";
 import { persistPublicationTemplatesFromPrompt } from "./utils/publicationTemplatesStorage";
 
@@ -114,6 +122,7 @@ export function WebApp() {
   const [me, setMe] = useState<MeResponse | null>(null);
   const [page, setPage] = useState(1);
   const isDesktopLayout = useMediaMinWidth(1024);
+  const webPinterestPageSize = isDesktopLayout ? WEB_PINTEREST_PAGE_SIZE_DESKTOP : WEB_PINTEREST_PAGE_SIZE_MOBILE;
 
   function scrollWebToTop() {
     document.querySelector<HTMLElement>(".prompt-scroll-root")?.scrollTo({ top: 0, behavior: "smooth" });
@@ -154,9 +163,6 @@ export function WebApp() {
     return () => clearTimeout(timer);
   }, [toast]);
 
-  useEffect(() => {
-    setPage(1);
-  }, [activeCategory, activeTag, search, sort, path]);
 
   useEffect(() => {
     if (path === "/settings" && user) {
@@ -227,15 +233,14 @@ export function WebApp() {
   }
 
   const listViewMode: ViewMode = path === "/prompts" ? viewMode : "pinterest";
+  const useWebPinterestPagination = listViewMode === "pinterest";
 
-  const hasMoreRemote =
-    listViewMode === "pinterest"
-      ? computePagedHasMore(prompts.length, promptsTotal, lastPromptBatchSize, PINTEREST_PAGE_SIZE)
-      : prompts.length < promptsTotal;
-  const hasMoreFavorites =
-    listViewMode === "pinterest"
-      ? computePagedHasMore(favoritePrompts.length, favoritesTotal, lastFavoriteBatchSize, PINTEREST_PAGE_SIZE)
-      : favoritePrompts.length < favoritesTotal;
+  const hasMoreRemote = useWebPinterestPagination
+    ? false
+    : prompts.length < promptsTotal;
+  const hasMoreFavorites = useWebPinterestPagination
+    ? false
+    : favoritePrompts.length < favoritesTotal;
 
   function handleViewModeChange(next: ViewMode) {
     setViewMode(next);
@@ -243,7 +248,7 @@ export function WebApp() {
   }
 
   function getFetchLimit() {
-    return viewMode === "pinterest" ? PINTEREST_PAGE_SIZE : PROMPTS_FETCH_LIMIT;
+    return useWebPinterestPagination ? webPinterestPageSize : PROMPTS_FETCH_LIMIT;
   }
 
   function buildPromptsQuery(offset: number): GetPromptsParams {
@@ -305,7 +310,8 @@ export function WebApp() {
     loadMoreOffsetRef.current = null;
     setPromptsLoading(true);
     try {
-      const promptsData = await api.getPrompts(buildPromptsQuery(0));
+      const offset = useWebPinterestPagination ? (page - 1) * webPinterestPageSize : 0;
+      const promptsData = await api.getPrompts(buildPromptsQuery(offset));
       const mapped = mapPromptsFromApi(promptsData.items);
       setPrompts(mapped);
       setPromptsTotal(promptsData.total);
@@ -338,9 +344,7 @@ export function WebApp() {
         setIsAdmin(Boolean(data.me.isAdmin));
         setDbUserId(data.me.user?.id ?? null);
         bootstrappedRef.current = true;
-        if (listViewMode === "pinterest") {
-          void loadPrompts();
-        } else {
+        if (listViewMode !== "pinterest") {
           scheduleWebPrefetch(mapped.length, data.prompts.total);
         }
 
@@ -401,6 +405,11 @@ export function WebApp() {
   useEffect(() => {
     if (!bootstrappedRef.current) return;
     setPage(1);
+  }, [activeCategory, activeTag, search, sort, path, viewMode, isDesktopLayout]);
+
+  useEffect(() => {
+    if (!bootstrappedRef.current) return;
+    if (useWebPinterestPagination) return;
     if (path === "/favorites" && isAuthenticated) {
       void refreshWebFavorites(true);
       return;
@@ -411,6 +420,17 @@ export function WebApp() {
   }, [path, viewMode]);
 
   useEffect(() => {
+    if (!bootstrappedRef.current || !useWebPinterestPagination) return;
+    if (path === "/favorites") {
+      if (isAuthenticated) void refreshWebFavorites(true);
+      return;
+    }
+    if (path === "/" || path === "/prompts" || path === "/recent") {
+      void loadPrompts();
+    }
+  }, [page, webPinterestPageSize, path, viewMode, isAuthenticated]);
+
+  useEffect(() => {
     if (!bootstrappedRef.current || path !== "/recent") return;
     setActiveCategory(undefined);
     setActiveTag(undefined);
@@ -418,31 +438,24 @@ export function WebApp() {
     setSort("new");
   }, [path]);
 
-  async function refreshWebFavorites(showSpinner: boolean, append = false) {
+  async function refreshWebFavorites(showSpinner: boolean) {
     if (!isAuthenticated) return;
-    if (showSpinner && !append) setFavoritesLoading(true);
-    if (append) setLoadingMoreFavorites(true);
-    const limit = PINTEREST_PAGE_SIZE;
-    const offset = append ? favoritePrompts.length : 0;
+    if (showSpinner) setFavoritesLoading(true);
+    const limit = useWebPinterestPagination ? webPinterestPageSize : PINTEREST_PAGE_SIZE;
+    const offset = useWebPinterestPagination ? (page - 1) * webPinterestPageSize : 0;
     try {
       const data = await api.getPrompts({ favorite: true, limit, offset, lite: true, sort });
       const mapped = mapPromptsFromApi(data.items);
       setFavoritesTotal(data.total);
       setLastFavoriteBatchSize(mapped.length);
-      setFavoritePrompts((prev) => (append ? mergePromptPages(prev, mapped) : mapped));
-      if (!append) writeFavoritesCache(mapped);
+      setFavoritePrompts(mapped);
+      if (page === 1) writeFavoritesCache(mapped);
     } catch (err) {
       console.error(err);
       if (showSpinner) setToast("Не удалось загрузить избранное");
     } finally {
-      if (showSpinner && !append) setFavoritesLoading(false);
-      if (append) setLoadingMoreFavorites(false);
+      if (showSpinner) setFavoritesLoading(false);
     }
-  }
-
-  async function loadMoreFavoritesPinterest() {
-    if (loadingMoreFavorites || !hasMoreFavorites) return;
-    await refreshWebFavorites(false, true);
   }
 
   useEffect(() => {
@@ -834,25 +847,30 @@ export function WebApp() {
     const displayView = path === "/prompts" ? viewMode : "pinterest";
 
     if (displayView === "pinterest") {
+      const total = isFavorites ? favoritesTotal : promptsTotal;
+      const totalPages = Math.max(1, Math.ceil(total / webPinterestPageSize));
+      const currentPage = Math.min(page, totalPages);
+
       return (
-        <PromptGrid
-          prompts={list}
-          view="pinterest"
-          pinterestLoading={isFavorites ? favoritesLoading : promptsLoading}
-          pinterestLoadingMore={isFavorites ? loadingMoreFavorites : loadingMoreRemote}
-          pinterestHasMore={isFavorites ? hasMoreFavorites : hasMoreRemote}
-          onPinterestLoadMore={() => {
-            if (isFavorites) {
-              void loadMoreFavoritesPinterest();
-              return;
-            }
-            void loadMoreRemotePrompts();
-          }}
-          onOpenPrompt={openPrompt}
-          onCopyPrompt={handleCopy}
-          onToggleFavorite={handleToggleFavorite}
-          onTagClick={handleSelectTag}
-        />
+        <>
+          <PromptGrid
+            prompts={list}
+            view="pinterest"
+            pinterestLoading={isFavorites ? favoritesLoading : promptsLoading}
+            pinterestPageSize={webPinterestPageSize}
+            onOpenPrompt={openPrompt}
+            onCopyPrompt={handleCopy}
+            onToggleFavorite={handleToggleFavorite}
+            onTagClick={handleSelectTag}
+          />
+          <Pagination
+            page={currentPage}
+            totalPages={totalPages}
+            totalItems={total}
+            pageSize={webPinterestPageSize}
+            onPageChange={handlePageChange}
+          />
+        </>
       );
     }
 

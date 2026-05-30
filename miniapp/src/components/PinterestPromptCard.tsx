@@ -10,6 +10,7 @@ import { resolvePostMedia } from "../utils/resolvePostMedia";
 type Props = {
   prompt: Prompt;
   imagePriority?: boolean;
+  uniformAspect?: boolean;
   className?: string;
   onOpen: (prompt: Prompt) => void;
   onCopy: (prompt: Prompt) => void;
@@ -21,6 +22,7 @@ type Props = {
 export const PinterestPromptCard = memo(function PinterestPromptCard({
   prompt,
   imagePriority = false,
+  uniformAspect = false,
   className = "",
   onOpen,
   onCopy,
@@ -80,7 +82,10 @@ export const PinterestPromptCard = memo(function PinterestPromptCard({
         }
       }}
     >
-      <div className="pinterest-media" ref={mediaRef}>
+      <div
+        className={`pinterest-media${uniformAspect ? " pinterest-media--uniform" : ""}`}
+        ref={mediaRef}
+      >
         {!media ? (
           <div className="pinterest-placeholder" aria-hidden>
             <Sparkles size={38} strokeWidth={2} />
@@ -102,6 +107,7 @@ export const PinterestPromptCard = memo(function PinterestPromptCard({
             fetchPriority={imagePriority ? "high" : "auto"}
             className={tooTall ? "is-too-tall" : undefined}
             onLoad={(event) => {
+              if (uniformAspect) return;
               const img = event.currentTarget;
               const ratio = img.naturalHeight / Math.max(img.naturalWidth, 1);
               if (ratio > 1.35 && img.offsetHeight >= 560) {
