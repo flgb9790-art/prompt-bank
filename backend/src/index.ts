@@ -17,6 +17,10 @@ import { startBot } from "./bot";
 import { authRequired, isAdminRequest, readTelegramId } from "./auth";
 import { PromptService } from "./services/prompt.service";
 import { migrateSupabaseMedia } from "./services/migrate-supabase-media.service";
+import {
+  needsThumbnailRegeneration,
+  regenerateAllThumbnails
+} from "./services/regenerate-thumbnails.service";
 import { miniappProxyMiddleware } from "./miniappProxy";
 import { urlHostname } from "./utils/telegramWebContent";
 
@@ -206,6 +210,17 @@ async function bootstrap() {
   await ensureSearchExtensions();
   if (process.env.MIGRATE_SUPABASE_MEDIA === "true") {
     await migrateSupabaseMedia();
+  }
+  if (needsThumbnailRegeneration()) {
+    void regenerateAllThumbnails({ force: true })
+      .then((result) => {
+        console.log(
+          `[thumbs] Regenerated previews: written=${result.written} skipped=${result.skipped} failed=${result.failed}`
+        );
+      })
+      .catch((error) => {
+        console.error("[thumbs] Regeneration failed:", error);
+      });
   }
   app.listen(config.port, () => {
     console.log(`Backend running on http://localhost:${config.port}`);

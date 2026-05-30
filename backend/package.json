@@ -12,6 +12,7 @@
     "prisma:migrate": "prisma migrate dev --name init",
     "prisma:studio": "prisma studio",
     "thumbs:backfill": "tsx scripts/backfill-thumbs.ts",
+    "thumbs:regenerate": "tsx scripts/backfill-thumbs.ts -- --force",
     "db:migrate-railway": "tsx scripts/migrate-supabase-to-railway.ts",
     "media:migrate-railway": "tsx scripts/migrate-supabase-media.ts",
     "backup:full": "tsx scripts/full-backup.ts",
