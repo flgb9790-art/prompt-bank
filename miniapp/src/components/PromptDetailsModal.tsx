@@ -454,22 +454,6 @@ export function PromptDetailsModal({
                       <div className="prompt-details-skeleton-line prompt-details-skeleton-line--short" />
                     </div>
                   </div>
-                ) : showCollapsibleContent ? (
-                  <div className={webModal ? "mt-3" : "mt-4"}>
-                    <PromptContentText
-                      content={promptBody}
-                      className={`text-sm leading-relaxed text-[var(--text-soft)]${
-                        contentExpanded ? "" : " prompt-content-text--collapsed"
-                      }`}
-                    />
-                    <button
-                      type="button"
-                      className="prompt-content-expand-btn mt-2"
-                      onClick={() => setContentExpanded((value) => !value)}
-                    >
-                      {contentExpanded ? "Свернуть промпт" : "Раскрыть промпт"}
-                    </button>
-                  </div>
                 ) : (
                   <PromptContentText
                     content={promptBody}
