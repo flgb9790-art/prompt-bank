@@ -332,7 +332,7 @@ export function resolveMediaUrl(url: string) {
   return withMediaOrigin(url);
 }
 
-/** Превью для карточек списка (WebP ~420px). При отсутствии thumb — полный URL. */
+/** Превью для карточек и Pinterest-сетки (WebP ~420px). При отсутствии thumb — полный URL. */
 export function resolveCardMediaUrl(url: string, type: "image" | "video") {
   if (type !== "image") {
     return resolveMediaUrl(url);

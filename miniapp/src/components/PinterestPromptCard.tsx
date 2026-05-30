@@ -1,6 +1,6 @@
 import { memo, useEffect, useState, type MouseEvent } from "react";
 import { Copy, Sparkles, Star } from "lucide-react";
-import { api, resolveMediaUrl } from "../api";
+import { api, resolveCardMediaUrl, resolveMediaUrl } from "../api";
 import type { Prompt } from "../types";
 import { getCategoryBadgeClass } from "../utils/categoryStyle";
 import { hasFullPromptDetails } from "../utils/promptContent";
@@ -27,8 +27,19 @@ export const PinterestPromptCard = memo(function PinterestPromptCard({
 }: Props) {
   const media = resolvePostMedia(prompt);
   const badgeClass = getCategoryBadgeClass(prompt.category.slug, prompt.category.name);
+  const [imageSrc, setImageSrc] = useState<string | null>(null);
   const [tooTall, setTooTall] = useState(false);
   const [favoriteBump, setFavoriteBump] = useState(false);
+
+  useEffect(() => {
+    if (!media || media.type !== "image") {
+      setImageSrc(null);
+      setTooTall(false);
+      return;
+    }
+    setImageSrc(resolveCardMediaUrl(media.url, "image"));
+    setTooTall(false);
+  }, [media?.url, media?.type, prompt.id]);
 
   useEffect(() => {
     if (!favoriteBump) return;
@@ -84,7 +95,7 @@ export const PinterestPromptCard = memo(function PinterestPromptCard({
           </>
         ) : (
           <img
-            src={resolveMediaUrl(media.url)}
+            src={imageSrc ?? resolveMediaUrl(media.url)}
             alt=""
             draggable={false}
             loading={imagePriority ? "eager" : "lazy"}
@@ -96,6 +107,12 @@ export const PinterestPromptCard = memo(function PinterestPromptCard({
               const ratio = img.naturalHeight / Math.max(img.naturalWidth, 1);
               if (ratio > 1.35 && img.offsetHeight >= 560) {
                 setTooTall(true);
+              }
+            }}
+            onError={() => {
+              const fallback = resolveMediaUrl(media.url);
+              if (imageSrc !== fallback) {
+                setImageSrc(fallback);
               }
             }}
           />
