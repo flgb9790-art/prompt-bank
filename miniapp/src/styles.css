@@ -1699,7 +1699,7 @@ html.web-mode .modal-panel--prompt-fullscreen {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  padding: 20px 20px 20px;
+  padding: 1.25rem 3rem 1.25rem;
 }
 
 html.web-mode .modal-overlay--prompt-web-mobile {
@@ -1717,7 +1717,7 @@ html.web-mode .modal-panel--prompt-web-mobile {
 html.web-mode .prompt-details-layout--desktop {
   display: grid;
   grid-template-columns: max-content minmax(0, 1fr);
-  gap: 8px;
+  gap: 3rem;
   align-items: start;
   padding-top: 12px;
 }
