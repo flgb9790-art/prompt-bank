@@ -17,6 +17,8 @@ import { startBot } from "./bot";
 import { authRequired, isAdminRequest, readTelegramId } from "./auth";
 import { PromptService } from "./services/prompt.service";
 import { migrateSupabaseMedia } from "./services/migrate-supabase-media.service";
+import { miniappProxyMiddleware } from "./miniappProxy";
+import { urlHostname } from "./utils/telegramWebContent";
 
 const app = express();
 
@@ -57,6 +59,18 @@ app.delete("/api/examples/:id", authRequired, async (req, res, next) => {
   } catch (error) {
     next(error);
   }
+});
+
+app.use(miniappProxyMiddleware);
+
+app.get("/", (req, res) => {
+  const webApp = config.webAppUrl;
+  const webHost = urlHostname(webApp);
+  const apiHost = urlHostname(config.publicBackendUrl);
+  if (webApp && webHost && webHost !== apiHost) {
+    return res.redirect(302, webApp);
+  }
+  res.type("application/json").send({ ok: true, service: "api", health: "/api/health" });
 });
 
 app.use((error: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {

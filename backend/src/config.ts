@@ -12,6 +12,9 @@ if (!isProduction) {
 const PRODUCTION_MINIAPP_URL = "https://prompt-bank.one";
 /** Продакшен: Express API + /uploads (поддомен api). */
 const PRODUCTION_BACKEND_URL = "https://api.prompt-bank.one";
+/** Railway-сервис miniapp (прокси с backend, если домен на API). */
+const PRODUCTION_MINIAPP_PROXY_URL =
+  "https://diplomatic-communication-production-6b54.up.railway.app";
 
 function normalizeUrl(input: string, fallback: string): string {
   const value = input.trim();
@@ -49,8 +52,13 @@ function resolvePublicBackendUrl(webAppUrl: string): string {
   let url = normalizeUrl(raw, isProduction ? PRODUCTION_BACKEND_URL : "http://localhost:3001");
 
   if (isProduction && isSamePublicHost(url, webAppUrl)) {
+    const explicit =
+      process.env.PUBLIC_BACKEND_URL?.trim() || process.env.BACKEND_URL?.trim() || "";
+    if (explicit && isSamePublicHost(normalizeUrl(explicit, ""), webAppUrl)) {
+      return url;
+    }
     console.warn(
-      "[config] PUBLIC_BACKEND_URL/BACKEND_URL указывает на mini app; подставляем API:",
+      "[config] PUBLIC_BACKEND_URL совпадает с WEBAPP_URL без явной настройки; подставляем:",
       PRODUCTION_BACKEND_URL
     );
     url = PRODUCTION_BACKEND_URL;
@@ -93,6 +101,14 @@ export const config = {
   mediaPublicUrl: normalizeUrl(
     process.env.MEDIA_PUBLIC_URL?.trim() || publicBackendUrl,
     publicBackendUrl
+  ),
+  /** Откуда отдавать статику mini app, если WEBAPP_URL смотрит на этот backend. */
+  miniappProxyUrl: normalizeUrl(
+    process.env.MINIAPP_PROXY_URL?.trim() ||
+      (process.env.RAILWAY_SERVICE_DIPLOMATIC_COMMUNICATION_URL?.trim()
+        ? `https://${process.env.RAILWAY_SERVICE_DIPLOMATIC_COMMUNICATION_URL.trim()}`
+        : ""),
+    isProduction ? PRODUCTION_MINIAPP_PROXY_URL : "http://localhost:5173"
   )
 };
 

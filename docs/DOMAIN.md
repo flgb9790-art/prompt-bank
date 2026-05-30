@@ -143,7 +143,71 @@ BACKEND_URL=https://prompt-bank-production.up.railway.app
 
 ---
 
-## 6. Чеклист
+## 6. Ошибка «Cannot GET /» на prompt-bank.one
+
+Так бывает, если домен **prompt-bank.one** привязан к сервису **backend** (Express), а не к **miniapp** (статика React).
+
+### Как проверить (без догадок)
+
+В PowerShell или терминале:
+
+```bash
+curl -I https://prompt-bank.one
+```
+
+| Что видите в ответе | Значение |
+|---------------------|----------|
+| `X-Powered-By: Express` и тело `Cannot GET /` | Домен на **backend** — нужно перенести на **miniapp** (шаги ниже) |
+| `HTTP/1.1 200` и HTML с «Prompt Bank» / «Загрузка…» | Домен на **miniapp** — всё ок |
+| `404` без Express | Часто miniapp без сборки или неверный Root Directory |
+
+Сейчас типичная ошибка: домен на backend (`prompt-bank-production.up.railway.app`), а рабочий фронт — на другом сервисе (`diplomatic-communication-production-6b54.up.railway.app`).
+
+### Исправление в Railway (пошагово)
+
+В проекте Railway должно быть **два сервиса** из одного GitHub-репозитория:
+
+| Сервис | Root Directory | Start Command (пример) | Домен |
+|--------|----------------|------------------------|-------|
+| **backend** | `backend` | `npm run start` | только `api.prompt-bank.one` |
+| **miniapp** | `miniapp` | `npm run start` (`serve dist -s`) | `prompt-bank.one` |
+
+**Шаг 1 — снять домен с backend**
+
+1. Откройте сервис, у которого в логах при старте Prisma / `Prompt Bank API` / `node dist/index.js`.
+2. **Settings → Networking → Custom Domains**.
+3. Если там есть `prompt-bank.one` — нажмите **Remove** / удалите (оставьте `*.up.railway.app` и позже `api.prompt-bank.one`).
+
+**Шаг 2 — повесить домен на miniapp**
+
+1. Откройте **второй** сервис: **Settings → General → Root Directory** = `miniapp`.
+2. **Networking → Custom Domain → Add** → `prompt-bank.one`.
+3. Если Railway просит DNS — добавьте CNAME у регистратора домена (как в п. 1).
+4. Дождитесь статуса **Active** (зелёная галочка).
+5. **Deployments → Redeploy** miniapp.
+
+**Шаг 3 — API-поддомен (если ещё не делали)**
+
+1. Сервис **backend** → Networking → Add → `api.prompt-bank.one`.
+2. DNS: запись для `api` → CNAME из Railway.
+3. Redeploy backend.
+
+Проверка после переноса:
+
+```bash
+curl -I https://prompt-bank.one
+curl https://api.prompt-bank.one/api/health
+```
+
+Ожидается: **нет** заголовка `X-Powered-By: Express` на `prompt-bank.one`; health → `{"ok":true}`.
+
+### Если в проекте только один сервис
+
+Создайте второй: **+ New Service → GitHub Repo** (тот же репозиторий) → Root Directory `miniapp` → Build `npm install && npm run build` → Start `npm run start` → домен `prompt-bank.one`.
+
+---
+
+## 7. Чеклист
 
 - [ ] DNS: `prompt-bank.one` → miniapp, `api.prompt-bank.one` → backend  
 - [ ] Railway backend: `WEBAPP_URL`, `PUBLIC_BACKEND_URL`, redeploy  
