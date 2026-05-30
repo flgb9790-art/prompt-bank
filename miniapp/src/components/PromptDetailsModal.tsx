@@ -68,6 +68,12 @@ const galleryMediaStyle = {
   objectPosition: "center" as const
 };
 
+function isLongPromptContent(content: string): boolean {
+  const normalized = content.trim();
+  if (normalized.length > 420) return true;
+  return normalized.split("\n").length > 8;
+}
+
 function MediaPreview({
   url,
   type,
@@ -183,6 +189,7 @@ export function PromptDetailsModal({
   const [shareError, setShareError] = useState("");
   const [telegramPublishing, setTelegramPublishing] = useState(false);
   const [pinterestPublishing, setPinterestPublishing] = useState(false);
+  const [contentExpanded, setContentExpanded] = useState(false);
 
   const galleryItems = useMemo(() => (prompt ? buildGalleryItems(prompt) : []), [prompt]);
 
@@ -197,8 +204,11 @@ export function PromptDetailsModal({
     }
   }, [galleryItems.length, galleryIndex]);
   const isTelegramMiniApp = isTelegramMiniAppContext();
-  const wideLayout = useMediaMinWidth(1024, desktopMode && !isTelegramMiniApp);
+  const webModal = desktopMode && !isTelegramMiniApp;
+  const wideLayout = useMediaMinWidth(1024, webModal);
+  const fullscreenLayout = webModal && wideLayout;
   const compactGallery = isTelegramMiniApp || !wideLayout;
+  const fitGalleryFrame = webModal;
   const showGalleryNav = !compactGallery && galleryItems.length > 1;
 
   const goGalleryPrev = useCallback(() => {
@@ -226,6 +236,7 @@ export function PromptDetailsModal({
     setGalleryIndex(0);
     setLightboxOpen(false);
     setShareError("");
+    setContentExpanded(false);
   }, [prompt]);
 
   useEffect(() => {
@@ -245,6 +256,8 @@ export function PromptDetailsModal({
   const editCategory = categories.find((category) => category.id === categoryId);
   const editTagNames = prompt.keywords.map((item) => item.keyword.name);
   const promptId = prompt.id;
+  const promptBody = prompt.content ?? "";
+  const showCollapsibleContent = webModal && !loadingDetails && isLongPromptContent(promptBody);
 
   async function handleShareLink() {
     setShareError("");
@@ -259,17 +272,23 @@ export function PromptDetailsModal({
   return (
     <>
       <div
-        className={`modal-overlay fixed inset-0 z-[100] flex justify-center p-4 ${wideLayout ? "items-center" : "items-end"}${lightboxOpen ? " modal-overlay--behind-lightbox" : ""}`}
+        className={`modal-overlay fixed inset-0 z-[100] flex justify-center p-4 ${
+          fullscreenLayout ? "modal-overlay--prompt-fullscreen items-stretch" : wideLayout ? "items-center" : "items-end"
+        }${webModal && !wideLayout ? " modal-overlay--prompt-web-mobile" : ""}${lightboxOpen ? " modal-overlay--behind-lightbox" : ""}`}
         aria-hidden={lightboxOpen}
       >
         <div
-          className={`modal-panel fade-up max-h-[92vh] overflow-y-auto p-5 ${
-            wideLayout ? "modal-panel--prompt-desktop rounded-[24px]" : "modal-panel--prompt-mobile"
+          className={`modal-panel fade-up p-5 ${
+            fullscreenLayout
+              ? "modal-panel--prompt-fullscreen"
+              : webModal
+                ? "modal-panel--prompt-web-mobile max-h-[92vh] overflow-y-auto"
+                : "modal-panel--prompt-mobile max-h-[92vh] overflow-y-auto"
           }`}
           onClick={(event) => event.stopPropagation()}
           onPointerDown={(event) => event.stopPropagation()}
         >
-          <div className="mb-4 flex items-center justify-between gap-3">
+          <div className="prompt-details-modal-header mb-4 flex shrink-0 items-center justify-between gap-3">
             <h3 className="text-lg font-semibold text-[var(--text)]">Детали промпта</h3>
             <div className="flex items-center gap-1">
               <button type="button" onClick={handleShareLink} className="btn-ghost-icon h-9 w-9" aria-label="Поделиться">
@@ -280,8 +299,9 @@ export function PromptDetailsModal({
               </button>
             </div>
           </div>
-          {shareError ? <p className="mb-3 text-xs text-[var(--red)]">{shareError}</p> : null}
+          {shareError ? <p className="mb-3 shrink-0 text-xs text-[var(--red)]">{shareError}</p> : null}
 
+          <div className={fullscreenLayout ? "prompt-details-modal-body min-h-0 flex-1 overflow-y-auto" : undefined}>
           {isEditing ? (
             <div className="space-y-3">
               <select value={categoryId} onChange={(event) => setCategoryId(Number(event.target.value))} className="form-select">
@@ -376,8 +396,8 @@ export function PromptDetailsModal({
                           url={currentGallery.url}
                           type={currentGallery.type}
                           framed={false}
-                          fit="contain"
-                          className="prompt-gallery-preview"
+                          fit={fitGalleryFrame ? undefined : "contain"}
+                          className={`prompt-gallery-preview${fitGalleryFrame ? " prompt-gallery-preview--fit" : ""}`}
                           onClick={() => setLightboxOpen(true)}
                         />
                       ) : null}
@@ -443,9 +463,25 @@ export function PromptDetailsModal({
                       <div className="prompt-details-skeleton-line prompt-details-skeleton-line--short" />
                     </div>
                   </div>
+                ) : showCollapsibleContent ? (
+                  <div className="mt-4">
+                    <PromptContentText
+                      content={promptBody}
+                      className={`text-sm leading-relaxed text-[var(--text-soft)]${
+                        contentExpanded ? "" : " prompt-content-text--collapsed"
+                      }`}
+                    />
+                    <button
+                      type="button"
+                      className="prompt-content-expand-btn mt-2"
+                      onClick={() => setContentExpanded((value) => !value)}
+                    >
+                      {contentExpanded ? "Свернуть промпт" : "Раскрыть промпт"}
+                    </button>
+                  </div>
                 ) : (
                   <PromptContentText
-                    content={prompt.content ?? ""}
+                    content={promptBody}
                     className="mt-4 text-sm leading-relaxed text-[var(--text-soft)]"
                   />
                 )}
@@ -568,6 +604,7 @@ export function PromptDetailsModal({
               </div>
             </div>
           )}
+          </div>
         </div>
       </div>
 
