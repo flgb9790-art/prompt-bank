@@ -1699,7 +1699,7 @@ html.web-mode .modal-panel--prompt-fullscreen {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  padding: 16px 20px 20px;
+  padding: 20px 20px 20px;
 }
 
 html.web-mode .modal-overlay--prompt-web-mobile {
@@ -1716,9 +1716,10 @@ html.web-mode .modal-panel--prompt-web-mobile {
 
 html.web-mode .prompt-details-layout--desktop {
   display: grid;
-  grid-template-columns: minmax(300px, 48%) minmax(0, 1fr);
-  gap: 12px;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 8px;
   align-items: start;
+  padding-top: 12px;
 }
 
 html.web-mode .prompt-details-meta {
@@ -1812,8 +1813,9 @@ html.web-mode .prompt-publish-panels--row .btn-secondary {
 html.web-mode .prompt-details-layout--desktop > div:first-child {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  width: 100%;
+  align-items: flex-start;
+  width: max-content;
+  max-width: 100%;
 }
 
 html.web-mode .prompt-gallery--desktop {
@@ -1828,7 +1830,7 @@ html.web-mode .prompt-gallery--desktop .prompt-gallery-main {
   display: flex;
   width: fit-content;
   max-width: 100%;
-  margin-inline: auto;
+  margin-inline: 0;
   justify-content: center;
 }
 
@@ -1850,8 +1852,8 @@ html.web-mode .prompt-gallery-preview--fit video {
   display: block;
   width: auto;
   height: auto;
-  max-width: min(100%, 560px);
-  max-height: min(58vh, 560px);
+  max-width: min(100%, 600px);
+  max-height: min(62vh, 600px);
   object-fit: contain;
   object-position: center;
 }
@@ -1859,7 +1861,7 @@ html.web-mode .prompt-gallery-preview--fit video {
 html.web-mode .prompt-gallery--desktop .prompt-gallery-thumbs {
   justify-content: center;
   width: 100%;
-  max-width: min(100%, 560px);
+  max-width: min(100%, 600px);
   margin-inline: auto;
 }
 
@@ -1878,8 +1880,8 @@ html.web-mode .prompt-gallery--desktop .prompt-gallery-preview.prompt-gallery-pr
   position: static;
   width: auto !important;
   height: auto !important;
-  max-width: min(100%, 560px);
-  max-height: min(58vh, 560px);
+  max-width: min(100%, 600px);
+  max-height: min(62vh, 600px);
 }
 
 html.web-mode .prompt-content-text--collapsed {
