@@ -105,18 +105,12 @@ function MediaPreview({
         />
       ) : (
         <img
-          src={resolveCardMediaUrl(url, "image")}
+          src={resolveMediaUrl(url)}
           alt="media"
           loading={fillWidth ? "lazy" : "eager"}
           decoding="async"
           fetchPriority={fillWidth ? "auto" : "high"}
           style={fillWidth ? galleryMediaStyle : undefined}
-          onError={(event) => {
-            const fallback = resolveMediaUrl(url);
-            if (event.currentTarget.src !== fallback) {
-              event.currentTarget.src = fallback;
-            }
-          }}
         />
       )}
     </button>

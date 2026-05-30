@@ -4250,29 +4250,12 @@ html.telegram-mini-app .media-lightbox-nav {
   transform: scale(0.98);
 }
 
-/* Pinterest — на всю ширину контента, колонки равной ширины (задаётся из JS) */
+/* Pinterest — ширина совпадает с колонкой контента (без bleed, иначе «дыры» в сетке) */
 html.web-mode .pinterest-masonry-outer {
-  --pinterest-bleed-inline: 28px;
-  width: calc(100% + (2 * var(--pinterest-bleed-inline)));
-  max-width: none;
-  margin-inline: calc(-1 * var(--pinterest-bleed-inline));
-  padding-left: 10px;
-}
-
-@media (max-width: 1023px) {
-  html.web-mode .pinterest-masonry-outer {
-    --pinterest-bleed-inline: 0;
-    width: 100%;
-    max-width: 100%;
-    margin-inline: 0;
-    padding-inline: 0;
-  }
-}
-
-@media (max-width: 767px) {
-  html.web-mode .pinterest-masonry-outer {
-    --pinterest-bleed-inline: 16px;
-  }
+  width: 100%;
+  max-width: 100%;
+  margin-inline: 0;
+  padding-inline: 0;
 }
 
 .pinterest-masonry {
@@ -4283,6 +4266,10 @@ html.web-mode .pinterest-masonry-outer {
   justify-content: flex-start;
   gap: var(--pinterest-col-gap);
   width: 100%;
+}
+
+html.web-mode .pinterest-masonry {
+  box-sizing: border-box;
 }
 
 .pinterest-masonry-column {

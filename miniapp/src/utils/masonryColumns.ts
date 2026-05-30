@@ -13,8 +13,8 @@ export function estimatePinterestCardHeight(prompt: Prompt, columnWidthPx?: numb
     return 300 + metaHeight;
   }
 
-  const aspectBucket = prompt.id % 4;
-  const aspectRatios = [1.25, 1.55, 0.85, 1.1];
+  const aspectBucket = prompt.id % 5;
+  const aspectRatios = [1.35, 1.55, 0.72, 1.05, 0.82];
   const columnWidth = columnWidthPx ?? PINTEREST_MIN_COLUMN_WIDTH_WEB;
   return Math.round(columnWidth * aspectRatios[aspectBucket]) + metaHeight;
 }
@@ -86,8 +86,12 @@ export function distributeToMasonryColumns<T>(
 
   for (const item of items) {
     let target = 0;
+    let minHeight = heights[0];
     for (let index = 1; index < count; index += 1) {
-      if (heights[index] < heights[target]) target = index;
+      if (heights[index] < minHeight) {
+        minHeight = heights[index];
+        target = index;
+      }
     }
     columns[target].push(item);
     heights[target] += estimateHeight(item) + columnGap;
@@ -95,3 +99,4 @@ export function distributeToMasonryColumns<T>(
 
   return columns;
 }
+
