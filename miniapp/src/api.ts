@@ -332,13 +332,23 @@ export function resolveMediaUrl(url: string) {
   return withMediaOrigin(url);
 }
 
-/** Превью для карточек и Pinterest-сетки (WebP ~420px). При отсутствии thumb — полный URL. */
+/** Превью для карточек, сетки и галереи (WebP thumb). При отсутствии thumb — полный URL. */
 export function resolveCardMediaUrl(url: string, type: "image" | "video") {
   if (type !== "image") {
     return resolveMediaUrl(url);
   }
 
   const full = resolveMediaUrl(url);
+  if (/\/images\/thumbs\//i.test(full)) {
+    return full;
+  }
+
+  const uploadsMatch = full.match(/\/uploads\/images\/([^/?#]+)$/i);
+  if (uploadsMatch) {
+    const thumbName = `${uploadsMatch[1].replace(/\.[^.]+$/i, "")}.webp`;
+    return full.replace(/\/uploads\/images\/[^/?#]+$/i, `/uploads/images/thumbs/${thumbName}`);
+  }
+
   const match = full.match(/\/images\/([^/?#]+)$/i);
   if (!match) {
     return full;

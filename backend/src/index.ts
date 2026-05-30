@@ -30,6 +30,17 @@ fs.mkdirSync(path.join(uploadsDir, "images"), { recursive: true });
 fs.mkdirSync(path.join(uploadsDir, "images", "thumbs"), { recursive: true });
 fs.mkdirSync(path.join(uploadsDir, "videos"), { recursive: true });
 
+const thumbsDir = path.join(uploadsDir, "images", "thumbs");
+app.use(
+  "/uploads/images/thumbs",
+  express.static(thumbsDir, {
+    maxAge: "30d",
+    immutable: true,
+    etag: true,
+    lastModified: true
+  })
+);
+
 app.use(
   "/uploads",
   express.static(uploadsDir, {

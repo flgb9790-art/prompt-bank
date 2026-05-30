@@ -22,8 +22,8 @@ export async function generateImageThumbnail(buffer: Buffer): Promise<Buffer | n
   try {
     return await sharp(buffer)
       .rotate()
-      .resize(420, 525, { fit: "cover", position: "top", withoutEnlargement: true })
-      .webp({ quality: 72 })
+      .resize(360, 450, { fit: "cover", position: "top", withoutEnlargement: true })
+      .webp({ quality: 68 })
       .toBuffer();
   } catch {
     return null;

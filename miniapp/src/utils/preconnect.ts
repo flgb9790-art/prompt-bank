@@ -1,3 +1,5 @@
+import { getBackendBaseUrl, getMediaCdnBaseUrl } from "../runtimeConfig";
+
 function appendOriginHint(origin: string, marker: string) {
   if (document.querySelector(`link[data-preconnect="${marker}"]`)) return;
 
@@ -15,19 +17,30 @@ function appendOriginHint(origin: string, marker: string) {
   document.head.append(preconnect, dnsPrefetch);
 }
 
-export function setupApiPreconnect() {
-  const apiUrl = (import.meta.env.VITE_BACKEND_URL as string | undefined)?.trim();
-  const mediaUrl = (import.meta.env.VITE_MEDIA_CDN_URL as string | undefined)?.trim();
+function collectMediaOrigins(): string[] {
+  const seen = new Set<string>();
+  const candidates = [
+    getMediaCdnBaseUrl(),
+    getBackendBaseUrl(),
+    (import.meta.env.VITE_MEDIA_CDN_URL as string | undefined)?.trim(),
+    (import.meta.env.VITE_BACKEND_URL as string | undefined)?.trim()
+  ];
 
-  try {
-    if (apiUrl) appendOriginHint(new URL(apiUrl).origin, "api");
-    if (mediaUrl) {
-      const mediaOrigin = new URL(mediaUrl).origin;
-      if (!apiUrl || mediaOrigin !== new URL(apiUrl).origin) {
-        appendOriginHint(mediaOrigin, "media");
-      }
+  for (const raw of candidates) {
+    if (!raw) continue;
+    try {
+      seen.add(new URL(raw).origin);
+    } catch {
+      // ignore invalid URL
     }
-  } catch {
-    // ignore invalid URL
   }
+
+  return [...seen];
+}
+
+export function setupApiPreconnect() {
+  const origins = collectMediaOrigins();
+  origins.forEach((origin, index) => {
+    appendOriginHint(origin, index === 0 ? "api" : `media-${index}`);
+  });
 }

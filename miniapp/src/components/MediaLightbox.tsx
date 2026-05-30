@@ -1,7 +1,7 @@
 import { useEffect, useState, type TouchEvent, type WheelEvent } from "react";
 import { createPortal } from "react-dom";
 import { ChevronLeft, ChevronRight, RotateCcw, X, ZoomIn, ZoomOut } from "lucide-react";
-import { resolveMediaUrl } from "../api";
+import { resolveCardMediaUrl, resolveMediaUrl } from "../api";
 import type { MediaType } from "../types";
 import { useHorizontalSwipe } from "../hooks/useHorizontalSwipe";
 import { useMediaMinWidth } from "../hooks/useMediaMinWidth";
@@ -267,7 +267,18 @@ export function MediaLightbox({ items, initialIndex = 0, isTelegramMiniApp = fal
                 {item.type === "video" ? (
                   <video src={resolveMediaUrl(item.url)} muted playsInline />
                 ) : (
-                  <img src={resolveMediaUrl(item.url)} alt="" />
+                  <img
+                    src={resolveCardMediaUrl(item.url, "image")}
+                    alt=""
+                    loading="lazy"
+                    decoding="async"
+                    onError={(event) => {
+                      const fallback = resolveMediaUrl(item.url);
+                      if (event.currentTarget.src !== fallback) {
+                        event.currentTarget.src = fallback;
+                      }
+                    }}
+                  />
                 )}
               </button>
             ))}

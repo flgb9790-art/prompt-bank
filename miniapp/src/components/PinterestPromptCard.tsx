@@ -1,4 +1,4 @@
-import { memo, useEffect, useState, type MouseEvent } from "react";
+import { memo, useEffect, useMemo, useState, type MouseEvent } from "react";
 import { Copy, Sparkles, Star } from "lucide-react";
 import { api, resolveCardMediaUrl, resolveMediaUrl } from "../api";
 import type { Prompt } from "../types";
@@ -27,19 +27,12 @@ export const PinterestPromptCard = memo(function PinterestPromptCard({
 }: Props) {
   const media = resolvePostMedia(prompt);
   const badgeClass = getCategoryBadgeClass(prompt.category.slug, prompt.category.name);
-  const [imageSrc, setImageSrc] = useState<string | null>(null);
+  const imageSrc = useMemo(
+    () => (media?.type === "image" ? resolveCardMediaUrl(media.url, "image") : null),
+    [media?.type, media?.url]
+  );
   const [tooTall, setTooTall] = useState(false);
   const [favoriteBump, setFavoriteBump] = useState(false);
-
-  useEffect(() => {
-    if (!media || media.type !== "image") {
-      setImageSrc(null);
-      setTooTall(false);
-      return;
-    }
-    setImageSrc(resolveCardMediaUrl(media.url, "image"));
-    setTooTall(false);
-  }, [media?.url, media?.type, prompt.id]);
 
   useEffect(() => {
     if (!favoriteBump) return;
@@ -109,10 +102,10 @@ export const PinterestPromptCard = memo(function PinterestPromptCard({
                 setTooTall(true);
               }
             }}
-            onError={() => {
+            onError={(event) => {
               const fallback = resolveMediaUrl(media.url);
-              if (imageSrc !== fallback) {
-                setImageSrc(fallback);
+              if (event.currentTarget.src !== fallback) {
+                event.currentTarget.src = fallback;
               }
             }}
           />

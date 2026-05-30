@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, Share2, X } from "lucide-react";
-import { resolveMediaUrl } from "../api";
+import { resolveCardMediaUrl, resolveMediaUrl } from "../api";
 import { useHorizontalSwipe } from "../hooks/useHorizontalSwipe";
 import { useMediaMinWidth } from "../hooks/useMediaMinWidth";
 import { isTelegramMiniAppContext } from "../telegram";
@@ -105,11 +105,18 @@ function MediaPreview({
         />
       ) : (
         <img
-          src={resolveMediaUrl(url)}
+          src={resolveCardMediaUrl(url, "image")}
           alt="media"
-          loading="lazy"
+          loading={fillWidth ? "lazy" : "eager"}
           decoding="async"
+          fetchPriority={fillWidth ? "auto" : "high"}
           style={fillWidth ? galleryMediaStyle : undefined}
+          onError={(event) => {
+            const fallback = resolveMediaUrl(url);
+            if (event.currentTarget.src !== fallback) {
+              event.currentTarget.src = fallback;
+            }
+          }}
         />
       )}
     </button>
@@ -410,7 +417,18 @@ export function PromptDetailsModal({
                             {item.type === "video" ? (
                               <video src={resolveMediaUrl(item.url)} muted playsInline />
                             ) : (
-                              <img src={resolveMediaUrl(item.url)} alt="" />
+                              <img
+                                src={resolveCardMediaUrl(item.url, "image")}
+                                alt=""
+                                loading="lazy"
+                                decoding="async"
+                                onError={(event) => {
+                                  const fallback = resolveMediaUrl(item.url);
+                                  if (event.currentTarget.src !== fallback) {
+                                    event.currentTarget.src = fallback;
+                                  }
+                                }}
+                              />
                             )}
                           </button>
                         ))}
