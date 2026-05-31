@@ -492,9 +492,14 @@ export function PromptDetailsModal({
                       event.stopPropagation();
                       onToggleFavorite(prompt.id);
                     }}
-                    className={webModal ? "prompt-detail-action-btn" : "btn-secondary justify-center"}
+                    className={
+                      webModal
+                        ? `prompt-detail-action-btn${prompt.isFavorite ? " prompt-detail-action-btn--favorite" : ""}`
+                        : `btn-secondary justify-center${prompt.isFavorite ? " btn-secondary--favorite" : ""}`
+                    }
+                    aria-pressed={prompt.isFavorite}
                   >
-                    {prompt.isFavorite ? "Убрать из избранного" : "В избранное"}
+                    {prompt.isFavorite ? "В избранном" : "В избранное"}
                   </button>
                   {canManage && webModal ? (
                     <>

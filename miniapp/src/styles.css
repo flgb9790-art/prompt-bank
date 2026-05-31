@@ -1916,6 +1916,30 @@ html.web-mode .prompt-detail-action-btn--danger:hover {
   color: var(--red);
 }
 
+html.web-mode .prompt-detail-action-btn--favorite {
+  border-color: #f6d66b;
+  background: var(--yellow-soft);
+  color: #b45309;
+}
+
+html.web-mode .prompt-detail-action-btn--favorite:hover {
+  border-color: #f6b51e;
+  background: #fff6df;
+  color: #92400e;
+}
+
+.btn-secondary--favorite {
+  border-color: #f6d66b;
+  background: var(--yellow-soft);
+  color: #b45309;
+}
+
+.btn-secondary--favorite:hover {
+  border-color: #f6b51e;
+  background: #fff6df;
+  color: #92400e;
+}
+
 html.web-mode .prompt-publish-panels--row {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -2377,6 +2401,10 @@ html.telegram-mini-app .modal-panel {
   box-shadow: var(--shadow-hover);
   padding: 10px 16px;
   font-size: 14px;
+}
+
+.toast--over-modal {
+  z-index: 110;
 }
 
 @keyframes fadeUp {

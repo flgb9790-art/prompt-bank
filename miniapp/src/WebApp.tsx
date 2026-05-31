@@ -1100,7 +1100,11 @@ export function WebApp() {
           void refreshMe().then(() => loadPrompts());
         }}
       />
-      {toast ? <div className="toast fixed bottom-24 right-4 z-[80] lg:bottom-8">{toast}</div> : null}
+      {toast ? (
+        <div className="toast toast--over-modal fixed bottom-24 right-4 z-[110] lg:bottom-8" role="status" aria-live="polite">
+          {toast}
+        </div>
+      ) : null}
     </>
   );
 
