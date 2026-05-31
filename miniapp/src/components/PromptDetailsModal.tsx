@@ -278,7 +278,6 @@ export function PromptDetailsModal({
                 : "modal-panel--prompt-mobile max-h-[92vh] overflow-y-auto"
           }`}
           onClick={(event) => event.stopPropagation()}
-          onPointerDown={(event) => event.stopPropagation()}
         >
           <div className="prompt-details-modal-header mb-4 flex shrink-0 items-center justify-between gap-3">
             <h3 className="text-lg font-semibold text-[var(--text)]">Детали промпта</h3>
@@ -475,22 +474,27 @@ export function PromptDetailsModal({
                 <div className={webModal ? "prompt-details-actions" : "action-button-row mt-5"}>
                   <button
                     type="button"
-                    disabled={loadingDetails}
-                    onClick={() => onCopy(prompt)}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      void onCopy(prompt);
+                    }}
                     className={
                       webModal
-                        ? "prompt-detail-action-btn prompt-detail-action-btn--primary"
-                        : "btn-primary justify-center disabled:opacity-60"
+                        ? `prompt-detail-action-btn prompt-detail-action-btn--primary${loadingDetails ? " is-loading" : ""}`
+                        : "btn-primary justify-center"
                     }
                   >
                     Скопировать
                   </button>
                   <button
                     type="button"
-                    onClick={() => onToggleFavorite(prompt.id)}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onToggleFavorite(prompt.id);
+                    }}
                     className={webModal ? "prompt-detail-action-btn" : "btn-secondary justify-center"}
                   >
-                    В избранное
+                    {prompt.isFavorite ? "Убрать из избранного" : "В избранное"}
                   </button>
                   {canManage && webModal ? (
                     <>

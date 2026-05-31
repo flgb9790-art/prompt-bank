@@ -1838,13 +1838,14 @@ html.web-mode .modal-panel--prompt-web-mobile {
 
 html.web-mode .prompt-details-layout--desktop {
   display: grid;
-  grid-template-columns: max-content minmax(0, 1fr);
+  grid-template-columns: minmax(0, min(600px, 46%)) minmax(0, 1fr);
   gap: 3rem;
   align-items: start;
-  padding-top: 3.125rem;
 }
 
 html.web-mode .prompt-details-meta {
+  position: relative;
+  z-index: 2;
   min-width: 0;
   padding-right: 12px;
 }
@@ -1854,6 +1855,8 @@ html.web-mode .prompt-details-tags {
 }
 
 html.web-mode .prompt-details-actions {
+  position: relative;
+  z-index: 3;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
@@ -1897,7 +1900,8 @@ html.web-mode .prompt-detail-action-btn--primary:hover {
   color: #ffffff;
 }
 
-html.web-mode .prompt-detail-action-btn--primary:disabled {
+html.web-mode .prompt-detail-action-btn--primary:disabled,
+html.web-mode .prompt-detail-action-btn--primary.is-loading {
   opacity: 0.6;
   cursor: wait;
 }
@@ -2900,9 +2904,9 @@ html.telegram-mini-app .media-lightbox-nav {
 }
 
 .prompt-gallery-preview {
-  flex: 1 1 auto;
+  flex: 0 0 auto;
   min-width: 0;
-  width: 100%;
+  width: fit-content;
   max-width: 100%;
 }
 
