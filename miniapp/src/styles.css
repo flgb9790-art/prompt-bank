@@ -1704,8 +1704,8 @@ html.web-mode .modal-panel--prompt-fullscreen {
 
 html.web-mode .modal-panel--prompt-fullscreen .prompt-details-modal-header {
   width: 100%;
-  max-width: min(1120px, 100%);
-  margin-inline: auto;
+  max-width: none;
+  margin-inline: 0;
 }
 
 html.web-mode .modal-overlay--add-prompt-fullscreen {
@@ -1848,11 +1848,11 @@ html.web-mode .prompt-details-modal-body {
 
 html.web-mode .prompt-details-layout--desktop {
   display: grid;
-  grid-template-columns: auto minmax(360px, 520px);
+  grid-template-columns: auto minmax(480px, 680px);
   gap: 1.5rem;
   align-items: start;
   width: fit-content;
-  max-width: min(1120px, 100%);
+  max-width: min(1320px, 100%);
   margin-inline: auto;
   padding-top: 50px;
 }
@@ -1861,7 +1861,7 @@ html.web-mode .prompt-details-meta {
   position: relative;
   z-index: 2;
   min-width: 0;
-  max-width: 520px;
+  max-width: none;
 }
 
 html.web-mode .prompt-details-tags {
@@ -2827,10 +2827,10 @@ html.telegram-mini-app .modal-panel {
 .prompt-details-layout--desktop {
   display: grid;
   gap: 1.5rem;
-  grid-template-columns: auto minmax(360px, 520px);
+  grid-template-columns: auto minmax(480px, 680px);
   align-items: start;
   width: fit-content;
-  max-width: min(1120px, 100%);
+  max-width: min(1320px, 100%);
   margin-inline: auto;
 }
 
