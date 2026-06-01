@@ -39,13 +39,7 @@ import { writeReferenceCache } from "./utils/referenceCache";
 import { buildCreatePromptToastMessage } from "./utils/pinterestPost";
 import { persistPublicationTemplatesFromPrompt } from "./utils/publicationTemplatesStorage";
 import { createPromptLoadingShell } from "./utils/promptShell";
-import {
-  MINI_APP_PAGE_SIZE,
-  readMiniAppViewMode,
-  saveMiniAppViewMode,
-  type MiniAppViewMode,
-  type ViewMode
-} from "./utils/viewMode";
+import { MINI_APP_PAGE_SIZE } from "./utils/viewMode";
 import { getPromptLabel } from "./utils/promptTitle";
 
 const CATEGORIES_CACHE_KEY = "prompt-bank-categories";
@@ -173,7 +167,6 @@ export default function App() {
 
 function MiniAppApp() {
   const [tab, setTab] = useState<TabKey>("home");
-  const [viewMode, setViewMode] = useState<MiniAppViewMode>(() => readMiniAppViewMode("grid"));
   const [homePrompts, setHomePrompts] = useState<Prompt[]>([]);
   const [homeTotal, setHomeTotal] = useState(0);
   const [homePage, setHomePage] = useState(1);
@@ -217,12 +210,6 @@ function MiniAppApp() {
   const favorites = useMemo(() => prompts.filter((item) => item.isFavorite), [prompts]);
   const favoritesForView = tab === "favorites" ? favoritePrompts : favorites;
 
-  function handleViewModeChange(next: ViewMode) {
-    if (next === "pinterest") return;
-    setViewMode(next);
-    saveMiniAppViewMode(next);
-  }
-
   function scrollMiniAppToTop() {
     document.querySelector<HTMLElement>(".mobile-frame")?.scrollTo({ top: 0, behavior: "smooth" });
   }
@@ -251,16 +238,6 @@ function MiniAppApp() {
     void clearStaleServiceWorkers();
     return () => document.documentElement.classList.remove("telegram-mini-app");
   }, []);
-
-  useEffect(() => {
-    if (tab === "prompts") {
-      void reloadPromptsList(promptsPage);
-      return;
-    }
-    if (tab === "favorites") {
-      void refreshFavoritesList(true, favoritesPage);
-    }
-  }, [viewMode]);
 
   const stats = useMemo(
     () => ({
@@ -858,8 +835,6 @@ function MiniAppApp() {
           pageSize={MINI_APP_PAGE_SIZE}
           onPageChange={handleHomePageChange}
           stats={stats}
-          viewMode={viewMode}
-          onViewModeChange={handleViewModeChange}
           onOpenPrompt={openPrompt}
           onCopyPrompt={handleCopyPrompt}
           onToggleFavorite={handleToggleFavorite}
@@ -878,8 +853,6 @@ function MiniAppApp() {
           loading={listReloading}
           initialLoading={promptsListLoading && !prompts.length}
           error={error}
-          viewMode={viewMode}
-          onViewModeChange={handleViewModeChange}
           page={promptsPage}
           totalItems={promptsTotal}
           pageSize={MINI_APP_PAGE_SIZE}
@@ -901,8 +874,6 @@ function MiniAppApp() {
           quickTags={quickTags}
           results={searchPrompts}
           loading={searchLoading}
-          viewMode={viewMode}
-          onViewModeChange={handleViewModeChange}
           onOpenPrompt={openPrompt}
           onCopyPrompt={handleCopyPrompt}
           onToggleFavorite={handleToggleFavorite}
@@ -913,8 +884,6 @@ function MiniAppApp() {
         <FavoritesPage
           prompts={favoritesForView}
           loading={favoritesLoading && !favoritePrompts.length}
-          viewMode={viewMode}
-          onViewModeChange={handleViewModeChange}
           page={favoritesPage}
           totalItems={favoritesTotal}
           pageSize={MINI_APP_PAGE_SIZE}

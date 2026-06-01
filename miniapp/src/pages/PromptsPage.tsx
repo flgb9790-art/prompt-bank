@@ -1,12 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Category, Prompt } from "../types";
-import type { MiniAppViewMode, ViewMode } from "../utils/viewMode";
 import { SearchBar } from "../components/SearchBar";
 import { CategoryTabs } from "../components/CategoryTabs";
-import { VirtualPromptList } from "../components/VirtualPromptList";
-import { MobilePromptFeed } from "../components/MobilePromptFeed";
-import { MobilePromptPostCard } from "../components/MobilePromptPostCard";
-import { ViewModeSwitcher } from "../components/web/ViewModeSwitcher";
+import { MiniAppPinterestFeed } from "../components/MiniAppPinterestFeed";
 import { Pagination } from "../components/web/Pagination";
 import { promptHasTag } from "../utils/tagFilter";
 import { getPromptSearchText } from "../utils/promptContent";
@@ -25,8 +21,6 @@ type Props = {
   loading: boolean;
   initialLoading?: boolean;
   error: string;
-  viewMode: MiniAppViewMode;
-  onViewModeChange: (mode: ViewMode) => void;
   page: number;
   totalItems: number;
   pageSize: number;
@@ -47,8 +41,6 @@ export function PromptsPage({
   loading,
   initialLoading = false,
   error,
-  viewMode,
-  onViewModeChange,
   page,
   totalItems,
   pageSize,
@@ -123,72 +115,32 @@ export function PromptsPage({
   const showListOverlay = loading && !showInitialSkeleton;
 
   function renderPrompts() {
-    if (showInitialSkeleton) {
-      return (
-        <div className="space-y-3">
-          {Array.from({ length: 4 }).map((_, idx) => (
-            <div key={idx} className="mobile-post-card skeleton mobile-post-card-skeleton" />
-          ))}
-        </div>
-      );
-    }
-
     if (error) {
       return <p className="text-sm text-[var(--red)]">{error}</p>;
     }
 
-    if (!filtered.length) {
-      return (
-        <div className="surface-card empty-state">
-          <p className="text-base font-medium text-[var(--text)]">Ничего не найдено</p>
-          <p className="mt-1 text-sm text-[var(--muted)]">Попробуйте другой запрос или категорию.</p>
-        </div>
-      );
-    }
-
-    const list = (
-      <>
-        {viewMode === "list" ? (
-          <VirtualPromptList
-            prompts={filtered}
-            variant="list"
-            scrollSelector=".mobile-frame"
-            onOpenPrompt={onOpenPrompt}
-            onToggleFavorite={onToggleFavorite}
-            onCopyPrompt={onCopyPrompt}
-            onTagClick={onTagClick}
-          />
-        ) : (
-          <MobilePromptFeed paginated>
-            {filtered.map((prompt, index) => (
-              <MobilePromptPostCard
-                key={prompt.id}
-                prompt={prompt}
-                imagePriority={index < 2}
-                onOpen={onOpenPrompt}
-                onCopy={onCopyPrompt}
-                onToggleFavorite={onToggleFavorite}
-                onTagClick={onTagClick}
-              />
-            ))}
-          </MobilePromptFeed>
-        )}
-      </>
+    return (
+      <MiniAppPinterestFeed
+        prompts={filtered}
+        loading={showInitialSkeleton || showListOverlay}
+        skeletonCount={8}
+        emptyState={
+          <div className="surface-card empty-state">
+            <p className="text-base font-medium text-[var(--text)]">Ничего не найдено</p>
+            <p className="mt-1 text-sm text-[var(--muted)]">Попробуйте другой запрос или категорию.</p>
+          </div>
+        }
+        onOpen={onOpenPrompt}
+        onCopy={onCopyPrompt}
+        onToggleFavorite={onToggleFavorite}
+        onTagClick={onTagClick}
+      />
     );
-
-    if (!showListOverlay) {
-      return list;
-    }
-
-    return <div className="mini-list-loading">{list}</div>;
   }
 
   return (
     <div className="mini-prompts-page space-y-3">
-      <div className="flex items-center justify-between gap-3">
-        <h2 className="text-base font-semibold text-[var(--text)]">Все промпты</h2>
-        <ViewModeSwitcher value={viewMode} onChange={onViewModeChange} hidePinterest />
-      </div>
+      <h2 className="text-base font-semibold text-[var(--text)]">Все промпты</h2>
 
       {activeTag ? (
         <div className="space-y-2">

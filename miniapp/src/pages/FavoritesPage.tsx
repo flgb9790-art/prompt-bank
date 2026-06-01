@@ -1,16 +1,10 @@
 import type { Prompt } from "../types";
-import type { MiniAppViewMode, ViewMode } from "../utils/viewMode";
-import { VirtualPromptList } from "../components/VirtualPromptList";
-import { MobilePromptFeed } from "../components/MobilePromptFeed";
-import { MobilePromptPostCard } from "../components/MobilePromptPostCard";
-import { ViewModeSwitcher } from "../components/web/ViewModeSwitcher";
+import { MiniAppPinterestFeed } from "../components/MiniAppPinterestFeed";
 import { Pagination } from "../components/web/Pagination";
 
 type Props = {
   prompts: Prompt[];
   loading?: boolean;
-  viewMode: MiniAppViewMode;
-  onViewModeChange: (mode: ViewMode) => void;
   page: number;
   totalItems: number;
   pageSize: number;
@@ -24,8 +18,6 @@ type Props = {
 export function FavoritesPage({
   prompts,
   loading = false,
-  viewMode,
-  onViewModeChange,
   page,
   totalItems,
   pageSize,
@@ -37,21 +29,7 @@ export function FavoritesPage({
 }: Props) {
   const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
 
-  if (loading && !prompts.length) {
-    return (
-      <div className="space-y-3">
-        <div className="flex items-center justify-between gap-3">
-          <h2 className="text-base font-semibold text-[var(--text)]">Избранное</h2>
-          <ViewModeSwitcher value={viewMode} onChange={onViewModeChange} hidePinterest />
-        </div>
-        {Array.from({ length: 3 }).map((_, idx) => (
-          <div key={idx} className="mobile-post-card skeleton mobile-post-card-skeleton" />
-        ))}
-      </div>
-    );
-  }
-
-  if (!prompts.length) {
+  if (!loading && !prompts.length) {
     return (
       <div className="surface-card empty-state mt-8">
         <h2 className="text-lg font-semibold text-[var(--text)]">Пока нет избранных промптов</h2>
@@ -62,45 +40,28 @@ export function FavoritesPage({
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between gap-3">
-        <h2 className="text-base font-semibold text-[var(--text)]">Избранное</h2>
-        <ViewModeSwitcher value={viewMode} onChange={onViewModeChange} hidePinterest />
-      </div>
+      <h2 className="text-base font-semibold text-[var(--text)]">Избранное</h2>
 
-      {viewMode === "list" ? (
-        <VirtualPromptList
-          prompts={prompts}
-          variant="list"
-          scrollSelector=".mobile-frame"
-          onOpenPrompt={onOpenPrompt}
-          onToggleFavorite={onToggleFavorite}
-          onCopyPrompt={onCopyPrompt}
-          onTagClick={onTagClick}
-        />
-      ) : (
-        <MobilePromptFeed paginated>
-          {prompts.map((prompt, index) => (
-            <MobilePromptPostCard
-              key={prompt.id}
-              prompt={prompt}
-              imagePriority={index < 2}
-              onOpen={onOpenPrompt}
-              onCopy={onCopyPrompt}
-              onToggleFavorite={onToggleFavorite}
-              onTagClick={onTagClick}
-            />
-          ))}
-        </MobilePromptFeed>
-      )}
-
-      <Pagination
-        variant="mini"
-        page={page}
-        totalPages={totalPages}
-        totalItems={totalItems}
-        pageSize={pageSize}
-        onPageChange={onPageChange}
+      <MiniAppPinterestFeed
+        prompts={prompts}
+        loading={loading}
+        skeletonCount={4}
+        onOpen={onOpenPrompt}
+        onCopy={onCopyPrompt}
+        onToggleFavorite={onToggleFavorite}
+        onTagClick={onTagClick}
       />
+
+      {totalItems > 0 ? (
+        <Pagination
+          variant="mini"
+          page={page}
+          totalPages={totalPages}
+          totalItems={totalItems}
+          pageSize={pageSize}
+          onPageChange={onPageChange}
+        />
+      ) : null}
     </div>
   );
 }

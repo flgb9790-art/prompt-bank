@@ -1,9 +1,6 @@
 import { Plus } from "lucide-react";
 import type { Prompt } from "../types";
-import type { MiniAppViewMode, ViewMode } from "../utils/viewMode";
-import { PinterestMasonryGrid } from "../components/PinterestMasonryGrid";
-import { VirtualPromptList } from "../components/VirtualPromptList";
-import { ViewModeSwitcher } from "../components/web/ViewModeSwitcher";
+import { MiniAppPinterestFeed } from "../components/MiniAppPinterestFeed";
 import { Pagination } from "../components/web/Pagination";
 
 type Props = {
@@ -14,8 +11,6 @@ type Props = {
   pageSize: number;
   onPageChange: (page: number) => void;
   stats: { total: number; favorites: number; categories: number; usage: number };
-  viewMode: MiniAppViewMode;
-  onViewModeChange: (mode: ViewMode) => void;
   onOpenPrompt: (prompt: Prompt) => void;
   onCopyPrompt: (prompt: Prompt) => void;
   onToggleFavorite: (id: number) => void;
@@ -34,8 +29,6 @@ export function HomePage({
   pageSize,
   onPageChange,
   stats,
-  viewMode,
-  onViewModeChange,
   onOpenPrompt,
   onCopyPrompt,
   onToggleFavorite,
@@ -49,53 +42,6 @@ export function HomePage({
     ? "Здесь хранятся все промпты банка. Легко находите, копируйте и управляйте контентом."
     : "Готовые промпты для работы. Ищите по категориям и тегам, копируйте и сохраняйте в избранное.";
   const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
-
-  function renderRecentPrompts() {
-    if (viewMode === "list") {
-      const list = (
-        <VirtualPromptList
-          prompts={prompts}
-          variant="list"
-          scrollSelector=".mobile-frame"
-          estimateSize={128}
-          onOpenPrompt={onOpenPrompt}
-          onToggleFavorite={onToggleFavorite}
-          onCopyPrompt={onCopyPrompt}
-          onTagClick={onTagClick}
-        />
-      );
-      if (loading && !prompts.length) {
-        return <div className="mini-list-loading">{list}</div>;
-      }
-      return list;
-    }
-
-    const grid = (
-      <PinterestMasonryGrid
-        prompts={prompts}
-        loading={loading}
-        scrollRootSelector=".mobile-frame"
-        miniAppTwoColumns
-        skeletonCount={6}
-        emptyState={
-          <div className="surface-card empty-state">
-            <p className="text-base font-medium text-[var(--text)]">Пока нет промптов</p>
-            <p className="mt-1 text-sm text-[var(--muted)]">Создайте первый промпт кнопкой ниже.</p>
-          </div>
-        }
-        onOpen={onOpenPrompt}
-        onCopy={onCopyPrompt}
-        onToggleFavorite={onToggleFavorite}
-        onTagClick={onTagClick}
-      />
-    );
-
-    if (loading && prompts.length) {
-      return <div className="mini-list-loading">{grid}</div>;
-    }
-
-    return grid;
-  }
 
   return (
     <div className="space-y-4 pb-4">
@@ -126,16 +72,26 @@ export function HomePage({
       <section className="home-recent-section">
         <div className="home-recent-header flex items-center justify-between gap-3">
           <h2 className="mobile-section-title">Недавние промпты</h2>
-          <div className="flex items-center gap-2">
-            {onViewAll ? (
-              <button type="button" className="link-primary" onClick={onViewAll}>
-                Все
-              </button>
-            ) : null}
-            <ViewModeSwitcher value={viewMode} onChange={onViewModeChange} hidePinterest />
-          </div>
+          {onViewAll ? (
+            <button type="button" className="link-primary" onClick={onViewAll}>
+              Все
+            </button>
+          ) : null}
         </div>
-        {renderRecentPrompts()}
+        <MiniAppPinterestFeed
+          prompts={prompts}
+          loading={loading}
+          emptyState={
+            <div className="surface-card empty-state">
+              <p className="text-base font-medium text-[var(--text)]">Пока нет промптов</p>
+              <p className="mt-1 text-sm text-[var(--muted)]">Создайте первый промпт кнопкой ниже.</p>
+            </div>
+          }
+          onOpen={onOpenPrompt}
+          onCopy={onCopyPrompt}
+          onToggleFavorite={onToggleFavorite}
+          onTagClick={onTagClick}
+        />
         {totalItems > 0 ? (
           <Pagination
             variant="mini"
