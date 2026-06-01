@@ -5,6 +5,7 @@ import type { Prompt } from "../types";
 import { hasFullPromptDetails } from "../utils/promptContent";
 import { resolvePostMedia } from "../utils/resolvePostMedia";
 import { TagPill } from "./TagPill";
+import { usePromptFavorite } from "../context/FavoriteIdsContext";
 
 const MAX_TAGS = 6;
 
@@ -122,6 +123,7 @@ export const MobilePromptPostCard = memo(function MobilePromptPostCard({
 }: Props) {
   const tags = prompt.keywords.slice(0, MAX_TAGS);
   const extraTags = Math.max(0, prompt.keywords.length - MAX_TAGS);
+  const isFavorite = usePromptFavorite(prompt);
   const favoriteRef = useRef<HTMLButtonElement>(null);
   const [favoriteBump, setFavoriteBump] = useState(false);
 
@@ -154,11 +156,12 @@ export const MobilePromptPostCard = memo(function MobilePromptPostCard({
         <button
           ref={favoriteRef}
           type="button"
-          className={`mobile-post-favorite-overlay ${prompt.isFavorite ? "active" : ""}${favoriteBump ? " bump" : ""}`}
+          className={`mobile-post-favorite-overlay${isFavorite ? " active favorite-lit" : ""}${favoriteBump ? " bump" : ""}`}
           onClick={handleFavorite}
-          aria-label={prompt.isFavorite ? "Убрать из избранного" : "В избранное"}
+          aria-pressed={isFavorite}
+          aria-label={isFavorite ? "Убрать из избранного" : "В избранное"}
         >
-          <Star size={22} strokeWidth={2.2} fill={prompt.isFavorite ? "currentColor" : "none"} />
+          <Star size={22} strokeWidth={2.2} fill={isFavorite ? "currentColor" : "none"} />
         </button>
       </div>
 

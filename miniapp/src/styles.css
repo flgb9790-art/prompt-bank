@@ -401,19 +401,28 @@ html.telegram-mini-app .mobile-post-card-skeleton--grid {
   z-index: 2;
 }
 
-.mobile-post-favorite-overlay.active {
+.mobile-post-favorite-overlay.active,
+.mobile-post-favorite-overlay.favorite-lit {
   color: #b45309;
   background: var(--yellow-soft);
   border-color: #f6d66b;
 }
 
-html.telegram-mini-app .mobile-post-favorite-overlay.active {
+.mobile-post-favorite-overlay.active svg,
+.mobile-post-favorite-overlay.favorite-lit svg {
+  color: #f6b51e;
+  fill: currentColor;
+}
+
+html.telegram-mini-app .mobile-post-favorite-overlay.active,
+html.telegram-mini-app .mobile-post-favorite-overlay.favorite-lit {
   color: #b45309;
   background: var(--yellow-soft);
   border-color: #f6d66b;
 }
 
-html.telegram-mini-app .mobile-post-favorite-overlay.active svg {
+html.telegram-mini-app .mobile-post-favorite-overlay.active svg,
+html.telegram-mini-app .mobile-post-favorite-overlay.favorite-lit svg {
   color: #f6b51e;
   fill: currentColor;
 }
@@ -1976,6 +1985,10 @@ html.web-mode .prompt-details-layout--desktop .prompt-details-actions {
 }
 
 html.web-mode .prompt-detail-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   min-height: 36px;
   height: 36px;
   padding: 0 10px;
@@ -4642,7 +4655,15 @@ html.telegram-mini-app .pinterest-masonry--mini-app-two-col:not(.pinterest-mason
   z-index: 3;
 }
 
-.pinterest-card:hover .pinterest-actions {
+.pinterest-card:hover .pinterest-actions,
+.pinterest-card:has(.pinterest-action-btn.active),
+.pinterest-card:has(.pinterest-action-btn.favorite-lit) {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.pinterest-card:has(.pinterest-action-btn.active) .pinterest-actions,
+.pinterest-card:has(.pinterest-action-btn.favorite-lit) .pinterest-actions {
   opacity: 1;
   transform: translateY(0);
 }

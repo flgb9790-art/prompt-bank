@@ -61,6 +61,8 @@ import {
 import { getPromptLabel } from "./utils/promptTitle";
 import { persistPublicationTemplatesFromPrompt } from "./utils/publicationTemplatesStorage";
 import { fetchWebBootstrapOnce } from "./utils/webBootstrapOnce";
+import { FavoriteIdsProvider } from "./context/FavoriteIdsContext";
+import { favoriteIdsFromCache, favoriteIdsFromPrompts } from "./utils/promptFavorite";
 
 type SortValue = "new" | "old" | "usage";
 type RoutePath = "/" | "/prompts" | "/favorites" | "/categories" | "/tags" | "/recent" | "/settings" | "/copied" | "/viewed" | "/privacy";
@@ -111,6 +113,7 @@ export function WebApp() {
   const [favoritesLoading, setFavoritesLoading] = useState(false);
   const [error, setError] = useState("");
   const [toast, setToast] = useState("");
+  const [favoriteIds, setFavoriteIds] = useState<Set<number>>(() => favoriteIdsFromCache());
   const [selectedPrompt, setSelectedPrompt] = useState<Prompt>();
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [authRequiredOpen, setAuthRequiredOpen] = useState(false);
@@ -348,6 +351,7 @@ export function WebApp() {
         const cachedFavorites = readFavoritesCache();
         if (cachedFavorites) {
           setFavoritePrompts(cachedFavorites);
+          setFavoriteIds(favoriteIdsFromPrompts(cachedFavorites));
         }
 
         runDeferred(() => {
@@ -442,6 +446,11 @@ export function WebApp() {
       setFavoritesTotal(data.total);
       setLastFavoriteBatchSize(mapped.length);
       setFavoritePrompts(mapped);
+      setFavoriteIds((prev) => {
+        const next = new Set(prev);
+        for (const id of favoriteIdsFromPrompts(mapped)) next.add(id);
+        return next;
+      });
       if (page === 1) writeFavoritesCache(mapped);
     } catch (err) {
       console.error(err);
@@ -457,6 +466,7 @@ export function WebApp() {
   }, [path, isAuthenticated, sort]);
 
   function syncFavoritePrompts(next: Prompt) {
+    syncFavoriteId(next.id, next.isFavorite);
     setFavoritePrompts((prev) => {
       let result: Prompt[];
       if (!next.isFavorite) {
@@ -543,6 +553,15 @@ export function WebApp() {
     return () => window.removeEventListener("popstate", onPopState);
   }, [prompts]);
 
+  function syncFavoriteId(promptId: number, isFavorite: boolean) {
+    setFavoriteIds((prev) => {
+      const next = new Set(prev);
+      if (isFavorite) next.add(promptId);
+      else next.delete(promptId);
+      return next;
+    });
+  }
+
   function upsertPromptInList(nextPrompt: Prompt) {
     setPrompts((prev) => {
       const index = prev.findIndex((item) => item.id === nextPrompt.id);
@@ -554,6 +573,23 @@ export function WebApp() {
       copy[index] = mergePromptUpdate(prev[index], nextPrompt);
       return copy;
     });
+    syncFavoriteId(nextPrompt.id, nextPrompt.isFavorite);
+  }
+
+  function patchPromptEverywhere(patch: Prompt) {
+    upsertPromptInList(patch);
+    syncFavoritePrompts(patch);
+    if (selectedPrompt?.id === patch.id) {
+      setSelectedPrompt((current) => (current ? mergePromptUpdate(current, patch) : patch));
+    }
+  }
+
+  function findPromptInLists(id: number) {
+    return (
+      prompts.find((item) => item.id === id) ??
+      favoritePrompts.find((item) => item.id === id) ??
+      (selectedPrompt?.id === id ? selectedPrompt : undefined)
+    );
   }
 
   function navigate(nextPath: RoutePath, options?: { keepTag?: boolean }) {
@@ -618,27 +654,17 @@ export function WebApp() {
       askAuth();
       return;
     }
-    const previous = prompts.find((item) => item.id === id) ?? favoritePrompts.find((item) => item.id === id);
+    const previous = findPromptInLists(id);
     if (!previous) return;
 
     const optimistic = { ...previous, isFavorite: !previous.isFavorite };
-    setPrompts((prev) => prev.map((item) => (item.id === id ? optimistic : item)));
-    syncFavoritePrompts(optimistic);
-    if (selectedPrompt?.id === id) {
-      setSelectedPrompt(optimistic);
-    }
+    patchPromptEverywhere(optimistic);
 
     try {
       const updated = await api.toggleFavorite(id);
-      upsertPromptInList(updated);
-      syncFavoritePrompts(updated);
-      if (selectedPrompt?.id === id) {
-        setSelectedPrompt((current) => (current ? mergePromptUpdate(current, updated) : updated));
-      }
+      patchPromptEverywhere(updated);
     } catch (err) {
-      syncFavoritePrompts(previous);
-      setPrompts((prev) => prev.map((item) => (item.id === id ? previous : item)));
-      if (selectedPrompt?.id === id) setSelectedPrompt(previous);
+      patchPromptEverywhere(previous);
       if (!handleUnauthorized(err)) {
         setToast("Не удалось обновить избранное");
       }
@@ -1120,6 +1146,7 @@ export function WebApp() {
   }
 
   return (
+    <FavoriteIdsProvider favoriteIds={favoriteIds}>
     <>
       {isDesktopLayout ? (
         <div className="h-full">
@@ -1177,5 +1204,6 @@ export function WebApp() {
 
       {modals}
     </>
+    </FavoriteIdsProvider>
   );
 }

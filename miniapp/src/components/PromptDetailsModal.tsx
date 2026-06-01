@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, Share2, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Share2, Star, X } from "lucide-react";
 import { resolveCardMediaUrl, resolveMediaUrl } from "../api";
 import { useHorizontalSwipe } from "../hooks/useHorizontalSwipe";
 import { useMediaMinWidth } from "../hooks/useMediaMinWidth";
@@ -29,6 +29,7 @@ import { loadStoredPublicationTemplates } from "../utils/publicationTemplatesSto
 import { PromptContentText } from "./PromptContentText";
 import { PromptContentTextarea } from "./PromptContentTextarea";
 import { normalizePromptContent } from "../utils/promptContentFormat";
+import { usePromptFavorite } from "../context/FavoriteIdsContext";
 
 export type PromptEditPayload = {
   content: string;
@@ -186,6 +187,9 @@ export function PromptDetailsModal({
   const [pinterestPublishing, setPinterestPublishing] = useState(false);
 
   const galleryItems = useMemo(() => (prompt ? buildGalleryItems(prompt) : []), [prompt]);
+  const isFavorite = usePromptFavorite(
+    prompt ? { id: prompt.id, isFavorite: prompt.isFavorite } : { id: 0, isFavorite: false }
+  );
 
   useEffect(() => {
     if (!galleryItems.length) {
@@ -494,12 +498,13 @@ export function PromptDetailsModal({
                     }}
                     className={
                       webModal
-                        ? `prompt-detail-action-btn${prompt.isFavorite ? " prompt-detail-action-btn--favorite" : ""}`
-                        : `btn-secondary justify-center${prompt.isFavorite ? " btn-secondary--favorite" : ""}`
+                        ? `prompt-detail-action-btn${isFavorite ? " prompt-detail-action-btn--favorite favorite-lit" : ""}`
+                        : `btn-secondary justify-center${isFavorite ? " btn-secondary--favorite favorite-lit" : ""}`
                     }
-                    aria-pressed={prompt.isFavorite}
+                    aria-pressed={isFavorite}
                   >
-                    {prompt.isFavorite ? "В избранном" : "В избранное"}
+                    <Star size={18} strokeWidth={2.2} fill={isFavorite ? "currentColor" : "none"} />
+                    {isFavorite ? "В избранном" : "В избранное"}
                   </button>
                   {canManage && webModal ? (
                     <>

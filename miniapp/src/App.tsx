@@ -41,6 +41,8 @@ import { persistPublicationTemplatesFromPrompt } from "./utils/publicationTempla
 import { createPromptLoadingShell } from "./utils/promptShell";
 import { MINI_APP_PAGE_SIZE } from "./utils/viewMode";
 import { getPromptLabel } from "./utils/promptTitle";
+import { FavoriteIdsProvider } from "./context/FavoriteIdsContext";
+import { favoriteIdsFromCache, favoriteIdsFromPrompts } from "./utils/promptFavorite";
 
 const CATEGORIES_CACHE_KEY = "prompt-bank-categories";
 const TAGS_CACHE_KEY = "prompt-bank-tags";
@@ -202,6 +204,7 @@ function MiniAppApp() {
   const [profileScreen, setProfileScreen] = useState<"copied" | "viewed" | null>(null);
   const [user, setUser] = useState<TelegramUser>(() => resolveTelegramUser() ?? mockTelegramUser);
   const [toastMessage, setToastMessage] = useState("");
+  const [favoriteIds, setFavoriteIds] = useState<Set<number>>(() => favoriteIdsFromCache());
   const [isMiniAppExpanded, setIsMiniAppExpanded] = useState(true);
   const deepLinkHandledRef = useRef(false);
   const openPromptRequestRef = useRef(0);
@@ -298,6 +301,15 @@ function MiniAppApp() {
     });
   }
 
+  function syncFavoriteId(promptId: number, isFavorite: boolean) {
+    setFavoriteIds((prev) => {
+      const next = new Set(prev);
+      if (isFavorite) next.add(promptId);
+      else next.delete(promptId);
+      return next;
+    });
+  }
+
   function patchPromptInLists(patch: Prompt) {
     const apply = (prev: Prompt[]) => {
       const index = prev.findIndex((item) => item.id === patch.id);
@@ -310,6 +322,7 @@ function MiniAppApp() {
     setPrompts(apply);
     setSearchPrompts(apply);
     syncRecentPrompt(patch);
+    syncFavoriteId(patch.id, patch.isFavorite);
   }
 
   function findPromptInLists(id: number) {
@@ -317,7 +330,8 @@ function MiniAppApp() {
       homePrompts.find((item) => item.id === id) ??
       prompts.find((item) => item.id === id) ??
       searchPrompts.find((item) => item.id === id) ??
-      favoritePrompts.find((item) => item.id === id)
+      favoritePrompts.find((item) => item.id === id) ??
+      (selectedPrompt?.id === id ? selectedPrompt : undefined)
     );
   }
 
@@ -329,6 +343,11 @@ function MiniAppApp() {
       const mapped = mapPromptsFromApi(data.items);
       setFavoritesTotal(data.total);
       setFavoritePrompts(mapped);
+      setFavoriteIds((prev) => {
+        const next = new Set(prev);
+        for (const id of favoriteIdsFromPrompts(mapped)) next.add(id);
+        return next;
+      });
       setFavoritesPage(page);
       if (page === 1) writeFavoritesCache(mapped);
     } catch {
@@ -342,6 +361,7 @@ function MiniAppApp() {
     const cachedFavorites = readFavoritesCache();
     if (cachedFavorites) {
       setFavoritePrompts(cachedFavorites);
+      setFavoriteIds(favoriteIdsFromPrompts(cachedFavorites));
     }
 
     runDeferred(() => {
@@ -568,6 +588,7 @@ function MiniAppApp() {
   }, [tab, profileScreen]);
 
   function syncFavoritePrompts(next: Prompt) {
+    syncFavoriteId(next.id, next.isFavorite);
     setFavoritePrompts((prev) => {
       let result: Prompt[];
       if (!next.isFavorite) {
@@ -845,6 +866,7 @@ function MiniAppApp() {
   }
 
   return (
+    <FavoriteIdsProvider favoriteIds={favoriteIds}>
     <Layout freezeScroll={!isMiniAppExpanded}>
       {tab === "home" && !loading ? (
         <HomePage
@@ -1007,5 +1029,6 @@ function MiniAppApp() {
         </div>
       ) : null}
     </Layout>
+    </FavoriteIdsProvider>
   );
 }

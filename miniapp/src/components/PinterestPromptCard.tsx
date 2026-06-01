@@ -6,6 +6,7 @@ import type { Prompt } from "../types";
 import { getCategoryBadgeClass } from "../utils/categoryStyle";
 import { hasFullPromptDetails } from "../utils/promptContent";
 import { resolvePostMedia } from "../utils/resolvePostMedia";
+import { usePromptFavorite } from "../context/FavoriteIdsContext";
 
 type Props = {
   prompt: Prompt;
@@ -38,6 +39,7 @@ export const PinterestPromptCard = memo(function PinterestPromptCard({
   const nearViewport = useNearViewport(mediaRef, { enabled: !imagePriority, rootMargin: "360px 0px" });
   const shouldLoadMedia = imagePriority || nearViewport;
   const [tooTall, setTooTall] = useState(false);
+  const isFavorite = usePromptFavorite(prompt);
   const [favoriteBump, setFavoriteBump] = useState(false);
 
   useEffect(() => {
@@ -131,11 +133,12 @@ export const PinterestPromptCard = memo(function PinterestPromptCard({
           </button>
           <button
             type="button"
-            className={`pinterest-action-btn ${prompt.isFavorite ? "active" : ""}${favoriteBump ? " bump" : ""}`}
+            className={`pinterest-action-btn${isFavorite ? " active favorite-lit" : ""}${favoriteBump ? " bump" : ""}`}
             onClick={handleFavorite}
-            aria-label={prompt.isFavorite ? "Убрать из избранного" : "В избранное"}
+            aria-pressed={isFavorite}
+            aria-label={isFavorite ? "Убрать из избранного" : "В избранное"}
           >
-            <Star size={19} strokeWidth={2} fill={prompt.isFavorite ? "currentColor" : "none"} />
+            <Star size={19} strokeWidth={2} fill={isFavorite ? "currentColor" : "none"} />
           </button>
         </div>
       </div>
