@@ -1699,7 +1699,13 @@ html.web-mode .modal-panel--prompt-fullscreen {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  padding: 1.25rem 3rem 1.25rem;
+  padding: 1.25rem clamp(32px, 5vw, 64px) 1.25rem;
+}
+
+html.web-mode .modal-panel--prompt-fullscreen .prompt-details-modal-header {
+  width: 100%;
+  max-width: min(1120px, 100%);
+  margin-inline: auto;
 }
 
 html.web-mode .modal-overlay--add-prompt-fullscreen {
@@ -1836,11 +1842,18 @@ html.web-mode .modal-panel--prompt-web-mobile {
   max-height: min(94vh, 100%);
 }
 
+html.web-mode .prompt-details-modal-body {
+  padding-inline: clamp(32px, 5vw, 64px);
+}
+
 html.web-mode .prompt-details-layout--desktop {
   display: grid;
-  grid-template-columns: minmax(0, min(600px, 46%)) minmax(0, 1fr);
+  grid-template-columns: auto minmax(360px, 520px);
   gap: 1.5rem;
   align-items: start;
+  width: fit-content;
+  max-width: min(1120px, 100%);
+  margin-inline: auto;
   padding-top: 50px;
 }
 
@@ -1848,7 +1861,7 @@ html.web-mode .prompt-details-meta {
   position: relative;
   z-index: 2;
   min-width: 0;
-  padding-right: 12px;
+  max-width: 520px;
 }
 
 html.web-mode .prompt-details-tags {
@@ -1965,8 +1978,10 @@ html.web-mode .prompt-details-layout--desktop > div:first-child {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  width: max-content;
-  max-width: 100%;
+  width: auto;
+  min-width: 0;
+  max-width: min(520px, 42vw);
+  overflow: hidden;
 }
 
 html.web-mode .prompt-gallery--desktop {
@@ -2812,8 +2827,11 @@ html.telegram-mini-app .modal-panel {
 .prompt-details-layout--desktop {
   display: grid;
   gap: 1.5rem;
-  grid-template-columns: minmax(460px, 50%) minmax(0, 1fr);
+  grid-template-columns: auto minmax(360px, 520px);
   align-items: start;
+  width: fit-content;
+  max-width: min(1120px, 100%);
+  margin-inline: auto;
 }
 
 .preview-unframed {
