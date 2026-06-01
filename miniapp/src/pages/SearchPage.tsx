@@ -1,5 +1,5 @@
 import { SearchBar } from "../components/SearchBar";
-import { MiniAppPinterestFeed } from "../components/MiniAppPinterestFeed";
+import { MiniAppCardFeed } from "../components/MiniAppCardFeed";
 import type { Prompt } from "../types";
 
 type Props = {
@@ -43,7 +43,7 @@ export function SearchPage({
       {trimmed.length < 2 ? (
         <p className="text-sm text-[var(--muted)]">Введите минимум 2 символа для поиска по всей базе.</p>
       ) : (
-        <MiniAppPinterestFeed
+        <MiniAppCardFeed
           prompts={results}
           loading={loading}
           emptyState={

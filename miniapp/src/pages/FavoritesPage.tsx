@@ -1,5 +1,5 @@
 import type { Prompt } from "../types";
-import { MiniAppPinterestFeed } from "../components/MiniAppPinterestFeed";
+import { MiniAppCardFeed } from "../components/MiniAppCardFeed";
 import { Pagination } from "../components/web/Pagination";
 
 type Props = {
@@ -42,10 +42,10 @@ export function FavoritesPage({
     <div className="space-y-3">
       <h2 className="text-base font-semibold text-[var(--text)]">Избранное</h2>
 
-      <MiniAppPinterestFeed
+      <MiniAppCardFeed
         prompts={prompts}
         loading={loading}
-        skeletonCount={4}
+        paginated
         onOpen={onOpenPrompt}
         onCopy={onCopyPrompt}
         onToggleFavorite={onToggleFavorite}

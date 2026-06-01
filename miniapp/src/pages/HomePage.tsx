@@ -1,6 +1,6 @@
 import { Plus } from "lucide-react";
 import type { Prompt } from "../types";
-import { MiniAppPinterestFeed } from "../components/MiniAppPinterestFeed";
+import { MiniAppCardFeed } from "../components/MiniAppCardFeed";
 import { Pagination } from "../components/web/Pagination";
 
 type Props = {
@@ -78,9 +78,10 @@ export function HomePage({
             </button>
           ) : null}
         </div>
-        <MiniAppPinterestFeed
+        <MiniAppCardFeed
           prompts={prompts}
           loading={loading}
+          paginated
           emptyState={
             <div className="surface-card empty-state">
               <p className="text-base font-medium text-[var(--text)]">Пока нет промптов</p>

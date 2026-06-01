@@ -189,7 +189,7 @@ export const MobilePromptPostCard = memo(function MobilePromptPostCard({
             className="mobile-post-action mobile-post-action--copy"
             onClick={(event) => {
               event.stopPropagation();
-              onCopy(prompt);
+              void onCopy(prompt);
             }}
           >
             <Copy size={19} strokeWidth={2.2} />

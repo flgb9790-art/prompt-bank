@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { Category, Prompt } from "../types";
 import { SearchBar } from "../components/SearchBar";
 import { CategoryTabs } from "../components/CategoryTabs";
-import { MiniAppPinterestFeed } from "../components/MiniAppPinterestFeed";
+import { MiniAppCardFeed } from "../components/MiniAppCardFeed";
 import { Pagination } from "../components/web/Pagination";
 import { promptHasTag } from "../utils/tagFilter";
 import { getPromptSearchText } from "../utils/promptContent";
@@ -120,10 +120,11 @@ export function PromptsPage({
     }
 
     return (
-      <MiniAppPinterestFeed
+      <MiniAppCardFeed
         prompts={filtered}
         loading={showInitialSkeleton || showListOverlay}
-        skeletonCount={8}
+        paginated
+        skeletonCount={6}
         emptyState={
           <div className="surface-card empty-state">
             <p className="text-base font-medium text-[var(--text)]">Ничего не найдено</p>
