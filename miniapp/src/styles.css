@@ -1839,8 +1839,9 @@ html.web-mode .modal-panel--prompt-web-mobile {
 html.web-mode .prompt-details-layout--desktop {
   display: grid;
   grid-template-columns: minmax(0, min(600px, 46%)) minmax(0, 1fr);
-  gap: 3rem;
+  gap: 1.5rem;
   align-items: start;
+  padding-top: 50px;
 }
 
 html.web-mode .prompt-details-meta {
@@ -2810,7 +2811,7 @@ html.telegram-mini-app .modal-panel {
 
 .prompt-details-layout--desktop {
   display: grid;
-  gap: 28px;
+  gap: 1.5rem;
   grid-template-columns: minmax(460px, 50%) minmax(0, 1fr);
   align-items: start;
 }
