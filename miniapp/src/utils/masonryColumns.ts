@@ -33,12 +33,13 @@ export const PINTEREST_COLUMN_WIDTH_MINI = PINTEREST_MIN_COLUMN_WIDTH_MINI;
 export function resolveColumnCountForWidth(
   containerWidth: number,
   miniAppSingleColumn = false,
-  webMobileTwoColumns = false
+  webMobileTwoColumns = false,
+  miniAppTwoColumns = false
 ): number {
   if (containerWidth <= 0) return 1;
 
-  if (webMobileTwoColumns) {
-    return containerWidth < 300 ? 1 : 2;
+  if (webMobileTwoColumns || miniAppTwoColumns) {
+    return containerWidth < 280 ? 1 : 2;
   }
 
   const gap = miniAppSingleColumn ? PINTEREST_COLUMN_GAP_MINI : PINTEREST_COLUMN_GAP;

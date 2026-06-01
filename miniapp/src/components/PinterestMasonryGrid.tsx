@@ -26,6 +26,7 @@ type Props = {
   onTagClick?: (tag: string) => void;
   scrollRootSelector?: string;
   miniAppSingleColumn?: boolean;
+  miniAppTwoColumns?: boolean;
   webMobileTwoColumns?: boolean;
   emptyState?: ReactNode;
   skeletonCount?: number;
@@ -65,12 +66,14 @@ function PinterestSkeletonColumns({
   count,
   fitColumns,
   containerWidth,
-  miniAppSingleColumn
+  miniAppSingleColumn,
+  miniAppTwoColumns
 }: {
   count: number;
   fitColumns: number;
   containerWidth: number;
   miniAppSingleColumn?: boolean;
+  miniAppTwoColumns?: boolean;
 }) {
   const skeletons = Array.from({ length: count }, (_, index) => ({
     id: index,
@@ -80,7 +83,16 @@ function PinterestSkeletonColumns({
   const columns = distributeToMasonryColumns(skeletons, distributionColumns, (item) => item.height);
 
   return (
-    <div className={`pinterest-masonry ${miniAppSingleColumn ? "pinterest-masonry--mini-app" : ""}`.trim()} aria-hidden>
+    <div
+      className={[
+        "pinterest-masonry",
+        miniAppSingleColumn || miniAppTwoColumns ? "pinterest-masonry--mini-app" : "",
+        miniAppTwoColumns ? "pinterest-masonry--mini-app-two-col" : ""
+      ]
+        .filter(Boolean)
+        .join(" ")}
+      aria-hidden
+    >
       {columns.map((column, columnIndex) => (
         <div key={`skeleton-col-${columnIndex}`} className="pinterest-masonry-column">
           {column.map((item) => (
@@ -104,11 +116,12 @@ export function PinterestMasonryGrid({
   onTagClick,
   scrollRootSelector = ".prompt-scroll-root",
   miniAppSingleColumn = false,
+  miniAppTwoColumns = false,
   webMobileTwoColumns = false,
   emptyState,
   skeletonCount = 8
 }: Props) {
-  const compactColumns = miniAppSingleColumn || webMobileTwoColumns;
+  const compactColumns = miniAppSingleColumn || miniAppTwoColumns || webMobileTwoColumns;
   const masonryRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(0);
 
@@ -158,7 +171,13 @@ export function PinterestMasonryGrid({
     itemCount: prompts.length
   });
 
-  const masonryClass = `pinterest-masonry ${miniAppSingleColumn ? "pinterest-masonry--mini-app" : ""}`.trim();
+  const masonryClass = [
+    "pinterest-masonry",
+    miniAppSingleColumn || miniAppTwoColumns ? "pinterest-masonry--mini-app" : "",
+    miniAppTwoColumns ? "pinterest-masonry--mini-app-two-col" : ""
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   if (loading && !prompts.length) {
     return (
@@ -167,7 +186,8 @@ export function PinterestMasonryGrid({
           count={skeletonCount}
           fitColumns={fitColumns || 2}
           containerWidth={containerWidth}
-          miniAppSingleColumn={compactColumns}
+          miniAppSingleColumn={miniAppSingleColumn}
+          miniAppTwoColumns={miniAppTwoColumns}
         />
       </div>
     );
@@ -222,7 +242,8 @@ export function PinterestMasonryGrid({
           count={4}
           fitColumns={fitColumns || 2}
           containerWidth={containerWidth}
-          miniAppSingleColumn={compactColumns}
+          miniAppSingleColumn={miniAppSingleColumn}
+          miniAppTwoColumns={miniAppTwoColumns}
         />
       ) : null}
 

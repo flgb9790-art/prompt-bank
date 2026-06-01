@@ -1009,7 +1009,13 @@ function MiniAppApp() {
         showPublicationTemplates={isAdmin}
       />
       {toastMessage ? (
-        <div className="toast fixed bottom-24 left-1/2 z-[60] -translate-x-1/2">{toastMessage}</div>
+        <div
+          className="toast toast--over-modal fixed bottom-24 left-1/2 z-[110] max-w-[min(100%,320px)] -translate-x-1/2 px-4 text-center"
+          role="status"
+          aria-live="polite"
+        >
+          {toastMessage}
+        </div>
       ) : null}
     </Layout>
   );

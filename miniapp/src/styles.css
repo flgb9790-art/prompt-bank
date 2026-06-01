@@ -327,7 +327,9 @@ html.web-mode #root {
 }
 
 .mobile-post-favorite-overlay.active {
-  color: #f6b51e;
+  color: #b45309;
+  background: var(--yellow-soft);
+  border-color: #f6d66b;
 }
 
 .mobile-post-favorite-overlay.bump {
@@ -463,9 +465,15 @@ html.web-mode #root {
 }
 
 .mobile-post-action--favorite.active {
-  color: #f6b51e;
-  border-color: #fde7a3;
-  background: #fff9e8;
+  color: #b45309;
+  border-color: #f6d66b;
+  background: var(--yellow-soft);
+}
+
+html.telegram-mini-app .action-button-row .btn-secondary--favorite {
+  border-color: #f6d66b;
+  background: var(--yellow-soft);
+  color: #b45309;
 }
 
 @media (max-width: 380px) {
@@ -4404,12 +4412,26 @@ html.web-mode .pinterest-masonry {
   max-width: 100%;
 }
 
+html.telegram-mini-app .pinterest-masonry--mini-app-two-col:not(.pinterest-masonry--force-single) {
+  width: 100%;
+  max-width: none;
+  margin-inline: 0;
+  --pinterest-col-gap: 12px;
+  --pinterest-col-width: calc((100% - var(--pinterest-col-gap)) / 2);
+}
+
+html.telegram-mini-app .pinterest-masonry--mini-app-two-col:not(.pinterest-masonry--force-single) .pinterest-masonry-column {
+  width: var(--pinterest-col-width);
+  flex: 0 0 var(--pinterest-col-width);
+  max-width: var(--pinterest-col-width);
+}
+
 @media (max-width: 479px) {
-  html:not(.web-mode) .pinterest-masonry--mini-app:not(.pinterest-masonry--force-single) {
+  html:not(.web-mode) .pinterest-masonry--mini-app:not(.pinterest-masonry--mini-app-two-col):not(.pinterest-masonry--force-single) {
     --pinterest-col-width: calc((100% - var(--pinterest-col-gap)) / 2);
   }
 
-  html:not(.web-mode) .pinterest-masonry--mini-app:not(.pinterest-masonry--force-single) .pinterest-masonry-column {
+  html:not(.web-mode) .pinterest-masonry--mini-app:not(.pinterest-masonry--mini-app-two-col):not(.pinterest-masonry--force-single) .pinterest-masonry-column {
     width: var(--pinterest-col-width);
     flex: 0 0 var(--pinterest-col-width);
     max-width: var(--pinterest-col-width);
@@ -4561,6 +4583,14 @@ html.web-mode .pinterest-masonry {
 
 .pinterest-action-btn.active {
   color: #f6b51e;
+  background: #fff6df;
+  border-color: #f6d66b;
+}
+
+html.telegram-mini-app .pinterest-action-btn.active {
+  color: #b45309;
+  background: var(--yellow-soft);
+  border-color: #f6d66b;
 }
 
 .pinterest-action-btn.bump {

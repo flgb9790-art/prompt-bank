@@ -9,15 +9,18 @@ import {
 export function usePinterestColumnCount(
   containerWidth: number,
   miniAppSingleColumn = false,
-  webMobileTwoColumns = false
+  webMobileTwoColumns = false,
+  miniAppTwoColumns = false
 ) {
   const [columnCount, setColumnCount] = useState(() =>
-    resolveColumnCountForWidth(containerWidth, miniAppSingleColumn, webMobileTwoColumns)
+    resolveColumnCountForWidth(containerWidth, miniAppSingleColumn, webMobileTwoColumns, miniAppTwoColumns)
   );
 
   useEffect(() => {
-    setColumnCount(resolveColumnCountForWidth(containerWidth, miniAppSingleColumn, webMobileTwoColumns));
-  }, [containerWidth, miniAppSingleColumn, webMobileTwoColumns]);
+    setColumnCount(
+      resolveColumnCountForWidth(containerWidth, miniAppSingleColumn, webMobileTwoColumns, miniAppTwoColumns)
+    );
+  }, [containerWidth, miniAppSingleColumn, webMobileTwoColumns, miniAppTwoColumns]);
 
   return columnCount;
 }

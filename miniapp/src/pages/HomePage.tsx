@@ -1,8 +1,7 @@
 import { Plus } from "lucide-react";
 import type { Prompt } from "../types";
 import type { MiniAppViewMode, ViewMode } from "../utils/viewMode";
-import { MobilePromptFeed } from "../components/MobilePromptFeed";
-import { MobilePromptPostCard } from "../components/MobilePromptPostCard";
+import { PinterestMasonryGrid } from "../components/PinterestMasonryGrid";
 import { VirtualPromptList } from "../components/VirtualPromptList";
 import { ViewModeSwitcher } from "../components/web/ViewModeSwitcher";
 import { Pagination } from "../components/web/Pagination";
@@ -52,27 +51,8 @@ export function HomePage({
   const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
 
   function renderRecentPrompts() {
-    if (loading && !prompts.length) {
-      return (
-        <div className="space-y-3">
-          {Array.from({ length: 3 }).map((_, idx) => (
-            <div key={idx} className="mobile-post-card skeleton mobile-post-card-skeleton" />
-          ))}
-        </div>
-      );
-    }
-
-    if (!prompts.length) {
-      return (
-        <div className="surface-card empty-state">
-          <p className="text-base font-medium text-[var(--text)]">Пока нет промптов</p>
-          <p className="mt-1 text-sm text-[var(--muted)]">Создайте первый промпт кнопкой ниже.</p>
-        </div>
-      );
-    }
-
-    const list =
-      viewMode === "list" ? (
+    if (viewMode === "list") {
+      const list = (
         <VirtualPromptList
           prompts={prompts}
           variant="list"
@@ -83,27 +63,38 @@ export function HomePage({
           onCopyPrompt={onCopyPrompt}
           onTagClick={onTagClick}
         />
-      ) : (
-        <MobilePromptFeed paginated>
-          {prompts.map((prompt, index) => (
-            <MobilePromptPostCard
-              key={prompt.id}
-              prompt={prompt}
-              imagePriority={index < 3}
-              onOpen={onOpenPrompt}
-              onCopy={onCopyPrompt}
-              onToggleFavorite={onToggleFavorite}
-              onTagClick={onTagClick}
-            />
-          ))}
-        </MobilePromptFeed>
       );
-
-    if (loading) {
-      return <div className="mini-list-loading">{list}</div>;
+      if (loading && !prompts.length) {
+        return <div className="mini-list-loading">{list}</div>;
+      }
+      return list;
     }
 
-    return list;
+    const grid = (
+      <PinterestMasonryGrid
+        prompts={prompts}
+        loading={loading}
+        scrollRootSelector=".mobile-frame"
+        miniAppTwoColumns
+        skeletonCount={6}
+        emptyState={
+          <div className="surface-card empty-state">
+            <p className="text-base font-medium text-[var(--text)]">Пока нет промптов</p>
+            <p className="mt-1 text-sm text-[var(--muted)]">Создайте первый промпт кнопкой ниже.</p>
+          </div>
+        }
+        onOpen={onOpenPrompt}
+        onCopy={onCopyPrompt}
+        onToggleFavorite={onToggleFavorite}
+        onTagClick={onTagClick}
+      />
+    );
+
+    if (loading && prompts.length) {
+      return <div className="mini-list-loading">{grid}</div>;
+    }
+
+    return grid;
   }
 
   return (
