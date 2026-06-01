@@ -10,6 +10,7 @@ export function mergePromptUpdate(existing: Prompt, patch: Prompt): Prompt {
     content: patch.content !== undefined ? patch.content : existing.content,
     contentExcerpt: patch.contentExcerpt !== undefined ? patch.contentExcerpt : existing.contentExcerpt,
     detailLoaded: patch.detailLoaded ?? existing.detailLoaded,
+    isFavorite: "isFavorite" in patch ? patch.isFavorite : existing.isFavorite,
     telegramPostTemplate:
       patch.telegramPostTemplate !== undefined ? patch.telegramPostTemplate : existing.telegramPostTemplate,
     pinterestTitleTemplate:

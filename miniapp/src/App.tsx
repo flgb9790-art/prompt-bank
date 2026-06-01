@@ -298,6 +298,29 @@ function MiniAppApp() {
     });
   }
 
+  function patchPromptInLists(patch: Prompt) {
+    const apply = (prev: Prompt[]) => {
+      const index = prev.findIndex((item) => item.id === patch.id);
+      if (index === -1) return prev;
+      const copy = [...prev];
+      copy[index] = mergePromptUpdate(prev[index], patch);
+      return copy;
+    };
+    setHomePrompts(apply);
+    setPrompts(apply);
+    setSearchPrompts(apply);
+    syncRecentPrompt(patch);
+  }
+
+  function findPromptInLists(id: number) {
+    return (
+      homePrompts.find((item) => item.id === id) ??
+      prompts.find((item) => item.id === id) ??
+      searchPrompts.find((item) => item.id === id) ??
+      favoritePrompts.find((item) => item.id === id)
+    );
+  }
+
   async function refreshFavoritesList(showSpinner: boolean, page = 1) {
     if (showSpinner) setFavoritesLoading(true);
     const offset = (page - 1) * MINI_APP_PAGE_SIZE;
@@ -637,27 +660,24 @@ function MiniAppApp() {
   }
 
   async function handleToggleFavorite(id: number) {
-    const previous = prompts.find((item) => item.id === id) ?? favoritePrompts.find((item) => item.id === id);
+    const previous = findPromptInLists(id);
     if (!previous) return;
 
     const optimistic = { ...previous, isFavorite: !previous.isFavorite };
-    setPrompts((prev) => prev.map((item) => (item.id === id ? optimistic : item)));
+    patchPromptInLists(optimistic);
     syncFavoritePrompts(optimistic);
-    syncRecentPrompt(optimistic);
     if (selectedPrompt?.id === id) setSelectedPrompt(optimistic);
 
     try {
       const updated = await api.toggleFavorite(id);
-      setPrompts((prev) => prev.map((item) => (item.id === id ? mergePromptUpdate(item, updated) : item)));
+      patchPromptInLists(updated);
+      syncFavoritePrompts(updated);
       if (selectedPrompt?.id === id) {
         setSelectedPrompt((current) => (current ? mergePromptUpdate(current, updated) : updated));
       }
-      syncFavoritePrompts(updated);
-      syncRecentPrompt(updated);
     } catch {
+      patchPromptInLists(previous);
       syncFavoritePrompts(previous);
-      syncRecentPrompt(previous);
-      setPrompts((prev) => prev.map((item) => (item.id === id ? previous : item)));
       if (selectedPrompt?.id === id) setSelectedPrompt(previous);
       setToastMessage("Не удалось обновить избранное");
     }

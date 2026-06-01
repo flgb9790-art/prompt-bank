@@ -2,7 +2,6 @@ import { memo, useEffect, useRef, useState, type KeyboardEvent, type MouseEvent 
 import { Copy, Sparkles, Star } from "lucide-react";
 import { api, resolveCardMediaUrl, resolveMediaUrl } from "../api";
 import type { Prompt } from "../types";
-import { getCategoryBadgeClass } from "../utils/categoryStyle";
 import { hasFullPromptDetails } from "../utils/promptContent";
 import { resolvePostMedia } from "../utils/resolvePostMedia";
 import { TagPill } from "./TagPill";
@@ -121,7 +120,6 @@ export const MobilePromptPostCard = memo(function MobilePromptPostCard({
   onCopy,
   onTagClick
 }: Props) {
-  const badgeClass = getCategoryBadgeClass(prompt.category.slug, prompt.category.name);
   const tags = prompt.keywords.slice(0, MAX_TAGS);
   const extraTags = Math.max(0, prompt.keywords.length - MAX_TAGS);
   const favoriteRef = useRef<HTMLButtonElement>(null);
@@ -165,10 +163,11 @@ export const MobilePromptPostCard = memo(function MobilePromptPostCard({
       </div>
 
       <div className="mobile-post-content">
-        <div className="mobile-post-header-row">
-          <span className={`mobile-post-category-badge ${badgeClass}`}>{prompt.category.name}</span>
-          {metaLabel ? <span className="mobile-post-meta-label">{metaLabel}</span> : null}
-        </div>
+        {metaLabel ? (
+          <div className="mobile-post-header-row">
+            <span className="mobile-post-meta-label">{metaLabel}</span>
+          </div>
+        ) : null}
 
         {tags.length ? (
           <div
@@ -183,7 +182,7 @@ export const MobilePromptPostCard = memo(function MobilePromptPostCard({
           </div>
         ) : null}
 
-        <div className="mobile-post-actions">
+        <div className="mobile-post-actions mobile-post-actions--copy-only">
           <button
             type="button"
             className="mobile-post-action mobile-post-action--copy"
@@ -194,14 +193,6 @@ export const MobilePromptPostCard = memo(function MobilePromptPostCard({
           >
             <Copy size={19} strokeWidth={2.2} />
             Скопировать
-          </button>
-          <button
-            type="button"
-            className={`mobile-post-action mobile-post-action--favorite${prompt.isFavorite ? " active" : ""}`}
-            onClick={handleFavorite}
-          >
-            <Star size={19} strokeWidth={2.2} fill={prompt.isFavorite ? "currentColor" : "none"} />
-            {prompt.isFavorite ? "В избранном" : "В избранное"}
           </button>
         </div>
       </div>

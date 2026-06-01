@@ -249,7 +249,8 @@ html.telegram-mini-app .mobile-prompt-feed--two-col .mobile-post-tags {
   display: none;
 }
 
-html.telegram-mini-app .mobile-prompt-feed--two-col .mobile-post-actions {
+html.telegram-mini-app .mobile-prompt-feed--two-col .mobile-post-actions,
+.mobile-post-actions--copy-only {
   margin-top: 10px;
   grid-template-columns: 1fr;
   gap: 6px;
@@ -404,6 +405,17 @@ html.telegram-mini-app .mobile-post-card-skeleton--grid {
   color: #b45309;
   background: var(--yellow-soft);
   border-color: #f6d66b;
+}
+
+html.telegram-mini-app .mobile-post-favorite-overlay.active {
+  color: #b45309;
+  background: var(--yellow-soft);
+  border-color: #f6d66b;
+}
+
+html.telegram-mini-app .mobile-post-favorite-overlay.active svg {
+  color: #f6b51e;
+  fill: currentColor;
 }
 
 .mobile-post-favorite-overlay.bump {

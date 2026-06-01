@@ -60,6 +60,7 @@ import {
 } from "./utils/viewMode";
 import { getPromptLabel } from "./utils/promptTitle";
 import { persistPublicationTemplatesFromPrompt } from "./utils/publicationTemplatesStorage";
+import { fetchWebBootstrapOnce } from "./utils/webBootstrapOnce";
 
 type SortValue = "new" | "old" | "usage";
 type RoutePath = "/" | "/prompts" | "/favorites" | "/categories" | "/tags" | "/recent" | "/settings" | "/copied" | "/viewed" | "/privacy";
@@ -68,8 +69,6 @@ const storageKey = "prompt-bank-web-auth";
 const CATEGORIES_CACHE_KEY = "prompt-bank-categories";
 const TAGS_CACHE_KEY = "prompt-bank-tags";
 const PROMPTS_PER_PAGE = 12;
-/** Минимум для bootstrap: категории и total; список промптов подгружается отдельно. */
-const BOOTSTRAP_PROMPTS_LIMIT = 1;
 const PROMPTS_FETCH_LIMIT = 40;
 const FAVORITES_FETCH_LIMIT = 40;
 const SEARCH_DEBOUNCE_MS = 350;
@@ -136,8 +135,8 @@ export function WebApp() {
   const isAuthenticated = Boolean(user);
   const bootstrappedRef = useRef(false);
   const [appBootstrapped, setAppBootstrapped] = useState(false);
-  const filtersEffectReadyRef = useRef(false);
   const deepLinkHandledRef = useRef(false);
+  const filterLoadReadyRef = useRef(false);
   const openPromptRequestRef = useRef(0);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [lastPromptBatchSize, setLastPromptBatchSize] = useState(0);
@@ -334,7 +333,7 @@ export function WebApp() {
       setLoading(true);
       setError("");
       try {
-        const data = await api.bootstrap(BOOTSTRAP_PROMPTS_LIMIT);
+        const data = await fetchWebBootstrapOnce();
         if (cancelled) return;
         if (data.prompts.total >= 0) {
           setPromptsTotal(data.prompts.total);
@@ -390,12 +389,15 @@ export function WebApp() {
 
   useEffect(() => {
     if (!appBootstrapped) return;
-    if (!filtersEffectReadyRef.current) {
-      filtersEffectReadyRef.current = true;
+    if (!filterLoadReadyRef.current) {
+      filterLoadReadyRef.current = true;
       return;
     }
     const timer = setTimeout(() => {
-      void loadPrompts();
+      if (path === "/favorites") return;
+      if (path === "/" || path === "/prompts" || path === "/recent") {
+        void loadPrompts();
+      }
     }, SEARCH_DEBOUNCE_MS);
     return () => clearTimeout(timer);
   }, [appBootstrapped, search, activeCategory, activeTag, sort]);
@@ -414,7 +416,12 @@ export function WebApp() {
     if (path === "/" || path === "/prompts" || path === "/recent") {
       void loadPrompts();
     }
-  }, [appBootstrapped, page, webPinterestPageSize, path, viewMode, isAuthenticated]);
+  }, [appBootstrapped, page, webPinterestPageSize, path, viewMode]);
+
+  useEffect(() => {
+    if (!appBootstrapped || !isAuthenticated || path !== "/favorites") return;
+    void refreshWebFavorites(false);
+  }, [isAuthenticated]);
 
   useEffect(() => {
     if (!bootstrappedRef.current || path !== "/recent") return;

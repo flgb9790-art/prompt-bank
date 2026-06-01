@@ -12,7 +12,7 @@ export function registerWebPwa() {
 
   const register = () => {
     void import("virtual:pwa-register").then(({ registerSW }) => {
-      registerSW({ immediate: true });
+      registerSW({ immediate: false });
     });
   };
 
