@@ -20,8 +20,21 @@ export function favoriteIdsFromPrompts(prompts: Iterable<Prompt>): Set<number> {
 
 export function favoriteIdsFromCache(): Set<number> {
   const cached = readFavoritesCache();
-  if (!cached?.length) return new Set();
-  return new Set(cached.map((prompt) => prompt.id));
+  if (!cached?.items.length) return new Set();
+  return new Set(cached.items.map((prompt) => prompt.id));
+}
+
+export function favoritesTotalFromCache(): number {
+  return readFavoritesCache()?.total ?? 0;
+}
+
+export function hydrateFavoritesFromBootstrap(favorites: Prompt[] | undefined, total?: number) {
+  const mapped = (favorites ?? []).map(normalizePromptFromApi);
+  const resolvedTotal = typeof total === "number" && total >= 0 ? total : mapped.length;
+  if (!mapped.length && resolvedTotal <= 0) {
+    return { ids: favoriteIdsFromCache(), total: favoritesTotalFromCache() };
+  }
+  return { ids: favoriteIdsFromPrompts(mapped), total: resolvedTotal, items: mapped };
 }
 
 export function mergeFavoriteIds(...sources: Iterable<number>[]): Set<number> {

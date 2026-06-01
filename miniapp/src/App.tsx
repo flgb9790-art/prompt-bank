@@ -42,7 +42,13 @@ import { createPromptLoadingShell } from "./utils/promptShell";
 import { MINI_APP_PAGE_SIZE } from "./utils/viewMode";
 import { getPromptLabel } from "./utils/promptTitle";
 import { FavoriteIdsProvider } from "./context/FavoriteIdsContext";
-import { favoriteIdsFromCache, favoriteIdsFromPrompts } from "./utils/promptFavorite";
+import {
+  applyFavoriteIdsToList,
+  favoriteIdsFromCache,
+  favoriteIdsFromPrompts,
+  favoritesTotalFromCache,
+  hydrateFavoritesFromBootstrap
+} from "./utils/promptFavorite";
 
 const CATEGORIES_CACHE_KEY = "prompt-bank-categories";
 const TAGS_CACHE_KEY = "prompt-bank-tags";
@@ -183,7 +189,7 @@ function MiniAppApp() {
     sort: "new"
   });
   const [favoritePrompts, setFavoritePrompts] = useState<Prompt[]>([]);
-  const [favoritesTotal, setFavoritesTotal] = useState(0);
+  const [favoritesTotal, setFavoritesTotal] = useState(() => favoritesTotalFromCache());
   const [favoritesPage, setFavoritesPage] = useState(1);
   const [favoritesLoading, setFavoritesLoading] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -205,13 +211,14 @@ function MiniAppApp() {
   const [user, setUser] = useState<TelegramUser>(() => resolveTelegramUser() ?? mockTelegramUser);
   const [toastMessage, setToastMessage] = useState("");
   const [favoriteIds, setFavoriteIds] = useState<Set<number>>(() => favoriteIdsFromCache());
+  const favoriteIdsRef = useRef(favoriteIds);
+  favoriteIdsRef.current = favoriteIds;
   const [isMiniAppExpanded, setIsMiniAppExpanded] = useState(true);
   const deepLinkHandledRef = useRef(false);
   const openPromptRequestRef = useRef(0);
   const activeTagRef = useRef<string | undefined>(activeTag);
   activeTagRef.current = activeTag;
-  const favorites = useMemo(() => prompts.filter((item) => item.isFavorite), [prompts]);
-  const favoritesForView = tab === "favorites" ? favoritePrompts : favorites;
+  const favoritesForView = tab === "favorites" ? favoritePrompts : prompts.filter((item) => item.isFavorite);
 
   function scrollMiniAppToTop() {
     document.querySelector<HTMLElement>(".mobile-frame")?.scrollTo({ top: 0, behavior: "smooth" });
@@ -245,11 +252,11 @@ function MiniAppApp() {
   const stats = useMemo(
     () => ({
       total: promptsTotal || prompts.length,
-      favorites: favoritesForView.length || favorites.length,
+      favorites: favoritesTotal || favoriteIds.size || favoritePrompts.length,
       categories: countCategoriesWithPromptCount(categories) || countCategoriesWithPrompts(prompts),
       usage: userUsageTotal
     }),
-    [categories, prompts, promptsTotal, favorites.length, favoritesForView.length, userUsageTotal]
+    [categories, prompts, promptsTotal, favoritesTotal, favoriteIds.size, favoritePrompts.length, userUsageTotal]
   );
 
   const documentTitleSuffix = useMemo(
@@ -278,7 +285,7 @@ function MiniAppApp() {
     const timer = window.setTimeout(() => {
       void api
         .getPrompts({ search: q, limit: 50, lite: true })
-        .then((data) => setSearchPrompts(mapPromptsFromApi(data.items)))
+        .then((data) => setSearchPrompts(mapListWithFavoriteIds(mapPromptsFromApi(data.items))))
         .catch(() => setToastMessage("Не удалось выполнить поиск"))
         .finally(() => setSearchLoading(false));
     }, LIST_FILTER_DEBOUNCE_MS);
@@ -301,13 +308,39 @@ function MiniAppApp() {
     });
   }
 
+  function setFavoriteIdsState(next: Set<number>) {
+    favoriteIdsRef.current = next;
+    setFavoriteIds(next);
+  }
+
   function syncFavoriteId(promptId: number, isFavorite: boolean) {
     setFavoriteIds((prev) => {
       const next = new Set(prev);
       if (isFavorite) next.add(promptId);
       else next.delete(promptId);
+      favoriteIdsRef.current = next;
       return next;
     });
+  }
+
+  function mapListWithFavoriteIds(items: Prompt[]) {
+    return applyFavoriteIdsToList(items, favoriteIdsRef.current);
+  }
+
+  function reapplyFavoriteIdsToLists() {
+    setHomePrompts((prev) => mapListWithFavoriteIds(prev));
+    setPrompts((prev) => mapListWithFavoriteIds(prev));
+    setSearchPrompts((prev) => mapListWithFavoriteIds(prev));
+    setRecentPrompts((prev) => mapListWithFavoriteIds(prev));
+  }
+
+  function applyFavoritesHydration(items: Prompt[], total: number) {
+    const ids = favoriteIdsFromPrompts(items);
+    setFavoriteIdsState(ids);
+    setFavoritePrompts(items);
+    setFavoritesTotal(total);
+    writeFavoritesCache(items, total);
+    reapplyFavoriteIdsToLists();
   }
 
   function patchPromptInLists(patch: Prompt) {
@@ -341,15 +374,19 @@ function MiniAppApp() {
     try {
       const data = await api.getPrompts({ favorite: true, limit: MINI_APP_PAGE_SIZE, offset, lite: true });
       const mapped = mapPromptsFromApi(data.items);
-      setFavoritesTotal(data.total);
-      setFavoritePrompts(mapped);
-      setFavoriteIds((prev) => {
-        const next = new Set(prev);
-        for (const id of favoriteIdsFromPrompts(mapped)) next.add(id);
-        return next;
-      });
       setFavoritesPage(page);
-      if (page === 1) writeFavoritesCache(mapped);
+      if (page === 1) {
+        applyFavoritesHydration(mapped, data.total);
+      } else {
+        setFavoritesTotal(data.total);
+        setFavoritePrompts(mapped);
+        setFavoriteIds((prev) => {
+          const next = new Set(prev);
+          for (const id of favoriteIdsFromPrompts(mapped)) next.add(id);
+          favoriteIdsRef.current = next;
+          return next;
+        });
+      }
     } catch {
       if (showSpinner) setToastMessage("Не удалось загрузить избранное");
     } finally {
@@ -358,12 +395,6 @@ function MiniAppApp() {
   }
 
   async function loadDeferredBootstrapData() {
-    const cachedFavorites = readFavoritesCache();
-    if (cachedFavorites) {
-      setFavoritePrompts(cachedFavorites);
-      setFavoriteIds(favoriteIdsFromPrompts(cachedFavorites));
-    }
-
     runDeferred(() => {
       void api
         .getTags()
@@ -376,9 +407,6 @@ function MiniAppApp() {
           setUserUsageTotal(meResponse.usageTotal ?? meResponse.stats?.usageCountTotal ?? 0);
         })
         .catch(() => undefined);
-      if (!cachedFavorites) {
-        void refreshFavoritesList(false);
-      }
     });
   }
 
@@ -387,19 +415,33 @@ function MiniAppApp() {
     setPromptsListLoading(true);
     setError("");
     try {
+      const cachedFavorites = readFavoritesCache();
+      if (cachedFavorites) {
+        applyFavoritesHydration(mapPromptsFromApi(cachedFavorites.items), cachedFavorites.total);
+      }
+
       const data = await api.bootstrap(BOOTSTRAP_PROMPTS_LIMIT);
+      const bootstrapFavorites = hydrateFavoritesFromBootstrap(data.favorites, data.favoritesTotal);
+      if (bootstrapFavorites.items?.length || bootstrapFavorites.total > 0) {
+        applyFavoritesHydration(bootstrapFavorites.items ?? [], bootstrapFavorites.total);
+      } else if (bootstrapFavorites.ids.size) {
+        setFavoriteIdsState(bootstrapFavorites.ids);
+        setFavoritesTotal(bootstrapFavorites.total);
+      }
+
       const mapped = mapPromptsFromApi(data.prompts.items).map(withPromptDetails);
       setCategories(data.categories);
       writeReferenceCache(CATEGORIES_CACHE_KEY, data.categories);
       setIsAdmin(data.me.isAdmin);
-      setPrompts(mapped);
+      setPrompts(mapListWithFavoriteIds(mapped));
       if (data.prompts.total >= 0) {
         setPromptsTotal(data.prompts.total);
         setHomeTotal(data.prompts.total);
       }
-      setHomePrompts(mapped);
-      syncRecentFromPrompts(mapped);
+      setHomePrompts(mapListWithFavoriteIds(mapped));
+      syncRecentFromPrompts(mapListWithFavoriteIds(mapped));
       void loadDeferredBootstrapData();
+      await refreshFavoritesList(false);
     } catch {
       setError("Не удалось загрузить данные.");
     }
@@ -424,7 +466,7 @@ function MiniAppApp() {
         lite: true,
         sort: "new"
       });
-      const mapped = mapPromptsFromApi(data.items);
+      const mapped = mapListWithFavoriteIds(mapPromptsFromApi(data.items));
       setHomePrompts(mapped);
       setHomeTotal(data.total);
       setHomePage(page);
@@ -450,7 +492,7 @@ function MiniAppApp() {
         MINI_APP_PAGE_SIZE
       );
       const promptsData = await api.getPrompts(query);
-      const mapped = mapPromptsFromApi(promptsData.items);
+      const mapped = mapListWithFavoriteIds(mapPromptsFromApi(promptsData.items));
       setPrompts(mapped);
       setPromptsTotal(promptsData.total);
       setPromptsPage(page);
@@ -603,6 +645,10 @@ function MiniAppApp() {
           result = copy;
         }
       }
+      setFavoritesTotal((total) => {
+        if (!next.isFavorite) return Math.max(0, total - 1);
+        return prev.some((item) => item.id === next.id) ? total : total + 1;
+      });
       writeFavoritesCache(result);
       return result;
     });

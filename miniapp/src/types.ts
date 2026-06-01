@@ -120,6 +120,7 @@ export type BootstrapResponse = {
   me: MeResponse;
   prompts: PromptListResponse;
   favorites: Prompt[];
+  favoritesTotal?: number;
 };
 
 export type TelegramUser = {

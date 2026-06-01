@@ -47,14 +47,26 @@ router.get("/", async (req, res, next) => {
       };
     }
 
-    const prompts = await PromptService.list({
-      limit: promptLimit,
-      offset: 0,
-      lite: true,
-      sort: "new",
-      userId,
-      includeTotal: true
-    });
+    const [prompts, favoritesList] = await Promise.all([
+      PromptService.list({
+        limit: promptLimit,
+        offset: 0,
+        lite: true,
+        sort: "new",
+        userId,
+        includeTotal: true
+      }),
+      userId
+        ? PromptService.list({
+            favorite: "true",
+            limit: 200,
+            offset: 0,
+            lite: true,
+            userId,
+            includeTotal: true
+          })
+        : Promise.resolve({ items: [], total: 0 })
+    ]);
 
     res.set("Cache-Control", "private, no-store");
     res.json({
@@ -65,7 +77,8 @@ router.get("/", async (req, res, next) => {
       tags: [],
       me,
       prompts,
-      favorites: []
+      favorites: favoritesList.items,
+      favoritesTotal: favoritesList.total
     });
   } catch (error) {
     next(error);

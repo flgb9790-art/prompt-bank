@@ -62,7 +62,13 @@ import { getPromptLabel } from "./utils/promptTitle";
 import { persistPublicationTemplatesFromPrompt } from "./utils/publicationTemplatesStorage";
 import { fetchWebBootstrapOnce } from "./utils/webBootstrapOnce";
 import { FavoriteIdsProvider } from "./context/FavoriteIdsContext";
-import { favoriteIdsFromCache, favoriteIdsFromPrompts } from "./utils/promptFavorite";
+import {
+  applyFavoriteIdsToList,
+  favoriteIdsFromCache,
+  favoriteIdsFromPrompts,
+  favoritesTotalFromCache,
+  hydrateFavoritesFromBootstrap
+} from "./utils/promptFavorite";
 
 type SortValue = "new" | "old" | "usage";
 type RoutePath = "/" | "/prompts" | "/favorites" | "/categories" | "/tags" | "/recent" | "/settings" | "/copied" | "/viewed" | "/privacy";
@@ -108,12 +114,14 @@ export function WebApp() {
   const [promptsLoading, setPromptsLoading] = useState(false);
   const [loadingMoreRemote, setLoadingMoreRemote] = useState(false);
   const [favoritePrompts, setFavoritePrompts] = useState<Prompt[]>([]);
-  const [favoritesTotal, setFavoritesTotal] = useState(0);
+  const [favoritesTotal, setFavoritesTotal] = useState(() => favoritesTotalFromCache());
   const [loadingMoreFavorites, setLoadingMoreFavorites] = useState(false);
   const [favoritesLoading, setFavoritesLoading] = useState(false);
   const [error, setError] = useState("");
   const [toast, setToast] = useState("");
   const [favoriteIds, setFavoriteIds] = useState<Set<number>>(() => favoriteIdsFromCache());
+  const favoriteIdsRef = useRef(favoriteIds);
+  favoriteIdsRef.current = favoriteIds;
   const [selectedPrompt, setSelectedPrompt] = useState<Prompt>();
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [authRequiredOpen, setAuthRequiredOpen] = useState(false);
@@ -316,7 +324,7 @@ export function WebApp() {
     try {
       const offset = useWebPinterestPagination ? (page - 1) * webPinterestPageSize : 0;
       const promptsData = await api.getPrompts(buildPromptsQuery(offset));
-      const mapped = mapPromptsFromApi(promptsData.items);
+      const mapped = applyFavoriteIdsToList(mapPromptsFromApi(promptsData.items), favoriteIdsRef.current);
       setPrompts(mapped);
       setPromptsTotal(promptsData.total);
       setLastPromptBatchSize(mapped.length);
@@ -336,8 +344,22 @@ export function WebApp() {
       setLoading(true);
       setError("");
       try {
+        const cachedFavorites = readFavoritesCache();
+        if (cachedFavorites) {
+          applyWebFavoritesHydration(mapPromptsFromApi(cachedFavorites.items), cachedFavorites.total);
+        }
+
         const data = await fetchWebBootstrapOnce();
         if (cancelled) return;
+
+        const bootstrapFavorites = hydrateFavoritesFromBootstrap(data.favorites, data.favoritesTotal);
+        if (bootstrapFavorites.items?.length || bootstrapFavorites.total > 0) {
+          applyWebFavoritesHydration(bootstrapFavorites.items ?? [], bootstrapFavorites.total);
+        } else if (bootstrapFavorites.ids.size) {
+          setFavoriteIdsState(bootstrapFavorites.ids);
+          setFavoritesTotal(bootstrapFavorites.total);
+        }
+
         if (data.prompts.total >= 0) {
           setPromptsTotal(data.prompts.total);
         }
@@ -345,14 +367,15 @@ export function WebApp() {
         writeReferenceCache(CATEGORIES_CACHE_KEY, data.categories);
         setIsAdmin(Boolean(data.me.isAdmin));
         setDbUserId(data.me.user?.id ?? null);
+
+        const canLoadFavorites = Boolean(user?.id ?? data.me.user?.id);
+        if (canLoadFavorites) {
+          await refreshWebFavorites(false);
+        }
+
+        if (cancelled) return;
         bootstrappedRef.current = true;
         setAppBootstrapped(true);
-
-        const cachedFavorites = readFavoritesCache();
-        if (cachedFavorites) {
-          setFavoritePrompts(cachedFavorites);
-          setFavoriteIds(favoriteIdsFromPrompts(cachedFavorites));
-        }
 
         runDeferred(() => {
           void api
@@ -369,9 +392,6 @@ export function WebApp() {
               setUserUsageTotal(meResponse.usageTotal ?? meResponse.stats?.usageCountTotal ?? 0);
             })
             .catch(console.error);
-          if (!cachedFavorites) {
-            void refreshWebFavorites(false);
-          }
         });
       } catch (err) {
         if (!cancelled) {
@@ -443,15 +463,19 @@ export function WebApp() {
     try {
       const data = await api.getPrompts({ favorite: true, limit, offset, lite: true, sort });
       const mapped = mapPromptsFromApi(data.items);
-      setFavoritesTotal(data.total);
       setLastFavoriteBatchSize(mapped.length);
-      setFavoritePrompts(mapped);
-      setFavoriteIds((prev) => {
-        const next = new Set(prev);
-        for (const id of favoriteIdsFromPrompts(mapped)) next.add(id);
-        return next;
-      });
-      if (page === 1) writeFavoritesCache(mapped);
+      if (page === 1) {
+        applyWebFavoritesHydration(mapped, data.total);
+      } else {
+        setFavoritesTotal(data.total);
+        setFavoritePrompts(mapped);
+        setFavoriteIds((prev) => {
+          const next = new Set(prev);
+          for (const id of favoriteIdsFromPrompts(mapped)) next.add(id);
+          favoriteIdsRef.current = next;
+          return next;
+        });
+      }
     } catch (err) {
       console.error(err);
       if (showSpinner) setToast("Не удалось загрузить избранное");
@@ -481,6 +505,10 @@ export function WebApp() {
           result = copy;
         }
       }
+      setFavoritesTotal((total) => {
+        if (!next.isFavorite) return Math.max(0, total - 1);
+        return prev.some((item) => item.id === next.id) ? total : total + 1;
+      });
       writeFavoritesCache(result);
       return result;
     });
@@ -553,13 +581,32 @@ export function WebApp() {
     return () => window.removeEventListener("popstate", onPopState);
   }, [prompts]);
 
+  function setFavoriteIdsState(next: Set<number>) {
+    favoriteIdsRef.current = next;
+    setFavoriteIds(next);
+  }
+
   function syncFavoriteId(promptId: number, isFavorite: boolean) {
     setFavoriteIds((prev) => {
       const next = new Set(prev);
       if (isFavorite) next.add(promptId);
       else next.delete(promptId);
+      favoriteIdsRef.current = next;
       return next;
     });
+  }
+
+  function reapplyFavoriteIdsToPrompts() {
+    setPrompts((prev) => applyFavoriteIdsToList(prev, favoriteIdsRef.current));
+  }
+
+  function applyWebFavoritesHydration(items: Prompt[], total: number) {
+    const ids = favoriteIdsFromPrompts(items);
+    setFavoriteIdsState(ids);
+    setFavoritePrompts(items);
+    setFavoritesTotal(total);
+    writeFavoritesCache(items, total);
+    reapplyFavoriteIdsToPrompts();
   }
 
   function upsertPromptInList(nextPrompt: Prompt) {
