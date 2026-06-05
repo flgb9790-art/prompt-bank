@@ -46,7 +46,8 @@ export default defineConfig(({ mode }) => {
           ) {
             return;
           }
-          var prompt = params.get("prompt");
+          var pathMatch = (window.location.pathname || "").match(/^\\/p\\/(\\d+)\\/?$/);
+          var prompt = params.get("prompt") || (pathMatch ? pathMatch[1] : "");
           if (!prompt || !/^\\d+$/.test(prompt)) return;
           window.location.replace(
             "https://t.me/${botUsername}?startapp=" + encodeURIComponent("prompt_" + prompt)

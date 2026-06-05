@@ -31,17 +31,20 @@ import { ViewModeSwitcher } from "./components/web/ViewModeSwitcher";
 import { WebLayout } from "./components/web/WebLayout";
 import { MobileWebShell } from "./components/web/MobileWebShell";
 import { useMediaMinWidth } from "./hooks/useMediaMinWidth";
-import { clearPromptShareUrl, parsePromptIdFromLocation, setPromptShareUrl } from "./utils/promptShare";
+import {
+  clearPromptShareUrl,
+  migrateLegacyPromptQueryToPath,
+  parsePromptIdFromLocation,
+  parsePromptIdFromPathname,
+  setPromptShareUrl
+} from "./utils/promptShare";
 import { mergePromptUpdate } from "./utils/mergePrompt";
 import { normalizeTagName } from "./utils/tagFilter";
 import type { GetPromptsParams } from "./api";
 import { useLoadMoreOnScroll } from "./hooks/useLoadMoreOnScroll";
 import { prefetchPromptsPage, takePrefetchedPromptsPage } from "./utils/promptsPrefetch";
 import { mergePromptPages } from "./utils/mergePromptPages";
-import {
-  useDocumentTitle,
-  webRouteDocumentTitle
-} from "./utils/documentTitle";
+import { useWebSeo } from "./hooks/useWebSeo";
 import {
   ensurePromptWithContent,
   hasFullPromptContent,
@@ -58,7 +61,6 @@ import {
   computePagedHasMore,
   type ViewMode
 } from "./utils/viewMode";
-import { getPromptLabel } from "./utils/promptTitle";
 import { persistPublicationTemplatesFromPrompt } from "./utils/publicationTemplatesStorage";
 import { fetchWebBootstrapOnce } from "./utils/webBootstrapOnce";
 import { FavoriteIdsProvider } from "./context/FavoriteIdsContext";
@@ -84,6 +86,7 @@ const telegramAuthUrl = (import.meta.env.VITE_TELEGRAM_AUTH_URL as string | unde
 const telegramBotUsernameFromEnv = (import.meta.env.VITE_TELEGRAM_BOT_USERNAME as string | undefined)?.trim();
 
 function getRoutePath(pathname: string): RoutePath {
+  if (parsePromptIdFromPathname(pathname)) return "/";
   const allowed: RoutePath[] = ["/", "/prompts", "/favorites", "/categories", "/tags", "/recent", "/settings", "/copied", "/viewed", "/privacy"];
   return allowed.includes(pathname as RoutePath) ? (pathname as RoutePath) : "/";
 }
@@ -156,6 +159,7 @@ export function WebApp() {
 
   useEffect(() => {
     document.documentElement.classList.add("web-mode");
+    migrateLegacyPromptQueryToPath();
     return () => document.documentElement.classList.remove("web-mode");
   }, []);
 
@@ -189,20 +193,14 @@ export function WebApp() {
 
   const tagsWithPrompts = useMemo(() => tags.filter((tag) => tag.count > 0), [tags]);
 
-  const documentTitleSuffix = useMemo(
-    () =>
-      webRouteDocumentTitle({
-        path,
-        activeTag,
-        activeCategory,
-        categories,
-        selectedPromptLabel: selectedPrompt ? getPromptLabel(selectedPrompt) : undefined,
-        isAddModalOpen
-      }),
-    [path, activeTag, activeCategory, categories, selectedPrompt, isAddModalOpen]
-  );
-
-  useDocumentTitle(documentTitleSuffix);
+  useWebSeo({
+    path,
+    activeTag,
+    activeCategory,
+    categories,
+    selectedPrompt,
+    isAddModalOpen
+  });
 
   const userPromptsCount = useMemo(() => {
     if (!dbUserId) return 0;

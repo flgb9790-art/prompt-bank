@@ -1,6 +1,7 @@
 import type { Request, Response, NextFunction } from "express";
 import { createProxyMiddleware } from "http-proxy-middleware";
 import { config } from "./config";
+import { tryServePromptSeoPage } from "./routes/seo.routes";
 import { urlHostname } from "./utils/telegramWebContent";
 
 function requestHost(req: Request): string {
@@ -40,9 +41,18 @@ const proxy = createProxyMiddleware({
   }
 });
 
-export function miniappProxyMiddleware(req: Request, res: Response, next: NextFunction) {
+export async function miniappProxyMiddleware(req: Request, res: Response, next: NextFunction) {
   if (!shouldProxyMiniapp(req)) {
     return next();
   }
+
+  try {
+    if (await tryServePromptSeoPage(req, res)) {
+      return;
+    }
+  } catch (error) {
+    console.error("[miniapp-proxy][seo]", error);
+  }
+
   return proxy(req, res, next);
 }

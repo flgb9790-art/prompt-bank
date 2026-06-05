@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /favorites
+Disallow: /settings
+Disallow: /copied
+Disallow: /viewed
+
+Sitemap: https://prompt-bank.one/sitemap.xml

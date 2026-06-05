@@ -12,6 +12,7 @@ import tagsRouter from "./routes/tags.routes";
 import bootstrapRouter from "./routes/bootstrap.routes";
 import meRouter from "./routes/me.routes";
 import adminRouter from "./routes/admin.routes";
+import seoRouter from "./routes/seo.routes";
 import { extractKeywords } from "./keywordExtractor";
 import { startBot } from "./bot";
 import { authRequired, isAdminRequest, readTelegramId } from "./auth";
@@ -76,6 +77,7 @@ app.delete("/api/examples/:id", authRequired, async (req, res, next) => {
   }
 });
 
+app.use(seoRouter);
 app.use(miniappProxyMiddleware);
 
 app.get("/", (req, res) => {
