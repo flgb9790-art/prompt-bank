@@ -123,7 +123,7 @@ npm run dev
 ### Настройка
 
 1. Создайте приложение в [Pinterest Developers](https://developers.pinterest.com/).
-2. Получите access token с правами на создание pins.
+2. Получите access token с правами на создание pins (см. **Pinterest OAuth** ниже).
 3. Получите `board_id` нужной доски Pinterest.
 4. Заполните в `.env`:
    - `PINTEREST_ACCESS_TOKEN`
@@ -137,6 +137,64 @@ npm run dev
    npm --prefix backend run prisma:push
    ```
 7. Перезапустите backend.
+
+### Pinterest OAuth (получение access_token)
+
+Используйте OAuth flow, если нужно получить `PINTEREST_ACCESS_TOKEN` через Pinterest Developers.
+
+#### 1. Redirect URI в Pinterest Developers
+
+1. Откройте приложение в [Pinterest Developers](https://developers.pinterest.com/).
+2. В настройках OAuth добавьте **Redirect URI** — точный URL callback endpoint backend:
+   - продакшен: `https://api.prompt-bank.one/api/pinterest/callback`
+   - локально (через ngrok/public tunnel): `https://<your-public-host>/api/pinterest/callback`
+3. URI должен совпадать **символ в символ** с `PINTEREST_REDIRECT_URI` в `.env`.
+
+#### 2. Переменные окружения
+
+Добавьте в `.env`:
+
+```env
+PINTEREST_CLIENT_ID=your_client_id
+PINTEREST_CLIENT_SECRET=your_client_secret
+PINTEREST_REDIRECT_URI=https://api.prompt-bank.one/api/pinterest/callback
+```
+
+`PINTEREST_REDIRECT_URI` — это URL endpoint `GET /api/pinterest/callback`, не URL mini app.
+
+#### 3. Получить OAuth URL
+
+Откройте в браузере или через curl:
+
+```bash
+curl https://api.prompt-bank.one/api/pinterest/auth-url
+```
+
+Ответ:
+
+```json
+{
+  "url": "https://www.pinterest.com/oauth/?client_id=...&redirect_uri=...&response_type=code&scope=boards:read,boards:write,pins:read,pins:write"
+}
+```
+
+#### 4. Авторизовать приложение
+
+1. Перейдите по `url` из ответа.
+2. Подтвердите доступ в Pinterest.
+3. Pinterest перенаправит на `GET /api/pinterest/callback?code=...`.
+4. Backend обменяет `code` на токен и покажет HTML-страницу **«Pinterest подключен»** с:
+   - `access_token`
+   - `refresh_token`
+   - `scope`
+
+#### 5. Сохранить токен
+
+1. Скопируйте `access_token` со страницы callback.
+2. Добавьте в Railway / `.env` как `PINTEREST_ACCESS_TOKEN`.
+3. Перезапустите backend.
+
+Текущая публикация промптов продолжает использовать `PINTEREST_ACCESS_TOKEN` — OAuth endpoints только помогают его получить.
 
 Для preview Pinterest-публикации в miniapp можно указать `VITE_TELEGRAM_CHANNEL_URL` в `miniapp/.env`.
 

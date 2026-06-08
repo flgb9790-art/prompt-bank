@@ -79,6 +79,9 @@ export const config = {
   telegramChannelUrl: process.env.TELEGRAM_CHANNEL_URL?.trim() || "",
   pinterestAccessToken: process.env.PINTEREST_ACCESS_TOKEN?.trim() || "",
   pinterestBoardId: process.env.PINTEREST_BOARD_ID?.trim() || "",
+  pinterestClientId: process.env.PINTEREST_CLIENT_ID?.trim() || "",
+  pinterestClientSecret: process.env.PINTEREST_CLIENT_SECRET?.trim() || "",
+  pinterestRedirectUri: process.env.PINTEREST_REDIRECT_URI?.trim() || "",
   pinterestApiBaseUrl: normalizeUrl(
     process.env.PINTEREST_API_BASE_URL ?? "",
     "https://api.pinterest.com/v5"
