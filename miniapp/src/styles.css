@@ -5043,3 +5043,122 @@ html.telegram-mini-app .pinterest-action-btn.active {
   border-color: var(--primary-border);
   color: var(--primary);
 }
+
+.pinterest-publish-block {
+  margin-top: 14px;
+  padding: 16px;
+  border: 1px solid #e5e9f2;
+  border-radius: 16px;
+  background: #f9fafc;
+}
+
+.pinterest-publish-header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pinterest-publish-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 750;
+  color: #101828;
+}
+
+.pinterest-publish-subtext {
+  margin: 0;
+  font-size: 13px;
+  color: #667085;
+}
+
+.pinterest-publish-fields {
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.pinterest-publish-field {
+  display: flex;
+  flex-direction: column;
+}
+
+.pinterest-publish-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: #344054;
+  margin-bottom: 6px;
+}
+
+.pinterest-publish-input,
+.pinterest-publish-textarea {
+  width: 100%;
+  background: #ffffff;
+  border: 1px solid #e5e9f2;
+  font-size: 14px;
+  color: #101828;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.pinterest-publish-input {
+  height: 44px;
+  border-radius: 12px;
+  padding: 0 14px;
+}
+
+.pinterest-publish-textarea {
+  min-height: 120px;
+  border-radius: 12px;
+  padding: 12px 14px;
+  resize: vertical;
+  line-height: 1.45;
+}
+
+.pinterest-publish-input:focus,
+.pinterest-publish-textarea:focus {
+  outline: none;
+  border-color: #6d5dfc;
+  box-shadow: 0 0 0 3px rgba(109, 93, 252, 0.12);
+}
+
+.pinterest-publish-hint {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: #667085;
+}
+
+.pinterest-publish-error {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: var(--red);
+}
+
+.pinterest-publish-preview {
+  margin-top: 14px;
+  padding: 14px;
+  border-radius: 14px;
+  background: #f8f9fd;
+  border: 1px solid #edf0f6;
+}
+
+.pinterest-publish-preview-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 800;
+  color: #101828;
+}
+
+.pinterest-publish-preview-description {
+  margin: 6px 0 0;
+  font-size: 13px;
+  line-height: 20px;
+  color: #475467;
+  white-space: pre-line;
+}
+
+.pinterest-publish-preview-link {
+  margin: 8px 0 0;
+  font-size: 13px;
+  color: #6d5dfc;
+  word-break: break-all;
+}

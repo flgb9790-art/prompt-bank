@@ -140,6 +140,9 @@ export type PromptCreatePayload = {
   examples: Array<{ url: string; type: MediaType; originalName?: string }>;
   publishToTelegram?: boolean;
   publishToPinterest?: boolean;
+  pinterestTitle?: string;
+  pinterestDescription?: string;
+  pinterestLink?: string;
   telegramPostTemplate?: string | null;
   pinterestTitleTemplate?: string | null;
   pinterestDescriptionTemplate?: string | null;

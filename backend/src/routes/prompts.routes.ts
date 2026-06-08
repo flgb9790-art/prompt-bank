@@ -98,7 +98,12 @@ router.post("/", async (req, res, next) => {
     }
 
     if (Boolean(req.body.publishToPinterest) && isAdminRequest(req)) {
-      const publishResult = await sendPromptToPinterest(created.id);
+      const publishResult = await sendPromptToPinterest(created.id, {
+        title: req.body.pinterestTitle !== undefined ? String(req.body.pinterestTitle) : undefined,
+        description:
+          req.body.pinterestDescription !== undefined ? String(req.body.pinterestDescription) : undefined,
+        link: req.body.pinterestLink !== undefined ? String(req.body.pinterestLink) : undefined
+      });
       pinterestPublicationStatus = publishResult.status;
       if (publishResult.status === "failed") {
         pinterestPublicationError = publishResult.error;

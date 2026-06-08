@@ -24,6 +24,7 @@ type Props = {
   tagNames: string[];
   value: PublicationTemplatesValue;
   onChange: (value: PublicationTemplatesValue) => void;
+  showPinterestSection?: boolean;
 };
 
 export function emptyPublicationTemplates(): PublicationTemplatesValue {
@@ -87,7 +88,14 @@ function resolveTemplateHtml(stored: string | null | undefined, fallback: string
   return renderPublicationTemplateHtml(html, vars);
 }
 
-export function PublicationTemplatesEditor({ content, categoryName, tagNames, value, onChange }: Props) {
+export function PublicationTemplatesEditor({
+  content,
+  categoryName,
+  tagNames,
+  value,
+  onChange,
+  showPinterestSection = true
+}: Props) {
   const [telegramOpen, setTelegramOpen] = useState(false);
   const [pinterestOpen, setPinterestOpen] = useState(false);
   const pinterestTitleRef = useRef<HTMLInputElement>(null);
@@ -190,49 +198,53 @@ export function PublicationTemplatesEditor({ content, categoryName, tagNames, va
         </div>
       ) : null}
 
-      <button
-        type="button"
-        className="publication-template-section-toggle publication-template-section-toggle--pinterest"
-        onClick={() => setPinterestOpen((open) => !open)}
-        aria-expanded={pinterestOpen}
-      >
-        <span>Шаблон Pinterest</span>
-        <span className="text-xs text-[var(--muted)]">{pinterestOpen ? "Свернуть" : "Раскрыть"}</span>
-      </button>
+      {showPinterestSection ? (
+        <>
+          <button
+            type="button"
+            className="publication-template-section-toggle publication-template-section-toggle--pinterest"
+            onClick={() => setPinterestOpen((open) => !open)}
+            aria-expanded={pinterestOpen}
+          >
+            <span>Шаблон Pinterest</span>
+            <span className="text-xs text-[var(--muted)]">{pinterestOpen ? "Свернуть" : "Раскрыть"}</span>
+          </button>
 
-      {pinterestOpen ? (
-        <div className="publication-template-section publication-template-section--pinterest">
-          <div className="publication-template-section-head">
-            <p className="publication-template-section-title">Пин</p>
-            <button type="button" className="text-xs text-[var(--primary)]" onClick={resetPinterest}>
-              Сбросить
-            </button>
-          </div>
-          <label className="block text-xs text-[var(--muted)]">Заголовок</label>
-          <TemplateVariableChips onInsert={insertIntoPinterestTitle} />
-            <input
-              ref={pinterestTitleRef}
-              className="form-input"
-              value={value.pinterestTitleTemplate || defaultPinterestTitleTemplate()}
-              onChange={(event) => persistTemplates({ ...value, pinterestTitleTemplate: event.target.value })}
-            />
-            <label className="block text-xs text-[var(--muted)]">Описание</label>
-            <TemplateVariableChips onInsert={insertIntoPinterestDescription} />
-            <RichTextEditor
-              value={value.pinterestDescriptionTemplate || defaultPinterestDescriptionTemplate()}
-              onChange={(html) => persistTemplates({ ...value, pinterestDescriptionTemplate: html })}
-              placeholder="Описание пина…"
-              minHeight={120}
-            />
-            <div className="template-preview template-preview--pinterest">
-              <p className="template-preview-label">Предпросмотр пина</p>
-              <p className="template-preview-pin-title">{pinterestTitleResolved}</p>
-              <div
-                className="template-preview-body"
-                dangerouslySetInnerHTML={{ __html: pinterestDescriptionHtml }}
+          {pinterestOpen ? (
+            <div className="publication-template-section publication-template-section--pinterest">
+              <div className="publication-template-section-head">
+                <p className="publication-template-section-title">Пин</p>
+                <button type="button" className="text-xs text-[var(--primary)]" onClick={resetPinterest}>
+                  Сбросить
+                </button>
+              </div>
+              <label className="block text-xs text-[var(--muted)]">Заголовок</label>
+              <TemplateVariableChips onInsert={insertIntoPinterestTitle} />
+              <input
+                ref={pinterestTitleRef}
+                className="form-input"
+                value={value.pinterestTitleTemplate || defaultPinterestTitleTemplate()}
+                onChange={(event) => persistTemplates({ ...value, pinterestTitleTemplate: event.target.value })}
               />
+              <label className="block text-xs text-[var(--muted)]">Описание</label>
+              <TemplateVariableChips onInsert={insertIntoPinterestDescription} />
+              <RichTextEditor
+                value={value.pinterestDescriptionTemplate || defaultPinterestDescriptionTemplate()}
+                onChange={(html) => persistTemplates({ ...value, pinterestDescriptionTemplate: html })}
+                placeholder="Описание пина…"
+                minHeight={120}
+              />
+              <div className="template-preview template-preview--pinterest">
+                <p className="template-preview-label">Предпросмотр пина</p>
+                <p className="template-preview-pin-title">{pinterestTitleResolved}</p>
+                <div
+                  className="template-preview-body"
+                  dangerouslySetInnerHTML={{ __html: pinterestDescriptionHtml }}
+                />
+              </div>
             </div>
-        </div>
+          ) : null}
+        </>
       ) : null}
     </div>
   );

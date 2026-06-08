@@ -25,10 +25,20 @@ type PromptForPin = {
   examples: Array<{ url: string; type: string }>;
 };
 
+export type PinterestPinOverrides = {
+  title?: string;
+  description?: string;
+  link?: string;
+};
+
 type PinterestPinResult = {
   id: string;
   link?: string;
 };
+
+export function defaultPinterestDescription(categoryName: string): string {
+  return `Готовый промпт для ${categoryName}.\nБольше промптов и подборок в нашем Telegram-канале.`;
+}
 
 export function truncatePinterestTitle(title: string): string {
   const trimmed = title.trim();
@@ -39,22 +49,29 @@ export function truncatePinterestTitle(title: string): string {
   return `${trimmed.slice(0, PINTEREST_TITLE_MAX - 1)}…`;
 }
 
-export function buildPinterestPin(prompt: PromptForPin) {
-  const telegramChannelUrl = config.telegramChannelUrl.trim();
-  if (!telegramChannelUrl) {
-    throw new Error("TELEGRAM_CHANNEL_URL не указан");
-  }
+function truncatePinterestDescription(text: string): string {
+  if (text.length <= PINTEREST_DESCRIPTION_MAX) return text;
+  return `${text.slice(0, PINTEREST_DESCRIPTION_MAX - 1)}…`;
+}
 
+function validatePinterestLink(link: string): void {
+  const trimmed = link.trim();
+  if (!trimmed) {
+    throw new Error("Pinterest link is missing");
+  }
   let parsed: URL;
   try {
-    parsed = new URL(telegramChannelUrl);
+    parsed = new URL(trimmed);
   } catch {
-    throw new Error("TELEGRAM_CHANNEL_URL должен быть валидным URL");
+    throw new Error("Pinterest link is invalid");
   }
   if (!/^https?:$/i.test(parsed.protocol)) {
-    throw new Error("TELEGRAM_CHANNEL_URL должен быть валидным URL");
+    throw new Error("Pinterest link is invalid");
   }
+}
 
+function resolveTemplatePinContent(prompt: PromptForPin) {
+  const telegramChannelUrl = config.telegramChannelUrl.trim();
   const vars: PublicationTemplateVars = {
     headline: derivePromptTitle(prompt.content),
     category: prompt.category.name,
@@ -67,17 +84,27 @@ export function buildPinterestPin(prompt: PromptForPin) {
   const description = truncatePinterestDescription(
     isHtmlTemplate(descriptionRaw) ? htmlToPlainText(descriptionRaw) : descriptionRaw
   );
-
-  return {
-    title,
-    description,
-    destinationLink: telegramChannelUrl
-  };
+  const destinationLink = telegramChannelUrl;
+  validatePinterestLink(destinationLink);
+  return { title, description, destinationLink };
 }
 
-function truncatePinterestDescription(text: string): string {
-  if (text.length <= PINTEREST_DESCRIPTION_MAX) return text;
-  return `${text.slice(0, PINTEREST_DESCRIPTION_MAX - 1)}…`;
+function resolveOverridePinContent(prompt: PromptForPin, overrides: PinterestPinOverrides) {
+  const categoryName = prompt.category.name;
+  const title = truncatePinterestTitle(overrides.title?.trim() || prompt.title.trim() || derivePromptTitle(prompt.content));
+  const description = truncatePinterestDescription(
+    overrides.description?.trim() || defaultPinterestDescription(categoryName)
+  );
+  const destinationLink = overrides.link?.trim() || config.telegramChannelUrl.trim();
+  validatePinterestLink(destinationLink);
+  return { title, description, destinationLink };
+}
+
+export function buildPinterestPin(prompt: PromptForPin, overrides?: PinterestPinOverrides) {
+  if (overrides !== undefined) {
+    return resolveOverridePinContent(prompt, overrides);
+  }
+  return resolveTemplatePinContent(prompt);
 }
 
 export function selectPinterestMedia(prompt: PromptForPin): { url: string; mediaType: "image" } {
@@ -154,7 +181,28 @@ export async function getLatestPinterestPublication(promptId: number) {
   });
 }
 
-export async function sendPromptToPinterest(promptId: number) {
+function resolvePublicationOverrides(
+  explicit?: PinterestPinOverrides,
+  latest?: {
+    title: string;
+    description: string;
+    destinationLink: string;
+  } | null
+): PinterestPinOverrides | undefined {
+  if (explicit !== undefined) {
+    return explicit;
+  }
+  if (latest?.title?.trim() && latest.destinationLink?.trim()) {
+    return {
+      title: latest.title,
+      description: latest.description,
+      link: latest.destinationLink
+    };
+  }
+  return undefined;
+}
+
+export async function sendPromptToPinterest(promptId: number, overrides?: PinterestPinOverrides) {
   const prompt = await prisma.prompt.findUnique({
     where: { id: promptId },
     include: {
@@ -167,9 +215,12 @@ export async function sendPromptToPinterest(promptId: number) {
     throw new Error("Prompt not found");
   }
 
+  const latestPublication = overrides === undefined ? await getLatestPinterestPublication(promptId) : null;
+  const effectiveOverrides = resolvePublicationOverrides(overrides, latestPublication);
+
   let pinContent: ReturnType<typeof buildPinterestPin>;
   try {
-    pinContent = buildPinterestPin(prompt);
+    pinContent = buildPinterestPin(prompt, effectiveOverrides);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     const publication = await prisma.pinterestPublication.create({
@@ -178,8 +229,8 @@ export async function sendPromptToPinterest(promptId: number) {
         status: "failed",
         error: message,
         title: prompt.title.slice(0, PINTEREST_TITLE_MAX) || "Prompt",
-        description: "",
-        destinationLink: config.telegramChannelUrl || ""
+        description: effectiveOverrides?.description?.trim() || defaultPinterestDescription(prompt.category.name),
+        destinationLink: effectiveOverrides?.link?.trim() || config.telegramChannelUrl || ""
       }
     });
     PromptService.invalidateDetailCache(promptId);

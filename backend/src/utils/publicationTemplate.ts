@@ -18,8 +18,7 @@ export function defaultPinterestTitleTemplate(): string {
 }
 
 export function defaultPinterestDescriptionTemplate(): string {
-  return `<p>Готовый промпт для {{category}}.</p>
-<p>Больше промптов и подборок в нашем <a href="{{channel}}">Telegram-канале</a>.</p>`;
+  return `Готовый промпт для {{category}}.\nБольше промптов и подборок в нашем Telegram-канале.`;
 }
 
 export function renderPublicationTemplate(template: string, vars: PublicationTemplateVars): string {

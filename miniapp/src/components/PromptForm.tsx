@@ -12,6 +12,11 @@ import {
   type PromptMediaItem
 } from "./PromptMediaGalleryEditor";
 import { PromptContentTextarea } from "./PromptContentTextarea";
+import {
+  PinterestPublishFields,
+  emptyPinterestPublishValue,
+  validatePinterestPublishValue
+} from "./PinterestPublishFields";
 
 type Props = {
   categories: Category[];
@@ -43,6 +48,8 @@ export function PromptForm({
   const [content, setContent] = useState("");
   const [publishToTelegram, setPublishToTelegram] = useState(false);
   const [publishToPinterest, setPublishToPinterest] = useState(false);
+  const [pinterestPublish, setPinterestPublish] = useState(emptyPinterestPublishValue);
+  const [pinterestValidationAttempted, setPinterestValidationAttempted] = useState(false);
   const [publicationTemplates, setPublicationTemplates] = useState(
     () => loadStoredPublicationTemplates() ?? emptyPublicationTemplates()
   );
@@ -55,6 +62,12 @@ export function PromptForm({
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
+    if (showTelegramPublish && publishToPinterest && !validatePinterestPublishValue(pinterestPublish)) {
+      setPinterestValidationAttempted(true);
+      setError("Проверьте поля Pinterest-публикации.");
+      return;
+    }
+
     setLoading(true);
     setError("");
     const { coverMediaUrl, coverMediaType, examples } = splitPromptMediaItems(mediaItems);
@@ -68,6 +81,13 @@ export function PromptForm({
         examples,
         publishToTelegram: showTelegramPublish ? publishToTelegram : undefined,
         publishToPinterest: showTelegramPublish ? publishToPinterest : undefined,
+        ...(showTelegramPublish && publishToPinterest
+          ? {
+              pinterestTitle: pinterestPublish.title.trim(),
+              pinterestDescription: pinterestPublish.description.trim(),
+              pinterestLink: pinterestPublish.link.trim()
+            }
+          : {}),
         ...templatesPayloadForApi(publicationTemplates)
       });
     } catch {
@@ -151,6 +171,16 @@ export function PromptForm({
         tagNames={keywordsPreview}
         value={publicationTemplates}
         onChange={setPublicationTemplates}
+        showPinterestSection={false}
+      />
+
+      <PinterestPublishFields
+        enabled={publishToPinterest}
+        promptContent={content}
+        categoryName={selectedCategory?.name ?? "Категория"}
+        value={pinterestPublish}
+        onChange={setPinterestPublish}
+        showErrors={pinterestValidationAttempted}
       />
     </div>
   ) : null;
