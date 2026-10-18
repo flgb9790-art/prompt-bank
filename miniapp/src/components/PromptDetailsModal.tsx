@@ -11,7 +11,7 @@ import { getCategoryBadgeClass } from "../utils/categoryStyle";
 import { hasFullPromptDetails } from "../utils/promptContent";
 import { buildPromptShareUrl } from "../utils/promptShare";
 import { telegramPublicationStatusLabel } from "../utils/telegramPost";
-import { pinterestPublicationStatusLabel } from "../utils/pinterestPost";
+import { buildPinterestPinUrl, pinterestPublicationStatusLabel } from "../utils/pinterestPost";
 import type { LightboxItem } from "./MediaLightbox";
 
 import { TagPill } from "./TagPill";
@@ -185,6 +185,7 @@ export function PromptDetailsModal({
   const [shareError, setShareError] = useState("");
   const [telegramPublishing, setTelegramPublishing] = useState(false);
   const [pinterestPublishing, setPinterestPublishing] = useState(false);
+  const pinterestPinUrl = buildPinterestPinUrl(prompt?.pinterestPublication?.pinterestPinId);
 
   const galleryItems = useMemo(() => (prompt ? buildGalleryItems(prompt) : []), [prompt]);
   const isFavorite = usePromptFavorite(
@@ -584,9 +585,9 @@ export function PromptDetailsModal({
                           {prompt.pinterestPublication.error}
                         </p>
                       ) : null}
-                      {prompt.pinterestPublication?.status === "published" && prompt.pinterestPublication.publishedUrl ? (
+                      {prompt.pinterestPublication?.status === "published" && pinterestPinUrl ? (
                         <a
-                          href={prompt.pinterestPublication.publishedUrl}
+                          href={pinterestPinUrl}
                           target="_blank"
                           rel="noreferrer"
                           className="btn-secondary mt-3 inline-flex w-full justify-center"

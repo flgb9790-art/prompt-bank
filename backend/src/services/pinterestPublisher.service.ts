@@ -33,7 +33,6 @@ export type PinterestPinOverrides = {
 
 type PinterestPinResult = {
   id: string;
-  link?: string;
 };
 
 export function defaultPinterestDescription(categoryName: string): string {
@@ -282,7 +281,8 @@ export async function sendPromptToPinterest(promptId: number, overrides?: Pinter
       imageUrl: media.url
     });
 
-    const publishedUrl = result.link || `https://www.pinterest.com/pin/${result.id}/`;
+    // The API's `link` is the destination (Telegram), not the Pin permalink.
+    const publishedUrl = `https://www.pinterest.com/pin/${result.id}/`;
 
     await prisma.$transaction([
       prisma.pinterestPublication.update({

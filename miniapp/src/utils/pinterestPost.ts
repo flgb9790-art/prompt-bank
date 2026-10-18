@@ -6,6 +6,11 @@ import {
 
 const DEFAULT_TELEGRAM_CHANNEL_URL = "https://t.me/your_channel";
 
+export function buildPinterestPinUrl(pinId?: string | null): string | undefined {
+  const id = pinId?.trim();
+  return id && /^\d+$/.test(id) ? `https://www.pinterest.com/pin/${id}/` : undefined;
+}
+
 export function resolveTelegramChannelUrl(): string {
   const fromEnv = (import.meta.env.VITE_TELEGRAM_CHANNEL_URL as string | undefined)?.trim();
   return fromEnv || DEFAULT_TELEGRAM_CHANNEL_URL;
