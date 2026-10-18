@@ -20,6 +20,7 @@ export function buildPinterestPinPreview(input: {
   content: string;
   categoryName: string;
   telegramChannelUrl?: string;
+  telegramPostUrl?: string | null;
   pinterestTitleTemplate?: string | null;
   pinterestDescriptionTemplate?: string | null;
 }): string {
@@ -31,7 +32,7 @@ export function buildPinterestPinPreview(input: {
     siteOrigin: channelUrl
   });
   vars.channel = channelUrl;
-  vars.link = channelUrl;
+  vars.link = input.telegramPostUrl?.trim() || "";
 
   const title = resolvePinterestTitleTemplate(input.pinterestTitleTemplate, vars);
   const description = resolvePinterestDescriptionTemplate(input.pinterestDescriptionTemplate, vars);
@@ -43,10 +44,11 @@ Description:
 ${description}
 
 Destination:
-${channelUrl}`;
+${input.telegramPostUrl?.trim() || "Ссылка на пост будет получена после публикации в Telegram"}`;
 }
 
 export function pinterestPublicationStatusLabel(status?: string | null): string {
+  if (status === "awaiting_confirmation") return "Pinterest: подтвердите ссылку назначения";
   if (status === "published") return "Pinterest: опубликовано ✅";
   if (status === "pending") return "Pinterest: публикация...";
   if (status === "failed") return "Pinterest: ошибка ⚠️";
@@ -56,7 +58,7 @@ export function pinterestPublicationStatusLabel(status?: string | null): string 
 export function buildCreatePromptToastMessage(input: {
   telegramPublicationStatus?: "published" | "failed";
   telegramPublicationError?: string;
-  pinterestPublicationStatus?: "published" | "failed";
+  pinterestPublicationStatus?: "published" | "failed" | "awaiting_confirmation";
   pinterestPublicationError?: string;
 }): string {
   const errors: string[] = [];
@@ -77,6 +79,9 @@ export function buildCreatePromptToastMessage(input: {
 
   if (errors.length) {
     return errors.join(" ");
+  }
+  if (input.pinterestPublicationStatus === "awaiting_confirmation") {
+    return "Промпт сохранён. Подтвердите ссылку Telegram-поста для Pinterest в карточке промпта.";
   }
 
   const telegramPublished = input.telegramPublicationStatus === "published";

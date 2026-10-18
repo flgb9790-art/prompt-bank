@@ -132,7 +132,8 @@ export const api = {
     const query = buildPromptsQueryString(params);
     return request<PromptListResponse>(`/api/prompts${query ? `?${query}` : ""}`);
   },
-  getPrompt(id: number) {
+  getPrompt(id: number, force = false) {
+    if (force) invalidatePromptCache(id);
     const cached = promptCache.get(id);
     if (cached) {
       return Promise.resolve(cached);
@@ -176,9 +177,14 @@ export const api = {
       return result;
     });
   },
-  publishPromptToPinterest(promptId: number) {
+  saveTelegramPostLink(promptId: number, telegramPostUrl: string) {
+    return request<Prompt>(`/api/admin/prompts/${promptId}/telegram-post-link`, {
+      method: "PATCH", body: JSON.stringify({ telegramPostUrl })
+    }).then((prompt) => { promptCache.set(promptId, prompt); return prompt; });
+  },
+  publishPromptToPinterest(promptId: number, destinationLink: string) {
     return request<PublishPinterestResponse>(`/api/admin/prompts/${promptId}/publish-pinterest`, {
-      method: "POST"
+      method: "POST", body: JSON.stringify({ destinationLink })
     }).then((result) => {
       const cached = promptCache.get(promptId);
       if (cached && result.pinterestPublication) {

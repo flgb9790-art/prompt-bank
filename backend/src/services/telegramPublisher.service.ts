@@ -1,4 +1,5 @@
 import { prisma } from "../db";
+import { buildTelegramPostLink } from "../utils/telegramPostLink";
 import { config } from "../config";
 import { PromptService } from "./prompt.service";
 import { derivePromptTitle } from "../utils/promptTitle";
@@ -40,7 +41,7 @@ type PostMediaItem = { url: string; type: "image" | "video" };
 
 type TelegramMessage = {
   message_id: number;
-  chat: { id: number | string };
+  chat: { id: number | string; username?: string };
 };
 
 export function normalizeHashtag(name: string): string | null {
@@ -192,7 +193,7 @@ async function loadAllMediaPayloads(mediaItems: PostMediaItem[]): Promise<Telegr
   return payloads;
 }
 
-async function sendTelegramPost(chatId: string, postHtml: string, mediaItems: PostMediaItem[]): Promise<TelegramMessage> {
+async function sendTelegramMediaPost(chatId: string, postHtml: string, mediaItems: PostMediaItem[]): Promise<TelegramMessage> {
   const token = config.telegramBotToken;
   if (!token) {
     throw new Error("TELEGRAM_BOT_TOKEN не указан");
@@ -344,6 +345,40 @@ export async function getLatestTelegramPublication(promptId: number) {
   });
 }
 
+export function splitTelegramText(text: string): string[] {
+  const chunks: string[] = [];
+  let remaining = text;
+  while (remaining) {
+    let end = Math.min(4000, remaining.length);
+    // Do not split an emoji's UTF-16 surrogate pair.
+    if (end < remaining.length && /[\uD800-\uDBFF]/.test(remaining[end - 1])) end--;
+    const chunk = remaining.slice(0, end);
+    chunks.push(chunk);
+    remaining = remaining.slice(end);
+  }
+  return chunks;
+}
+
+async function sendTelegramPost(chatId: string, postHtml: string, content: string, mediaItems: PostMediaItem[]) {
+  const announcement = htmlToPlainText(postHtml);
+  const text = announcement.includes(content) ? announcement : `${announcement}\n\n${content}`;
+  if (mediaItems.length && text.length <= TELEGRAM_CAPTION_MAX) {
+    const escapedContent = content.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    const caption = announcement.includes(content) ? postHtml : `${postHtml}\n\n${escapedContent}`;
+    return sendTelegramMediaPost(chatId, caption, mediaItems);
+  }
+  let first: TelegramMessage | undefined;
+  for (const chunk of splitTelegramText(text)) {
+    const message = await callTelegramApi<TelegramMessage>("sendMessage", {
+      chat_id: chatId, text: chunk, link_preview_options: { is_disabled: true }
+    });
+    first ??= message;
+  }
+  if (!first) throw new Error("Текст промпта пуст");
+  if (mediaItems.length) await sendTelegramMediaPost(chatId, postHtml, mediaItems);
+  return first;
+}
+
 async function clearStalePendingTelegramPublications(promptId: number) {
   await prisma.telegramPublication.updateMany({
     where: { promptId, status: "pending" },
@@ -374,6 +409,14 @@ export async function sendPromptToTelegram(promptId: number) {
     throw new Error("Prompt not found");
   }
 
+  // A Pinterest retry (or a repeated Telegram click) must not duplicate the post.
+  if (prompt.telegramPostUrl) {
+    return { status: "published" as const, publication: await getLatestTelegramPublication(promptId) };
+  }
+  if (prompt.telegramPublished) {
+    throw new Error("Материал уже опубликован в Telegram. Укажите ссылку на существующий пост вручную; повторная отправка не выполняется.");
+  }
+
   const postText = buildTelegramPost(prompt);
   const postHtml = buildTelegramPostHtml(prompt);
   const mediaItems = collectPostMedia(prompt);
@@ -389,7 +432,8 @@ export async function sendPromptToTelegram(promptId: number) {
   });
 
   try {
-    const result = await sendTelegramPost(config.telegramChannelId, postHtml, mediaItems);
+    const result = await sendTelegramPost(config.telegramChannelId, postHtml, prompt.content, mediaItems);
+    const telegramPostUrl = buildTelegramPostLink(result.chat, result.message_id);
 
     await prisma.$transaction([
       prisma.telegramPublication.update({
@@ -403,7 +447,12 @@ export async function sendPromptToTelegram(promptId: number) {
       }),
       prisma.prompt.update({
         where: { id: promptId },
-        data: { telegramPublished: true }
+        data: {
+          telegramPublished: true,
+          telegramMessageId: String(result.message_id),
+          telegramChatId: String(result.chat.id),
+          telegramPostUrl
+        }
       })
     ]);
 

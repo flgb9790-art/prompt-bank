@@ -62,7 +62,7 @@ export function PromptForm({
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
-    if (showTelegramPublish && publishToPinterest && !validatePinterestPublishValue(pinterestPublish)) {
+    if (showTelegramPublish && publishToPinterest && !validatePinterestPublishValue(pinterestPublish, publishToTelegram)) {
       setPinterestValidationAttempted(true);
       setError("Проверьте поля Pinterest-публикации.");
       return;
@@ -85,7 +85,7 @@ export function PromptForm({
           ? {
               pinterestTitle: pinterestPublish.title.trim(),
               pinterestDescription: pinterestPublish.description.trim(),
-              pinterestLink: pinterestPublish.link.trim()
+              ...(!publishToTelegram ? { telegramPostUrl: pinterestPublish.link.trim() } : {})
             }
           : {}),
         ...templatesPayloadForApi(publicationTemplates)
@@ -160,7 +160,7 @@ export function PromptForm({
         <span>
           <span className="font-medium text-[var(--text)]">Опубликовать в Pinterest</span>
           <span className="mt-1 block text-xs text-[var(--muted)]">
-            После сохранения промпт будет автоматически опубликован в Pinterest. Пин будет вести в Telegram-канал.
+            После сохранения покажем ссылку на конкретный Telegram-пост и запросим подтверждение создания пина.
           </span>
         </span>
       </label>
@@ -176,6 +176,7 @@ export function PromptForm({
 
       <PinterestPublishFields
         enabled={publishToPinterest}
+        publishToTelegram={publishToTelegram}
         promptContent={content}
         categoryName={selectedCategory?.name ?? "Категория"}
         value={pinterestPublish}

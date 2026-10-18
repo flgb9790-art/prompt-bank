@@ -3,8 +3,29 @@ import { isAdminRequest, readTelegramId } from "../auth";
 import { PromptService } from "../services/prompt.service";
 import { sendPromptToTelegram } from "../services/telegramPublisher.service";
 import { sendPromptToPinterest } from "../services/pinterestPublisher.service";
+import { prisma } from "../db";
+import { parseTelegramPostLink } from "../utils/telegramPostLink";
 
 const router = Router();
+
+router.patch("/prompts/:id/telegram-post-link", async (req, res, next) => {
+  try {
+    if (!readTelegramId(req)) return res.status(401).json({ error: "AUTH_REQUIRED" });
+    if (!isAdminRequest(req)) return res.status(403).json({ message: "Только администратор может изменить ссылку" });
+    const promptId = Number(req.params.id);
+    if (!Number.isSafeInteger(promptId) || promptId <= 0) return res.status(400).json({ message: "Invalid prompt id" });
+    let post;
+    try { post = parseTelegramPostLink(req.body.telegramPostUrl); }
+    catch (error) { return res.status(400).json({ message: (error as Error).message }); }
+    if (!await prisma.prompt.findUnique({ where: { id: promptId } })) return res.status(404).json({ message: "Prompt not found" });
+    await prisma.prompt.update({ where: { id: promptId }, data: {
+      telegramPostUrl: post.url, telegramMessageId: post.messageId,
+      telegramChatId: post.chatId, telegramPublished: true
+    } });
+    PromptService.invalidateDetailCache(promptId);
+    res.json(await PromptService.getById(promptId));
+  } catch (error) { next(error); }
+});
 
 router.post("/prompts/:id/publish-telegram", async (req, res, next) => {
   try {
@@ -55,7 +76,7 @@ router.post("/prompts/:id/publish-pinterest", async (req, res, next) => {
       return res.status(404).json({ message: "Prompt not found" });
     }
 
-    const result = await sendPromptToPinterest(promptId);
+    const result = await sendPromptToPinterest(promptId, undefined, req.body?.destinationLink);
     res.json({
       status: result.status,
       error: result.status === "failed" ? result.error : undefined,

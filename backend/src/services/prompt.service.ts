@@ -2,6 +2,7 @@ import { prisma } from "../db";
 import { extractKeywords } from "../keywordExtractor";
 import { normalizePromptContent } from "../utils/promptContent";
 import { derivePromptTitle } from "../utils/promptTitle";
+import { parseTelegramPostLink } from "../utils/telegramPostLink";
 
 type MediaType = "image" | "video";
 
@@ -17,6 +18,7 @@ type PromptCreateInput = {
   telegramPostTemplate?: string | null;
   pinterestTitleTemplate?: string | null;
   pinterestDescriptionTemplate?: string | null;
+  telegramPostUrl?: string;
 };
 
 type PromptUpdateInput = Partial<Omit<PromptCreateInput, "userId" | "examples">> & {
@@ -284,12 +286,19 @@ export class PromptService {
   }
 
   static async create(input: PromptCreateInput) {
+    const telegramPost = input.telegramPostUrl ? parseTelegramPostLink(input.telegramPostUrl) : undefined;
     const title = derivePromptTitle(input.title?.trim() || input.content);
     const keywords = extractKeywords(input.content, title);
 
     const prompt = await prisma.prompt.create({
       data: {
         userId: input.userId,
+        ...(telegramPost ? {
+          telegramPostUrl: telegramPost.url,
+          telegramMessageId: telegramPost.messageId,
+          telegramChatId: telegramPost.chatId,
+          telegramPublished: true
+        } : {}),
         title,
         content: input.content,
         categoryId: input.categoryId,

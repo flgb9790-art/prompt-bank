@@ -659,7 +659,19 @@ function MiniAppApp() {
       setToastMessage("Добавлять промпты могут только администраторы");
       return;
     }
-    const created = withPromptDetails(await api.createPrompt(payload)) as CreatePromptResponse;
+    let created = withPromptDetails(await api.createPrompt(payload)) as CreatePromptResponse;
+    if (created.pinterestPublicationStatus === "awaiting_confirmation" && created.telegramPostUrl &&
+        window.confirm(`Создать пин со ссылкой назначения?\n\n${created.telegramPostUrl}`)) {
+      try {
+        const result = await api.publishPromptToPinterest(created.id, created.telegramPostUrl);
+        created = { ...withPromptDetails(await api.getPrompt(created.id, true)),
+          telegramPublicationStatus: created.telegramPublicationStatus,
+          pinterestPublicationStatus: result.status, pinterestPublicationError: result.error };
+      } catch (error) {
+        created.pinterestPublicationStatus = "failed";
+        created.pinterestPublicationError = error instanceof Error ? error.message : "Не удалось создать пин. Повторите Pinterest в карточке промпта.";
+      }
+    }
     persistPublicationTemplatesFromPrompt(created);
     invalidateReferenceCaches();
     setCreatedPromptId(created.id);
@@ -681,7 +693,7 @@ function MiniAppApp() {
     if (!isAdmin) return;
     try {
       const result = await api.publishPromptToTelegram(promptId);
-      const fresh = withPromptDetails(await api.getPrompt(promptId));
+      const fresh = withPromptDetails(await api.getPrompt(promptId, true));
       persistPublicationTemplatesFromPrompt(fresh);
       setPrompts((prev) => prev.map((item) => (item.id === promptId ? mergePromptUpdate(item, fresh) : item)));
       syncRecentPrompt(fresh);
@@ -704,8 +716,14 @@ function MiniAppApp() {
   async function handlePublishPinterest(promptId: number) {
     if (!isAdmin) return;
     try {
-      const result = await api.publishPromptToPinterest(promptId);
-      const fresh = withPromptDetails(await api.getPrompt(promptId));
+      const preview = await api.getPrompt(promptId, true);
+      if (!preview.telegramPostUrl) {
+        setToastMessage("Пин не создан: сохраните ссылку на Telegram-пост или сначала опубликуйте промпт в Telegram.");
+        return;
+      }
+      if (!window.confirm(`Создать пин со ссылкой назначения?\n\n${preview.telegramPostUrl}`)) return;
+      const result = await api.publishPromptToPinterest(promptId, preview.telegramPostUrl);
+      const fresh = withPromptDetails(await api.getPrompt(promptId, true));
       persistPublicationTemplatesFromPrompt(fresh);
       setPrompts((prev) => prev.map((item) => (item.id === promptId ? mergePromptUpdate(item, fresh) : item)));
       syncRecentPrompt(fresh);
@@ -720,10 +738,17 @@ function MiniAppApp() {
             "Публикация в Pinterest не удалась. Проверьте access token, board id и доступность изображения."
         );
       }
-    } catch {
-      setToastMessage("Публикация в Pinterest не удалась");
-      throw new Error("pinterest_publish_failed");
+    } catch (error) {
+      setToastMessage(error instanceof Error ? error.message : "Публикация в Pinterest не удалась");
     }
+  }
+
+  async function handleSaveTelegramPostLink(promptId: number, link: string) {
+    const fresh = withPromptDetails(await api.saveTelegramPostLink(promptId, link));
+    setPrompts((prev) => prev.map((item) => item.id === promptId ? mergePromptUpdate(item, fresh) : item));
+    syncRecentPrompt(fresh);
+    if (selectedPrompt?.id === promptId) setSelectedPrompt(fresh);
+    setToastMessage("Ссылка на Telegram-пост сохранена. Сообщение в канал не отправлялось.");
   }
 
   async function handleToggleFavorite(id: number) {
@@ -1061,6 +1086,7 @@ function MiniAppApp() {
         onEdit={handleEditPrompt}
         onPublishTelegram={isAdmin ? handlePublishTelegram : undefined}
         onPublishPinterest={isAdmin ? handlePublishPinterest : undefined}
+        onSaveTelegramPostLink={isAdmin ? handleSaveTelegramPostLink : undefined}
         onShareLinkCopied={() => setToastMessage("Ссылка скопирована")}
         onTagClick={handleSelectTag}
         showPublicationTemplates={isAdmin}

@@ -7,7 +7,10 @@ export function isValidPinterestLink(value: string): boolean {
   if (!trimmed) return false;
   try {
     const parsed = new URL(trimmed);
-    return /^https?:$/i.test(parsed.protocol);
+    return parsed.protocol === "https:" && parsed.hostname === "t.me" && !parsed.port &&
+      !parsed.username && !parsed.password &&
+      /^\/(?:[a-zA-Z][a-zA-Z0-9_]{3,31}|c\/[1-9]\d*)\/[1-9]\d*\/?$/.test(parsed.pathname) &&
+      !/^\/(?:share|joinchat|proxy|socks|login)\//i.test(parsed.pathname);
   } catch {
     return false;
   }

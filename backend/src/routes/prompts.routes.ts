@@ -3,7 +3,8 @@ import { prisma } from "../db";
 import { PromptService } from "../services/prompt.service";
 import { HistoryService } from "../services/history.service";
 import { sendPromptToTelegram } from "../services/telegramPublisher.service";
-import { sendPromptToPinterest } from "../services/pinterestPublisher.service";
+import { preparePinterestPublication } from "../services/pinterestPublisher.service";
+import { parseTelegramPostLink } from "../utils/telegramPostLink";
 import { authRequired, isAdminRequest, readTelegramId } from "../auth";
 import { resolveUserIdByTelegramId } from "../user";
 
@@ -65,8 +66,17 @@ router.post("/", async (req, res, next) => {
       return res.status(400).json({ message: "Invalid user id" });
     }
 
+    if (req.body.telegramPostUrl && req.body.publishToTelegram) {
+      return res.status(400).json({ message: "Выберите отправку в Telegram или ссылку на существующий пост." });
+    }
+    let telegramPostUrl: string | undefined;
+    if (req.body.telegramPostUrl) {
+      try { telegramPostUrl = parseTelegramPostLink(req.body.telegramPostUrl).url; }
+      catch (error) { return res.status(400).json({ message: (error as Error).message }); }
+    }
     const created = await PromptService.create({
       userId,
+      telegramPostUrl,
       content: String(req.body.content),
       categoryId: Number(req.body.categoryId),
       note: req.body.note ? String(req.body.note) : undefined,
@@ -86,11 +96,13 @@ router.post("/", async (req, res, next) => {
 
     let telegramPublicationStatus: "published" | "failed" | undefined;
     let telegramPublicationError: string | undefined;
-    let pinterestPublicationStatus: "published" | "failed" | undefined;
+    let pinterestPublicationStatus: "awaiting_confirmation" | "failed" | undefined;
     let pinterestPublicationError: string | undefined;
 
     if (Boolean(req.body.publishToTelegram) && isAdminRequest(req)) {
-      const publishResult = await sendPromptToTelegram(created.id);
+      const publishResult = await sendPromptToTelegram(created.id).catch((error: Error) => ({
+        status: "failed" as const, error: error.message
+      }));
       telegramPublicationStatus = publishResult.status;
       if (publishResult.status === "failed") {
         telegramPublicationError = publishResult.error;
@@ -98,15 +110,16 @@ router.post("/", async (req, res, next) => {
     }
 
     if (Boolean(req.body.publishToPinterest) && isAdminRequest(req)) {
-      const publishResult = await sendPromptToPinterest(created.id, {
-        title: req.body.pinterestTitle !== undefined ? String(req.body.pinterestTitle) : undefined,
-        description:
-          req.body.pinterestDescription !== undefined ? String(req.body.pinterestDescription) : undefined,
-        link: req.body.pinterestLink !== undefined ? String(req.body.pinterestLink) : undefined
-      });
-      pinterestPublicationStatus = publishResult.status;
-      if (publishResult.status === "failed") {
-        pinterestPublicationError = publishResult.error;
+      try {
+        if (telegramPublicationStatus === "failed") throw new Error("Пин не создан: публикация в Telegram не удалась. Повторите Telegram или укажите ссылку на существующий пост.");
+        await preparePinterestPublication(created.id, {
+          title: req.body.pinterestTitle !== undefined ? String(req.body.pinterestTitle) : undefined,
+          description: req.body.pinterestDescription !== undefined ? String(req.body.pinterestDescription) : undefined
+        });
+        pinterestPublicationStatus = "awaiting_confirmation";
+      } catch (error) {
+        pinterestPublicationStatus = "failed";
+        pinterestPublicationError = (error as Error).message;
       }
     }
 

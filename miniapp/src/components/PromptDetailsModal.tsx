@@ -12,6 +12,7 @@ import { hasFullPromptDetails } from "../utils/promptContent";
 import { buildPromptShareUrl } from "../utils/promptShare";
 import { telegramPublicationStatusLabel } from "../utils/telegramPost";
 import { buildPinterestPinUrl, pinterestPublicationStatusLabel } from "../utils/pinterestPost";
+import { isValidPinterestLink } from "../utils/pinterestPublish";
 import type { LightboxItem } from "./MediaLightbox";
 
 import { TagPill } from "./TagPill";
@@ -55,6 +56,7 @@ type Props = {
   onEdit: (promptId: number, data: PromptEditPayload) => Promise<void>;
   onPublishTelegram?: (promptId: number) => Promise<void>;
   onPublishPinterest?: (promptId: number) => Promise<void>;
+  onSaveTelegramPostLink?: (promptId: number, link: string) => Promise<void>;
   onShareLinkCopied?: () => void;
   onTagClick?: (tag: string) => void;
   showPublicationTemplates?: boolean;
@@ -165,6 +167,7 @@ export function PromptDetailsModal({
   onEdit,
   onPublishTelegram,
   onPublishPinterest,
+  onSaveTelegramPostLink,
   onShareLinkCopied,
   onTagClick,
   showPublicationTemplates = false
@@ -185,6 +188,13 @@ export function PromptDetailsModal({
   const [shareError, setShareError] = useState("");
   const [telegramPublishing, setTelegramPublishing] = useState(false);
   const [pinterestPublishing, setPinterestPublishing] = useState(false);
+  const [telegramPostLink, setTelegramPostLink] = useState("");
+  const [linkSaving, setLinkSaving] = useState(false);
+  const [linkError, setLinkError] = useState("");
+  useEffect(() => {
+    setTelegramPostLink(prompt?.telegramPostUrl ?? "");
+    setLinkError("");
+  }, [prompt?.id, prompt?.telegramPostUrl]);
   const pinterestPinUrl = buildPinterestPinUrl(prompt?.pinterestPublication?.pinterestPinId);
 
   const galleryItems = useMemo(() => (prompt ? buildGalleryItems(prompt) : []), [prompt]);
@@ -538,15 +548,15 @@ export function PromptDetailsModal({
                     <div className="surface-card-soft p-3">
                       <p className="text-sm font-medium text-[var(--text)]">
                         {telegramPublicationStatusLabel(
-                          telegramPublishing ? "pending" : prompt.telegramPublication?.status
+                          telegramPublishing ? "pending" : prompt.telegramPostUrl || prompt.telegramPublished ? "published" : prompt.telegramPublication?.status
                         )}
                       </p>
-                      {prompt.telegramPublication?.status === "failed" && prompt.telegramPublication.error ? (
+                      {!prompt.telegramPostUrl && prompt.telegramPublication?.status === "failed" && prompt.telegramPublication.error ? (
                         <p className="mt-2 text-xs text-[var(--red)]" title={prompt.telegramPublication.error}>
                           {prompt.telegramPublication.error}
                         </p>
                       ) : null}
-                      {prompt.telegramPublication?.status === "published" && !telegramPublishing ? (
+                      {(prompt.telegramPostUrl || prompt.telegramPublished || prompt.telegramPublication?.status === "published") && !telegramPublishing ? (
                         <p className="mt-2 text-xs text-[var(--muted)]">Опубликовано в Telegram ✅</p>
                       ) : onPublishTelegram ? (
                         <button
@@ -558,6 +568,8 @@ export function PromptDetailsModal({
                               setTelegramPublishing(true);
                               try {
                                 await onPublishTelegram(prompt.id);
+                              } catch (error) {
+                                setLinkError(error instanceof Error ? error.message : "Публикация Telegram не удалась");
                               } finally {
                                 setTelegramPublishing(false);
                               }
@@ -575,6 +587,30 @@ export function PromptDetailsModal({
                       ) : null}
                     </div>
                     <div className="surface-card-soft p-3">
+                      <label className="block text-sm font-medium" htmlFor="telegram-post-destination">Ссылка на Telegram-пост</label>
+                      <input id="telegram-post-destination" type="url" className="form-input mt-2 w-full"
+                        placeholder="https://t.me/channel/123" value={telegramPostLink}
+                        disabled={linkSaving || pinterestPublishing}
+                        onChange={(event) => setTelegramPostLink(event.target.value)} />
+                      <p className="mt-2 break-all text-xs text-[var(--muted)]">
+                        Назначение нового пина: {prompt.telegramPostUrl || "не указано"}
+                      </p>
+                      <p className="mt-1 text-xs text-[var(--muted)]">Укажите пост с текстом промпта. Сохранение ссылки не отправляет материал в канал. Ссылки /c/ доступны участникам канала.</p>
+                      {onSaveTelegramPostLink ? <button type="button" className="btn-secondary mt-2"
+                        disabled={linkSaving || pinterestPublishing || telegramPostLink.trim() === prompt.telegramPostUrl}
+                        onClick={() => {
+                          if (!isValidPinterestLink(telegramPostLink)) {
+                            setLinkError("Укажите конкретный Telegram-пост: https://t.me/channel/123"); return;
+                          }
+                          setLinkSaving(true); setLinkError("");
+                          void onSaveTelegramPostLink(prompt.id, telegramPostLink.trim())
+                            .catch((error) => setLinkError(error instanceof Error ? error.message : "Не удалось сохранить ссылку"))
+                            .finally(() => setLinkSaving(false));
+                        }}>{linkSaving ? "Сохраняем..." : "Сохранить ссылку"}</button> : null}
+                      {linkError ? <p role="alert" className="mt-2 text-xs text-[var(--red)]">{linkError}</p> : null}
+                      {prompt.pinterestPublication?.status === "published" ? <p className="mt-2 text-xs text-[var(--muted)]">
+                        Изменение ссылки относится к будущим публикациям. Существующий пин не изменяется.
+                      </p> : null}
                       <p className="text-sm font-medium text-[var(--text)]">
                         {pinterestPublicationStatusLabel(
                           pinterestPublishing ? "pending" : prompt.pinterestPublication?.status
@@ -597,7 +633,7 @@ export function PromptDetailsModal({
                       ) : onPublishPinterest ? (
                         <button
                           type="button"
-                          disabled={pinterestPublishing}
+                          disabled={pinterestPublishing || linkSaving || !prompt.telegramPostUrl || telegramPostLink.trim() !== prompt.telegramPostUrl}
                           onClick={(event) => {
                             event.stopPropagation();
                             void (async () => {

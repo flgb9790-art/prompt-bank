@@ -1,4 +1,5 @@
 import { prisma } from "../db";
+import { parseTelegramPostLink } from "../utils/telegramPostLink";
 import { config } from "../config";
 import { PromptService } from "./prompt.service";
 import { resolvePublicMediaUrl } from "./telegramPublisher.service";
@@ -17,6 +18,7 @@ type PromptForPin = {
   id: number;
   title: string;
   content: string;
+  telegramPostUrl?: string | null;
   pinterestTitleTemplate?: string | null;
   pinterestDescriptionTemplate?: string | null;
   coverMediaUrl: string | null;
@@ -28,6 +30,7 @@ type PromptForPin = {
 export type PinterestPinOverrides = {
   title?: string;
   description?: string;
+  /** Legacy input, ignored. The saved Telegram post is the only destination. */
   link?: string;
 };
 
@@ -71,11 +74,12 @@ function validatePinterestLink(link: string): void {
 
 function resolveTemplatePinContent(prompt: PromptForPin) {
   const telegramChannelUrl = config.telegramChannelUrl.trim();
+  const destinationLink = requireTelegramDestination(prompt);
   const vars: PublicationTemplateVars = {
     headline: derivePromptTitle(prompt.content),
     category: prompt.category.name,
     hashtags: "",
-    link: telegramChannelUrl,
+    link: destinationLink,
     channel: telegramChannelUrl
   };
   const title = truncatePinterestTitle(resolvePinterestTitleTemplate(prompt.pinterestTitleTemplate, vars));
@@ -83,7 +87,6 @@ function resolveTemplatePinContent(prompt: PromptForPin) {
   const description = truncatePinterestDescription(
     isHtmlTemplate(descriptionRaw) ? htmlToPlainText(descriptionRaw) : descriptionRaw
   );
-  const destinationLink = telegramChannelUrl;
   validatePinterestLink(destinationLink);
   return { title, description, destinationLink };
 }
@@ -94,9 +97,16 @@ function resolveOverridePinContent(prompt: PromptForPin, overrides: PinterestPin
   const description = truncatePinterestDescription(
     overrides.description?.trim() || defaultPinterestDescription(categoryName)
   );
-  const destinationLink = overrides.link?.trim() || config.telegramChannelUrl.trim();
+  const destinationLink = requireTelegramDestination(prompt);
   validatePinterestLink(destinationLink);
   return { title, description, destinationLink };
+}
+
+function requireTelegramDestination(prompt: PromptForPin): string {
+  if (!prompt.telegramPostUrl) {
+    throw new Error("Пин не создан: нет ссылки на Telegram-пост. Сначала опубликуйте промпт в Telegram или сохраните ссылку на существующий пост.");
+  }
+  return parseTelegramPostLink(prompt.telegramPostUrl).url;
 }
 
 export function buildPinterestPin(prompt: PromptForPin, overrides?: PinterestPinOverrides) {
@@ -201,7 +211,19 @@ function resolvePublicationOverrides(
   return undefined;
 }
 
-export async function sendPromptToPinterest(promptId: number, overrides?: PinterestPinOverrides) {
+export async function preparePinterestPublication(promptId: number, overrides?: PinterestPinOverrides) {
+  const prompt = await prisma.prompt.findUniqueOrThrow({
+    where: { id: promptId }, include: { category: true, examples: true }
+  });
+  const content = buildPinterestPin(prompt, overrides);
+  const publication = await prisma.pinterestPublication.create({
+    data: { promptId, status: "awaiting_confirmation", ...content }
+  });
+  PromptService.invalidateDetailCache(promptId);
+  return publication;
+}
+
+export async function sendPromptToPinterest(promptId: number, overrides?: PinterestPinOverrides, confirmedDestination?: string) {
   const prompt = await prisma.prompt.findUnique({
     where: { id: promptId },
     include: {
@@ -220,6 +242,9 @@ export async function sendPromptToPinterest(promptId: number, overrides?: Pinter
   let pinContent: ReturnType<typeof buildPinterestPin>;
   try {
     pinContent = buildPinterestPin(prompt, effectiveOverrides);
+    if (confirmedDestination !== pinContent.destinationLink) {
+      throw new Error("Ссылка назначения изменилась или не подтверждена. Проверьте Telegram-пост и подтвердите публикацию ещё раз.");
+    }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     const publication = await prisma.pinterestPublication.create({
@@ -227,9 +252,9 @@ export async function sendPromptToPinterest(promptId: number, overrides?: Pinter
         promptId,
         status: "failed",
         error: message,
-        title: prompt.title.slice(0, PINTEREST_TITLE_MAX) || "Prompt",
+        title: (effectiveOverrides?.title?.trim() || prompt.title).slice(0, PINTEREST_TITLE_MAX) || "Prompt",
         description: effectiveOverrides?.description?.trim() || defaultPinterestDescription(prompt.category.name),
-        destinationLink: effectiveOverrides?.link?.trim() || config.telegramChannelUrl || ""
+        destinationLink: prompt.telegramPostUrl || ""
       }
     });
     PromptService.invalidateDetailCache(promptId);

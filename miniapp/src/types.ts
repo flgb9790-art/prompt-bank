@@ -44,6 +44,9 @@ export type Prompt = {
   isFavorite: boolean;
   usageCount: number;
   telegramPublished?: boolean;
+  telegramMessageId?: string | null;
+  telegramChatId?: string | null;
+  telegramPostUrl?: string | null;
   telegramPublication?: TelegramPublication | null;
   pinterestPublished?: boolean;
   pinterestPublication?: PinterestPublication | null;
@@ -93,7 +96,7 @@ export type PinterestPublication = {
 export type CreatePromptResponse = Prompt & {
   telegramPublicationStatus?: "published" | "failed";
   telegramPublicationError?: string;
-  pinterestPublicationStatus?: "published" | "failed";
+  pinterestPublicationStatus?: "published" | "failed" | "awaiting_confirmation";
   pinterestPublicationError?: string;
 };
 
@@ -139,10 +142,10 @@ export type PromptCreatePayload = {
   coverMediaType?: MediaType;
   examples: Array<{ url: string; type: MediaType; originalName?: string }>;
   publishToTelegram?: boolean;
+  telegramPostUrl?: string;
   publishToPinterest?: boolean;
   pinterestTitle?: string;
   pinterestDescription?: string;
-  pinterestLink?: string;
   telegramPostTemplate?: string | null;
   pinterestTitleTemplate?: string | null;
   pinterestDescriptionTemplate?: string | null;

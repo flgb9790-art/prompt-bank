@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import { derivePromptTitle } from "../utils/promptTitle";
-import { resolveTelegramChannelUrl } from "../utils/pinterestPost";
 import { defaultPinterestDescriptionText, isValidPinterestLink } from "../utils/pinterestPublish";
 
 export type PinterestPublishValue = {
@@ -16,6 +15,7 @@ type Props = {
   value: PinterestPublishValue;
   onChange: (value: PinterestPublishValue) => void;
   showErrors?: boolean;
+  publishToTelegram?: boolean;
 };
 
 export function emptyPinterestPublishValue(): PinterestPublishValue {
@@ -28,7 +28,8 @@ export function PinterestPublishFields({
   categoryName,
   value,
   onChange,
-  showErrors = false
+  showErrors = false,
+  publishToTelegram = false
 }: Props) {
   const [titleTouched, setTitleTouched] = useState(false);
   const [descriptionTouched, setDescriptionTouched] = useState(false);
@@ -36,7 +37,7 @@ export function PinterestPublishFields({
 
   const promptTitle = derivePromptTitle(promptContent);
   const defaultDescription = defaultPinterestDescriptionText(categoryName);
-  const defaultLink = resolveTelegramChannelUrl();
+  const defaultLink = "";
   const valueRef = useRef(value);
   valueRef.current = value;
 
@@ -70,9 +71,9 @@ export function PinterestPublishFields({
 
   const titleError = showErrors && !value.title.trim() ? "Введите название пина" : "";
   const descriptionError = showErrors && !value.description.trim() ? "Введите описание пина" : "";
-  const linkEmptyError = showErrors && !value.link.trim() ? "Введите ссылку" : "";
+  const linkEmptyError = showErrors && !publishToTelegram && !value.link.trim() ? "Введите ссылку на существующий Telegram-пост" : "";
   const linkInvalidError =
-    showErrors && value.link.trim() && !isValidPinterestLink(value.link) ? "Введите корректную ссылку" : "";
+    showErrors && !publishToTelegram && value.link.trim() && !isValidPinterestLink(value.link) ? "Нужна ссылка на конкретный Telegram-пост" : "";
   const linkError = linkEmptyError || linkInvalidError;
 
   return (
@@ -121,20 +122,25 @@ export function PinterestPublishFields({
 
         <div className="pinterest-publish-field">
           <label className="pinterest-publish-label" htmlFor="pinterest-pin-link">
-            Ссылка
+            Ссылка назначения — Telegram-пост
           </label>
           <input
             id="pinterest-pin-link"
             type="url"
             className="pinterest-publish-input"
-            placeholder="https://t.me/your_channel"
-            value={value.link}
+            placeholder={publishToTelegram ? "Будет получена после отправки в Telegram" : "https://t.me/channel/123"}
+            disabled={publishToTelegram}
+            value={publishToTelegram ? "" : value.link}
             onChange={(event) => {
               setLinkTouched(true);
               onChange({ ...value, link: event.target.value });
             }}
           />
-          <p className="pinterest-publish-hint">Куда будет вести пин. Например, Telegram-канал.</p>
+          <p className="pinterest-publish-hint">
+            {publishToTelegram
+              ? "Сначала отправим Telegram-пост, затем покажем точную ссылку для подтверждения создания пина."
+              : "Для существующего материала укажите уже опубликованный пост. Повторной отправки в Telegram не будет."}
+          </p>
           {linkError ? <p className="pinterest-publish-error">{linkError}</p> : null}
         </div>
       </div>
@@ -144,12 +150,12 @@ export function PinterestPublishFields({
         <p className="pinterest-publish-preview-description">
           {value.description.trim() || "Описание пина появится здесь."}
         </p>
-        {value.link.trim() ? <p className="pinterest-publish-preview-link">{value.link.trim()}</p> : null}
+        {!publishToTelegram && value.link.trim() ? <p className="pinterest-publish-preview-link">{value.link.trim()}</p> : null}
       </div>
     </div>
   );
 }
 
-export function validatePinterestPublishValue(value: PinterestPublishValue): boolean {
-  return Boolean(value.title.trim() && value.description.trim() && isValidPinterestLink(value.link));
+export function validatePinterestPublishValue(value: PinterestPublishValue, publishToTelegram = false): boolean {
+  return Boolean(value.title.trim() && value.description.trim() && (publishToTelegram || isValidPinterestLink(value.link)));
 }

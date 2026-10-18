@@ -48,6 +48,9 @@ model Prompt {
   coverMediaType      MediaType?
   usageCount          Int                   @default(0)
   telegramPublished   Boolean               @default(false)
+  telegramMessageId   String?
+  telegramChatId      String?
+  telegramPostUrl     String?
   pinterestPublished  Boolean               @default(false)
   telegramPostTemplate String?              @db.Text
   pinterestTitleTemplate String?

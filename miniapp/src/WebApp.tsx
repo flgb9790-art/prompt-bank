@@ -784,7 +784,19 @@ export function WebApp() {
       return;
     }
     try {
-      const created = withPromptDetails(await api.createPrompt(payload)) as CreatePromptResponse;
+      let created = withPromptDetails(await api.createPrompt(payload)) as CreatePromptResponse;
+      if (created.pinterestPublicationStatus === "awaiting_confirmation" && created.telegramPostUrl &&
+          window.confirm(`Создать пин со ссылкой назначения?\n\n${created.telegramPostUrl}`)) {
+        try {
+          const result = await api.publishPromptToPinterest(created.id, created.telegramPostUrl);
+          created = { ...withPromptDetails(await api.getPrompt(created.id, true)),
+            telegramPublicationStatus: created.telegramPublicationStatus,
+            pinterestPublicationStatus: result.status, pinterestPublicationError: result.error };
+        } catch (error) {
+          created.pinterestPublicationStatus = "failed";
+          created.pinterestPublicationError = error instanceof Error ? error.message : "Не удалось создать пин. Повторите Pinterest в карточке промпта.";
+        }
+      }
       persistPublicationTemplatesFromPrompt(created);
       invalidateReferenceCaches();
       upsertPromptInList(created);
@@ -810,7 +822,7 @@ export function WebApp() {
     if (!isAdmin) return;
     try {
       const result = await api.publishPromptToTelegram(promptId);
-      const fresh = withPromptDetails(await api.getPrompt(promptId));
+      const fresh = withPromptDetails(await api.getPrompt(promptId, true));
       persistPublicationTemplatesFromPrompt(fresh);
       upsertPromptInList(fresh);
       if (selectedPrompt?.id === promptId) {
@@ -835,8 +847,14 @@ export function WebApp() {
   async function handlePublishPinterest(promptId: number) {
     if (!isAdmin) return;
     try {
-      const result = await api.publishPromptToPinterest(promptId);
-      const fresh = withPromptDetails(await api.getPrompt(promptId));
+      const preview = await api.getPrompt(promptId, true);
+      if (!preview.telegramPostUrl) {
+        setToast("Пин не создан: сохраните ссылку на Telegram-пост или сначала опубликуйте промпт в Telegram.");
+        return;
+      }
+      if (!window.confirm(`Создать пин со ссылкой назначения?\n\n${preview.telegramPostUrl}`)) return;
+      const result = await api.publishPromptToPinterest(promptId, preview.telegramPostUrl);
+      const fresh = withPromptDetails(await api.getPrompt(promptId, true));
       persistPublicationTemplatesFromPrompt(fresh);
       upsertPromptInList(fresh);
       if (selectedPrompt?.id === promptId) {
@@ -852,10 +870,16 @@ export function WebApp() {
       }
     } catch (err) {
       if (!handleUnauthorized(err)) {
-        setToast("Публикация в Pinterest не удалась");
+        setToast(err instanceof Error ? err.message : "Публикация в Pinterest не удалась");
       }
-      throw err;
     }
+  }
+
+  async function handleSaveTelegramPostLink(promptId: number, link: string) {
+    const fresh = withPromptDetails(await api.saveTelegramPostLink(promptId, link));
+    upsertPromptInList(fresh);
+    if (selectedPrompt?.id === promptId) setSelectedPrompt(fresh);
+    setToast("Ссылка на Telegram-пост сохранена. Сообщение в канал не отправлялось.");
   }
 
   function handleCreateClick() {
@@ -1134,6 +1158,7 @@ export function WebApp() {
         onEdit={handleEditPrompt}
         onPublishTelegram={isAdmin ? handlePublishTelegram : undefined}
         onPublishPinterest={isAdmin ? handlePublishPinterest : undefined}
+        onSaveTelegramPostLink={isAdmin ? handleSaveTelegramPostLink : undefined}
         onShareLinkCopied={() => setToast("Ссылка скопирована")}
         onTagClick={handleSelectTag}
         showPublicationTemplates={isAdmin}
