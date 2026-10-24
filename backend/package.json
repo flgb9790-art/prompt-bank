@@ -5,6 +5,7 @@
   "type": "commonjs",
   "scripts": {
     "test:publications": "tsx --test tests/publications.test.ts",
+    "test:media": "tsx --test tests/localThumbnail.test.ts",
     "prisma:patch-telegram-post": "prisma db execute --schema prisma/schema.prisma --file prisma/patches/20261018_telegram_post_destination.sql",
     "dev": "tsx watch src/index.ts",
     "build": "npm run prisma:generate && tsc",

@@ -1,12 +1,13 @@
 import { memo, useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
 import { useNearViewport } from "../hooks/useNearViewport";
-import { Copy, Sparkles, Star } from "lucide-react";
+import { Copy, Images, Sparkles, Star } from "lucide-react";
 import { api, resolveCardMediaUrl, resolveMediaUrl } from "../api";
 import type { Prompt } from "../types";
 import { getCategoryBadgeClass } from "../utils/categoryStyle";
 import { hasFullPromptDetails } from "../utils/promptContent";
 import { resolvePostMedia } from "../utils/resolvePostMedia";
 import { usePromptFavorite } from "../context/FavoriteIdsContext";
+import { getPromptLabel } from "../utils/promptTitle";
 
 type Props = {
   prompt: Prompt;
@@ -39,8 +40,13 @@ export const PinterestPromptCard = memo(function PinterestPromptCard({
   const nearViewport = useNearViewport(mediaRef, { enabled: !imagePriority, rootMargin: "360px 0px" });
   const shouldLoadMedia = imagePriority || nearViewport;
   const [tooTall, setTooTall] = useState(false);
+  const [mediaFailed, setMediaFailed] = useState(false);
+  const [useOriginal, setUseOriginal] = useState(false);
+  const label = getPromptLabel(prompt);
+  const imageCount = new Set([prompt.coverMediaUrl, ...(prompt.examples ?? []).map((item) => item.url)].filter(Boolean)).size;
   const isFavorite = usePromptFavorite(prompt);
   const [favoriteBump, setFavoriteBump] = useState(false);
+  useEffect(() => { setMediaFailed(false); setUseOriginal(false); setTooTall(false); }, [media?.url]);
 
   useEffect(() => {
     if (!favoriteBump) return;
@@ -72,23 +78,15 @@ export const PinterestPromptCard = memo(function PinterestPromptCard({
   return (
     <article
       className={`pinterest-card pinterest-card--visual ${className}`.trim()}
-      onClick={handleOpen}
       onPointerEnter={prefetchDetails}
       onFocus={prefetchDetails}
-      role="button"
-      tabIndex={0}
-      onKeyDown={(event) => {
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault();
-          handleOpen();
-        }
-      }}
     >
+      <button type="button" className="pinterest-open-button" onClick={handleOpen} aria-label={`Открыть промпт: ${label}`} />
       <div
         className={`pinterest-media${uniformAspect ? " pinterest-media--uniform" : ""}`}
         ref={mediaRef}
       >
-        {!media ? (
+        {!media || mediaFailed ? (
           <div className="pinterest-placeholder" aria-hidden>
             <Sparkles size={38} strokeWidth={2} />
           </div>
@@ -96,12 +94,12 @@ export const PinterestPromptCard = memo(function PinterestPromptCard({
           <div className="pinterest-media-skeleton" aria-hidden />
         ) : media.type === "video" ? (
           <>
-            <video src={resolveMediaUrl(media.url)} muted playsInline preload="metadata" />
-            <span className="pinterest-video-badge">VIDEO</span>
+            <video src={resolveMediaUrl(media.url)} muted playsInline preload="none" />
+            <span className="pinterest-video-badge">Видео</span>
           </>
         ) : (
           <img
-            src={imageSrc ?? resolveMediaUrl(media.url)}
+            src={useOriginal ? resolveMediaUrl(media.url) : imageSrc ?? resolveMediaUrl(media.url)}
             alt=""
             draggable={false}
             loading={imagePriority ? "eager" : "lazy"}
@@ -116,16 +114,15 @@ export const PinterestPromptCard = memo(function PinterestPromptCard({
                 setTooTall(true);
               }
             }}
-            onError={(event) => {
-              const fallback = resolveMediaUrl(media.url);
-              if (event.currentTarget.src !== fallback) {
-                event.currentTarget.src = fallback;
-              }
+            onError={() => {
+              if (!useOriginal && imageSrc !== resolveMediaUrl(media.url)) setUseOriginal(true);
+              else setMediaFailed(true);
             }}
           />
         )}
 
         <span className={`pinterest-category-overlay ${badgeClass}`}>{prompt.category.name}</span>
+        {imageCount > 1 ? <span className="pinterest-count" aria-label={`${imageCount} примера`}><Images size={13} />{imageCount}</span> : null}
 
         <div className="pinterest-actions" onClick={(event) => event.stopPropagation()}>
           <button type="button" className="pinterest-action-btn" onClick={handleCopy} aria-label="Скопировать промпт">
@@ -142,6 +139,7 @@ export const PinterestPromptCard = memo(function PinterestPromptCard({
           </button>
         </div>
       </div>
+      <div className="pinterest-card-caption"><h3>{label}</h3><span>Открыть промпт <span aria-hidden>↗</span></span></div>
     </article>
   );
 });

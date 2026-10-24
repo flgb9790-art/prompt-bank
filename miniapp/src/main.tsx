@@ -6,6 +6,8 @@ import { markAppSplashVisible, hideAppSplash } from "./utils/appSplash";
 import { registerWebPwa } from "./utils/pwa";
 import { maybeRedirectTelegramBrowserToMiniApp, migrateLegacyPromptQueryToPath } from "./utils/promptShare";
 import "./styles.css";
+import "./usability.css";
+import { applyReadingSize } from "./utils/readingPreferences";
 
 export { hideAppSplash };
 
@@ -15,6 +17,7 @@ if (!maybeRedirectTelegramBrowserToMiniApp(telegramBotUsername)) {
   migrateLegacyPromptQueryToPath();
   markAppSplashVisible();
   setupApiPreconnect();
+  applyReadingSize();
   registerWebPwa();
 
   ReactDOM.createRoot(document.getElementById("root")!).render(

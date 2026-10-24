@@ -67,12 +67,12 @@ export function Sidebar({
     <div className="sidebar-shell flex h-full min-h-0 flex-col">
       <BrandLogo size={40} onClick={() => onNavigate("/")} className="shrink-0 text-left" />
 
-      <nav className="mt-7 shrink-0 space-y-1">
+      <nav className="mt-7 shrink-0 space-y-1" aria-label="Основная навигация">
         {navItems.map((item) => {
           const Icon = item.icon;
           const active = currentPath === item.path;
           return (
-            <button key={item.path} type="button" onClick={() => onNavigate(item.path)} className={`nav-item ${active ? "active" : ""}`}>
+            <button key={item.path} type="button" aria-current={active ? "page" : undefined} onClick={() => onNavigate(item.path)} className={`nav-item ${active ? "active" : ""}`}>
               <Icon size={20} />
               {item.label}
             </button>

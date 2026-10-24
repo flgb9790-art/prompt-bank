@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { lazy, Suspense, useRef, useState } from "react";
 import {
   PUBLICATION_TEMPLATE_HINT,
   buildPublicationTemplateVars,
@@ -13,7 +13,7 @@ import {
   saveStoredPublicationTemplates,
   type PublicationTemplatesValue
 } from "../utils/publicationTemplatesStorage";
-import { RichTextEditor } from "./RichTextEditor";
+const RichTextEditor = lazy(() => import("./RichTextEditor").then((module) => ({ default: module.RichTextEditor })));
 import { TemplateVariableChips } from "./TemplateVariableChips";
 
 export type { PublicationTemplatesValue };
@@ -183,11 +183,11 @@ export function PublicationTemplatesEditor({
             </button>
           </div>
           <TemplateVariableChips onInsert={insertIntoTelegram} />
-            <RichTextEditor
+            <Suspense fallback={<p role="status">Загружаем редактор…</p>}><RichTextEditor
               value={value.telegramPostTemplate || defaultTelegramPostTemplate()}
               onChange={(html) => persistTemplates({ ...value, telegramPostTemplate: html })}
               placeholder="Текст поста в Telegram…"
-            />
+            /></Suspense>
             <div className="template-preview template-preview--telegram">
               <p className="template-preview-label">Предпросмотр поста</p>
               <div
@@ -228,12 +228,12 @@ export function PublicationTemplatesEditor({
               />
               <label className="block text-xs text-[var(--muted)]">Описание</label>
               <TemplateVariableChips onInsert={insertIntoPinterestDescription} />
-              <RichTextEditor
+              <Suspense fallback={<p role="status">Загружаем редактор…</p>}><RichTextEditor
                 value={value.pinterestDescriptionTemplate || defaultPinterestDescriptionTemplate()}
                 onChange={(html) => persistTemplates({ ...value, pinterestDescriptionTemplate: html })}
                 placeholder="Описание пина…"
                 minHeight={120}
-              />
+              /></Suspense>
               <div className="template-preview template-preview--pinterest">
                 <p className="template-preview-label">Предпросмотр пина</p>
                 <p className="template-preview-pin-title">{pinterestTitleResolved}</p>

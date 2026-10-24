@@ -25,6 +25,7 @@ import {
 } from "./services/regenerate-thumbnails.service";
 import { miniappProxyMiddleware } from "./miniappProxy";
 import { urlHostname } from "./utils/telegramWebContent";
+import { ensureLocalThumbnail } from "./services/localThumbnail.service";
 
 const app = express();
 
@@ -46,6 +47,13 @@ app.use(
     lastModified: true
   })
 );
+
+app.get("/uploads/images/thumbs/:filename", async (req, res, next) => {
+  const thumbnail = await ensureLocalThumbnail(uploadsDir, req.params.filename);
+  if (!thumbnail) return res.setHeader("Cache-Control", "no-store").status(404).end();
+  res.setHeader("Cache-Control", "public, max-age=2592000, immutable");
+  res.sendFile(thumbnail, (error) => { if (error) next(error); });
+});
 
 app.use(
   "/uploads",

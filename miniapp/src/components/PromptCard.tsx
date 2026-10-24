@@ -124,6 +124,7 @@ export const PromptCard = memo(function PromptCard({
         onPointerEnter={prefetchDetails}
         onFocus={prefetchDetails}
         onKeyDown={(event) => {
+          if (event.target !== event.currentTarget) return;
           if (event.key === "Enter") onOpen(prompt);
         }}
         className="prompt-card-list fade-up"
@@ -221,6 +222,7 @@ export const PromptCard = memo(function PromptCard({
       onPointerEnter={prefetchDetails}
       onFocus={prefetchDetails}
       onKeyDown={(event) => {
+        if (event.target !== event.currentTarget) return;
         if (event.key === "Enter") onOpen(prompt);
       }}
       className="prompt-card-mobile fade-up"

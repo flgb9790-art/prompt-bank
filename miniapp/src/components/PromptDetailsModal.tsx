@@ -1,5 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, Share2, Star, X } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ChevronLeft, ChevronRight, Copy, Share2, Star, X } from "lucide-react";
+import { useDialogFocus } from "../hooks/useDialogFocus";
+import { getPromptLabel } from "../utils/promptTitle";
 import { resolveCardMediaUrl, resolveMediaUrl } from "../api";
 import { useHorizontalSwipe } from "../hooks/useHorizontalSwipe";
 import { useMediaMinWidth } from "../hooks/useMediaMinWidth";
@@ -96,6 +98,7 @@ function MediaPreview({
       type="button"
       className={`${frameClass} ${fitClass} ${clickable ? "preview-clickable" : ""} ${className ?? ""}`}
       onClick={onClick}
+      aria-label={type === "video" ? "Открыть видео" : "Увеличить изображение"}
       disabled={!clickable}
     >
       {type === "video" ? (
@@ -108,12 +111,18 @@ function MediaPreview({
         />
       ) : (
         <img
-          src={resolveMediaUrl(url)}
-          alt="media"
+          src={resolveCardMediaUrl(url, "image")}
+          alt="Пример результата промпта"
           loading={fillWidth ? "lazy" : "eager"}
           decoding="async"
           fetchPriority={fillWidth ? "auto" : "high"}
           style={fillWidth ? galleryMediaStyle : undefined}
+          onError={(event) => {
+            if (!event.currentTarget.dataset.fallback) {
+              event.currentTarget.dataset.fallback = "true";
+              event.currentTarget.src = resolveMediaUrl(url);
+            }
+          }}
         />
       )}
     </button>
@@ -185,6 +194,9 @@ export function PromptDetailsModal({
   const [saveError, setSaveError] = useState("");
   const [galleryIndex, setGalleryIndex] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const textRef = useRef<HTMLDivElement>(null);
+  useDialogFocus(dialogRef, Boolean(prompt), onClose, lightboxOpen);
   const [shareError, setShareError] = useState("");
   const [telegramPublishing, setTelegramPublishing] = useState(false);
   const [pinterestPublishing, setPinterestPublishing] = useState(false);
@@ -285,6 +297,11 @@ export function PromptDetailsModal({
         aria-hidden={lightboxOpen}
       >
         <div
+          ref={dialogRef}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="prompt-dialog-title"
+          tabIndex={-1}
           className={`modal-panel fade-up p-5 ${
             fullscreenLayout
               ? "modal-panel--prompt-fullscreen"
@@ -295,8 +312,9 @@ export function PromptDetailsModal({
           onClick={(event) => event.stopPropagation()}
         >
           <div className="prompt-details-modal-header mb-4 flex shrink-0 items-center justify-between gap-3">
-            <h3 className="text-lg font-semibold text-[var(--text)]">Детали промпта</h3>
+            <h2 id="prompt-dialog-title" className="text-lg font-semibold text-[var(--text)]">Промпт</h2>
             <div className="flex items-center gap-1">
+              {!isEditing ? <button type="button" disabled={loadingDetails} className="btn-primary prompt-header-copy" onClick={() => onCopy(prompt)}><Copy size={16} />Копировать</button> : null}
               <button type="button" onClick={handleShareLink} className="btn-ghost-icon h-9 w-9" aria-label="Поделиться">
                 <Share2 size={16} />
               </button>
@@ -387,6 +405,7 @@ export function PromptDetailsModal({
                   <div className="prompt-details-skeleton-gallery" aria-hidden />
                 ) : galleryItems.length ? (
                   <div className={`prompt-gallery ${compactGallery ? "prompt-gallery--mobile" : "prompt-gallery--desktop"}`}>
+                    {compactGallery ? <button type="button" className="jump-to-prompt" onClick={() => textRef.current?.scrollIntoView({ behavior: "auto", block: "start" })}>Перейти к тексту ↓</button> : null}
                     <div
                       className="prompt-gallery-main"
                       onTouchStart={gallerySwipe.onTouchStart}
@@ -399,6 +418,7 @@ export function PromptDetailsModal({
                       ) : null}
                       {currentGallery ? (
                         <MediaPreview
+                          key={currentGallery.url}
                           url={currentGallery.url}
                           type={currentGallery.type}
                           framed={false}
@@ -420,10 +440,12 @@ export function PromptDetailsModal({
                             key={`${item.url}-${index}`}
                             type="button"
                             className={`prompt-gallery-thumb ${index === safeGalleryIndex ? "active" : ""}`}
+                            aria-label={`Показать пример ${index + 1}`}
+                            aria-pressed={index === safeGalleryIndex}
                             onClick={() => setGalleryIndex(index)}
                           >
                             {item.type === "video" ? (
-                              <video src={resolveMediaUrl(item.url)} muted playsInline />
+                              <video src={resolveMediaUrl(item.url)} muted playsInline preload="none" />
                             ) : (
                               <img
                                 src={resolveCardMediaUrl(item.url, "image")}
@@ -448,8 +470,10 @@ export function PromptDetailsModal({
                 )}
               </div>
 
-              <div className={webModal ? "prompt-details-meta" : undefined}>
+              <div ref={textRef} className={`prompt-reading-panel${webModal ? " prompt-details-meta" : ""}`}>
                 <span className={`category-badge ${badgeClass}`}>{prompt.category.name}</span>
+                <h3 className="prompt-reading-title">{getPromptLabel(prompt)}</h3>
+                {prompt.keywords.length ? <details className="prompt-tag-disclosure"><summary>Теги · {prompt.keywords.length}</summary>
                 <div className={`mt-3 flex flex-wrap gap-1.5${webModal ? " prompt-details-tags" : ""}`}>
                   {prompt.keywords.map((item) => (
                     <TagPill
@@ -467,6 +491,7 @@ export function PromptDetailsModal({
                     />
                   ))}
                 </div>
+                </details> : null}
                 {loadingDetails ? (
                   <div className="mt-4 space-y-3" role="status" aria-live="polite">
                     <div className="prompt-details-loading-head">

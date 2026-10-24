@@ -4,6 +4,7 @@ import type { MeResponse, TelegramUser, UserSettings } from "../../types";
 import { ToggleSwitch } from "../ui/ToggleSwitch";
 import { formatRegistrationDate } from "../../utils/formatRelativeTime";
 import { ProfileAvatar } from "./ProfileAvatar";
+import { ReadingSettings } from "./ReadingSettings";
 
 type Props = {
   user: TelegramUser | null;
@@ -52,6 +53,8 @@ export function SettingsScreen({
     saveCopyHistory: settings?.saveCopyHistory ?? true
   });
   const [savingKey, setSavingKey] = useState<"saveViewHistory" | "saveCopyHistory" | null>(null);
+  const [settingsMessage, setSettingsMessage] = useState("");
+  const [settingsError, setSettingsError] = useState(false);
 
   useEffect(() => {
     setPrivacySettings({
@@ -64,10 +67,14 @@ export function SettingsScreen({
     const previous = privacySettings;
     setPrivacySettings((current) => ({ ...current, [key]: checked }));
     setSavingKey(key);
+    setSettingsMessage("Сохраняем настройку…"); setSettingsError(false);
     try {
       await onUpdateSettings({ [key]: checked });
+      setSettingsMessage("Настройка сохранена");
     } catch {
       setPrivacySettings(previous);
+      setSettingsMessage("Не удалось сохранить. Проверьте соединение и попробуйте ещё раз.");
+      setSettingsError(true);
     } finally {
       setSavingKey(null);
     }
@@ -102,6 +109,7 @@ export function SettingsScreen({
             Войти через Telegram
           </button>
         </div>
+        <ReadingSettings />
         {privacyFooter}
       </div>
     );
@@ -206,7 +214,7 @@ export function SettingsScreen({
         </div>
         <ToggleSwitch
           checked={privacySettings.saveViewHistory}
-          disabled={savingKey === "saveViewHistory"}
+          disabled={savingKey !== null}
           onChange={(checked) => void handlePrivacyToggle("saveViewHistory", checked)}
           label="Сохранять историю просмотров"
           description="Сохранять промпты, которые вы просматриваете"
@@ -218,12 +226,14 @@ export function SettingsScreen({
         </div>
         <ToggleSwitch
           checked={privacySettings.saveCopyHistory}
-          disabled={savingKey === "saveCopyHistory"}
+          disabled={savingKey !== null}
           onChange={(checked) => void handlePrivacyToggle("saveCopyHistory", checked)}
           label="Сохранять историю копирования"
           description="Сохранять скопированные промпты для быстрого доступа"
         />
       </div>
+      <p className="settings-help">Отключение истории влияет на новые действия. Уже сохранённые промпты остаются в истории.</p>
+      {settingsMessage ? <p role={settingsError ? "alert" : "status"} className={`settings-save-status${settingsError ? " is-error" : ""}`}>{settingsMessage}</p> : null}
     </section>
   );
 
@@ -246,6 +256,7 @@ export function SettingsScreen({
           </section>
           {actionCards}
           {privacyCard}
+          <ReadingSettings />
         </div>
       </div>
     );
@@ -262,6 +273,7 @@ export function SettingsScreen({
         {accountCard}
         {actionCards}
         {privacyCard}
+        <ReadingSettings />
       </div>
       {privacyFooter}
     </div>

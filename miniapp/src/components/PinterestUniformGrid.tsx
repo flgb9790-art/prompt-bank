@@ -1,5 +1,6 @@
 import type { Prompt } from "../types";
 import { PinterestPromptCard } from "./PinterestPromptCard";
+import { useMediaMinWidth } from "../hooks/useMediaMinWidth";
 
 type Props = {
   prompts: Prompt[];
@@ -30,6 +31,7 @@ export function PinterestUniformGrid({
   onToggleFavorite,
   onTagClick
 }: Props) {
+  const desktop = useMediaMinWidth(1024);
   if (loading && !prompts.length) {
     return (
       <div className="pinterest-uniform-grid" aria-busy="true">
@@ -56,7 +58,7 @@ export function PinterestUniformGrid({
           <PinterestPromptCard
             prompt={prompt}
             uniformAspect
-            imagePriority={index < 8}
+            imagePriority={index < (desktop ? 4 : 2)}
             onOpen={onOpen}
             onCopy={onCopy}
             onToggleFavorite={onToggleFavorite}

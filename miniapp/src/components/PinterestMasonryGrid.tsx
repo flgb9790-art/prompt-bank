@@ -210,7 +210,7 @@ export function PinterestMasonryGrid({
     return <div ref={masonryRef} className={masonryClass} style={{ width: "100%", minHeight: 120 }} aria-busy="true" />;
   }
 
-  let cardIndex = 0;
+  const priorityIds = new Set(prompts.slice(0, Math.min(fitColumns || 2, 4)).map((prompt) => prompt.id));
 
   return (
     <>
@@ -218,13 +218,11 @@ export function PinterestMasonryGrid({
         {columns.map((column, columnIndex) => (
           <div key={`pinterest-col-${columnIndex}`} className="pinterest-masonry-column">
             {column.map((prompt) => {
-              const index = cardIndex;
-              cardIndex += 1;
               return (
                 <div key={prompt.id} className="pinterest-item">
                   <PinterestPromptCard
                     prompt={prompt}
-                    imagePriority={index < fitColumns * 2}
+                    imagePriority={priorityIds.has(prompt.id)}
                     onOpen={onOpen}
                     onCopy={onCopy}
                     onToggleFavorite={onToggleFavorite}

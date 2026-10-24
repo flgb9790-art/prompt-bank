@@ -1,0 +1,119 @@
+/* Library refresh. Shared tokens; responsive layouts for web and Telegram. */
+:root { --prompt-font-size: 16px; }
+:root[data-reading-size="compact"] { --prompt-font-size: 14px; }
+:root[data-reading-size="large"] { --prompt-font-size: 18px; }
+button, input, select, textarea, a { -webkit-tap-highlight-color: transparent; }
+:where(button, a, input, select, textarea, summary):focus-visible {
+  outline: 3px solid #8573ed;
+  outline-offset: 3px;
+}
+button:disabled { cursor: not-allowed; }
+input[type="search"]::-webkit-search-cancel-button { display: none; }
+.search-clear { display: grid; place-items: center; width: 32px; height: 32px; flex-shrink: 0; border-radius: 9px; color: var(--muted); }
+.search-clear:hover { color: var(--primary); background: var(--primary-soft); }
+.search-shortcut { padding: 4px 6px; flex-shrink: 0; font-size: 10px; color: var(--muted); border: 1px solid var(--border); border-radius: 5px; }
+.mobile-web-shell { height: 100dvh; min-height: 0; overflow: hidden; background: #fafafe; }
+.mobile-web-header { flex-shrink: 0; padding-bottom: 12px; background: #fff; border-bottom: 1px solid var(--border-soft); }
+.mobile-web-header .mobile-search { gap: 9px; height: 46px; margin-top: 14px; padding-inline: 12px; border-radius: 13px; background: #f7f8fc; box-shadow: none; }
+.mobile-search svg { flex-shrink: 0; color: var(--muted); }
+.mobile-web-shell > main { min-height: 0; overscroll-behavior: contain; }
+.library-content { width: 100%; min-width: 0; max-width: 1440px; margin-inline: auto; }
+.library-intro { position: relative; overflow: hidden; padding: 30px 32px; border-radius: 24px; border: 1px solid #e6e2f6; background: linear-gradient(120deg, #f4f0ff, #f6f8ff 65%, #eef8f8); }
+.library-eyebrow { display: inline-flex; align-items: center; gap: 7px; font-size: 10px; font-weight: 750; letter-spacing: .12em; color: #6c56b2; }
+.library-intro h1 { position: relative; z-index: 1; margin-top: 12px; font-size: clamp(26px, 3vw, 42px); line-height: 1.14; letter-spacing: -.045em; font-weight: 750; color: #222039; }
+.library-intro h1 span { color: #7660ca; }
+.library-intro p { position: relative; z-index: 1; max-width: 435px; margin-top: 14px; color: #68647e; line-height: 1.65; }
+.library-intro-link { position: relative; z-index: 1; display: inline-flex; align-items: center; gap: 8px; margin-top: 18px; min-height: 40px; color: #5e46ab; font-size: 13px; font-weight: 700; }
+.library-intro-decoration { position: absolute; right: 7%; top: 20%; color: #c7b6f0; transform: rotate(-12deg); }
+.library-section-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-top: 28px; }
+.library-section-heading h2 { font-size: 19px; font-weight: 700; letter-spacing: -.025em; }
+.library-section-heading > span, .catalog-count { color: var(--muted); font-size: 12px; }
+.catalog-toolbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; }
+.catalog-toolbar .section-title { font-size: 26px; letter-spacing: -.035em; }
+.catalog-count { margin-top: 5px; }
+.catalog-controls { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.catalog-controls .sort-select { min-width: 0; width: 180px; }
+.catalog-filters { padding: 7px 0 4px; }
+.catalog-filters .chip { min-height: 40px; }
+.library-empty { display: flex; flex-direction: column; align-items: center; gap: 14px; margin-block: 24px; padding: 44px 24px; text-align: center; border: 1px dashed #d9d2ed; border-radius: 20px; background: #faf8ff; }
+.library-empty > svg { color: #8e79c5; }
+.library-empty h2 { font-size: 20px; font-weight: 700; letter-spacing: -.025em; }
+.library-empty p { max-width: 400px; color: var(--muted); line-height: 1.7; }
+.pinterest-card--visual { isolation: isolate; border-radius: 17px; }
+.pinterest-card--visual:hover { box-shadow: none; }
+.pinterest-open-button { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 2; border-radius: inherit; cursor: pointer; }
+.pinterest-card-caption { padding: 10px 3px 5px; min-height: 76px; }
+.pinterest-card-caption h3 { display: -webkit-box; overflow: hidden; -webkit-line-clamp: 2; -webkit-box-orient: vertical; font-size: 13px; line-height: 1.5; font-weight: 650; color: #343044; overflow-wrap: anywhere; }
+.pinterest-card-caption > span { display: flex; gap: 5px; margin-top: 6px; font-size: 11px; color: #7d728e; }
+.pinterest-card:focus-within .pinterest-actions { opacity: 1; transform: none; }
+.pinterest-card--visual .pinterest-media { box-shadow: none; border-color: #e8e5ed; background: #edeaf2; }
+.pinterest-media--uniform img, .pinterest-media--uniform video { height: 100%; object-fit: cover; }
+.pinterest-count { position: absolute; bottom: 11px; right: 10px; display: flex; gap: 4px; align-items: center; padding: 4px 6px; border-radius: 7px; font-size: 10px; color: #fff; background: #272038b3; }
+.pinterest-category-overlay, .pinterest-count, .pinterest-card-caption { pointer-events: none; }
+.pinterest-action-btn { box-shadow: 0 2px 8px #21163214; }
+.pinterest-category-overlay { max-width: calc(100% - 24px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.library-pagination .pagination-btn { min-width: 40px; min-height: 40px; }
+.bottom-nav-item { min-height: 52px; position: relative; }
+.bottom-nav-item.active::before { content: ""; position: absolute; top: -7px; width: 22px; height: 3px; border-radius: 4px; background: var(--primary); }
+.prompt-details-modal-header { position: sticky; top: 0; z-index: 6; background: #fff; padding-block: 10px; }
+.prompt-header-copy { min-height: 38px; padding: 0 12px; font-size: 12px; }
+.prompt-reading-panel { min-width: 0; scroll-margin-top: 78px; }
+.prompt-reading-title { margin-top: 12px; font-size: 20px; line-height: 1.45; font-weight: 700; letter-spacing: -.025em; overflow-wrap: anywhere; }
+.prompt-tag-disclosure { margin-top: 12px; color: var(--muted); font-size: 12px; }
+.prompt-tag-disclosure summary { cursor: pointer; min-height: 32px; padding-block: 7px; }
+.prompt-content-text { font-size: var(--prompt-font-size) !important; line-height: 1.8 !important; overflow-wrap: anywhere; tab-size: 2; }
+.jump-to-prompt { display: block; margin: 0 auto 10px; min-height: 34px; color: var(--primary); font-size: 12px; font-weight: 600; }
+.settings-page { max-width: 1000px; margin-inline: auto; }
+.settings-page .reading-settings { margin-top: 18px; }
+.settings-grid > .reading-settings { margin-top: 0; }
+.reading-settings h2 { display: flex; align-items: center; gap: 8px; }
+.settings-help { margin-top: 12px; color: var(--muted); font-size: 12px; line-height: 1.65; }
+.reading-size-options { display: flex; gap: 6px; margin-top: 16px; padding: 5px; background: #f4f2f8; border-radius: 12px; }
+.reading-size-options button { flex: 1; min-height: 40px; border-radius: 8px; color: #6c647c; font-size: 12px; }
+.reading-size-options button[aria-pressed="true"] { color: #5f46a2; background: #fff; box-shadow: 0 2px 5px #201b3c0d; font-weight: 700; }
+.reading-size-preview { margin-top: 18px; padding: 16px; background: #faf9fd; border: 1px solid #eee9f7; border-radius: 12px; font-size: var(--prompt-font-size); line-height: 1.8; }
+.settings-save-status { margin-top: 12px; color: #237847; font-size: 12px; }
+.settings-save-status.is-error { color: #b42318; }
+@media (min-width: 1024px) {
+  .web-app-shell { grid-template-columns: 244px minmax(0, 1fr); }
+  .web-app-sidebar { padding-inline: 16px; }
+  .web-app-main { padding: 26px 32px 44px; }
+  html.web-mode .pinterest-uniform-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px 20px; }
+  html.web-mode .prompt-details-layout--desktop { width: 100%; grid-template-columns: minmax(260px, .8fr) minmax(0, 1.2fr); padding-top: 22px; gap: 36px; }
+  html.web-mode .prompt-details-modal-body { padding-inline: 12px; }
+}
+@media (min-width: 1400px) { html.web-mode .pinterest-uniform-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (min-width: 1850px) { html.web-mode .pinterest-uniform-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
+@media (max-width: 1023px) {
+  .library-intro { padding: 23px 20px; border-radius: 18px; }
+  .library-intro h1 { font-size: 28px; }
+  .library-intro p { max-width: 280px; font-size: 12px; }
+  .library-intro-decoration { right: -18px; top: 24px; opacity: .4; }
+  .library-intro-link { margin-top: 9px; }
+  .library-section-heading { margin-top: 22px; }
+  .library-section-heading h2 { font-size: 17px; }
+  .catalog-toolbar { gap: 14px; }
+  .catalog-controls { width: 100%; justify-content: space-between; }
+  .catalog-controls .sort-select { flex: 1; width: auto; max-width: 220px; }
+  .catalog-controls .view-mode-switcher { flex-shrink: 0; gap: 4px; }
+  .catalog-controls .view-mode-switcher-btn { width: 38px; height: 40px; }
+  html.web-mode .pinterest-uniform-grid { gap: 18px 12px; }
+  .pinterest-card-caption { min-height: 78px; padding-inline: 1px; }
+  .pinterest-card-caption h3 { font-size: 12px; }
+  .pinterest-actions { top: 8px; right: 7px; gap: 5px; }
+  .pinterest-action-btn { width: 36px; height: 36px; }
+  .pinterest-category-overlay { font-size: 9px; bottom: 9px; left: 8px; padding-inline: 7px; }
+  html.web-mode .modal-panel--prompt-web-mobile { padding-top: 0; }
+  html.web-mode .prompt-gallery--mobile .prompt-gallery-preview--fit img,
+  html.web-mode .prompt-gallery--mobile .prompt-gallery-preview--fit video { height: 100%; width: auto; max-width: 100%; max-height: 100%; object-fit: contain; }
+  html.web-mode .prompt-gallery--mobile .prompt-gallery-preview--fit { display: flex; align-items: center; justify-content: center; width: 100%; height: 28dvh; }
+  html.web-mode .prompt-gallery--mobile .prompt-gallery-main { width: 100%; }
+  .prompt-gallery-thumbs .prompt-gallery-thumb { width: 44px; height: 54px; }
+  .prompt-reading-title { font-size: 17px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .prompt-details-modal-header { margin-bottom: 8px; gap: 6px; }
+  .prompt-details-modal-header h2 { font-size: 16px; }
+  .prompt-details-modal-header .btn-ghost-icon { min-width: 36px; padding: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+}

@@ -1,4 +1,4 @@
-import { Home, LayoutGrid, Plus, Search, Star, User } from "lucide-react";
+import { Home, LayoutGrid, Plus, Search, Star, User, X } from "lucide-react";
 import type { ReactNode } from "react";
 import { BrandLogo } from "../BrandLogo";
 
@@ -34,19 +34,24 @@ export function MobileWebShell({
   children
 }: Props) {
   return (
-    <div className="flex min-h-dvh flex-col bg-white lg:hidden">
-      <header className="px-4 pt-[18px]">
+    <div className="mobile-web-shell flex min-h-dvh flex-col lg:hidden">
+      <header className="mobile-web-header px-4 pt-[18px]">
         <div className="flex items-center justify-between gap-3">
           <BrandLogo size={36} textClassName="text-[22px] font-[760] text-[var(--text)]" />
           {headerRight}
         </div>
-        {currentPath === "/prompts" ? (
+        {currentPath === "/prompts" || currentPath === "/" ? (
+          <div className="mobile-search search-field">
+          <Search size={18} aria-hidden />
           <input
-            className="search-mobile mt-2.5"
+            type="search"
+            aria-label="Поиск промптов"
             value={search}
             onChange={(event) => onSearchChange(event.target.value)}
             placeholder="Поиск промптов..."
           />
+          {search ? <button type="button" className="search-clear" aria-label="Очистить поиск" onClick={() => onSearchChange("")}><X size={17} /></button> : null}
+          </div>
         ) : null}
       </header>
 
@@ -59,13 +64,13 @@ export function MobileWebShell({
         </button>
       ) : null}
 
-      <nav className="bottom-nav">
+      <nav className="bottom-nav" aria-label="Основная навигация">
         <div className="bottom-nav-inner">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const active = currentPath === tab.path;
             return (
-              <button key={tab.path} type="button" onClick={() => onNavigate(tab.path)} className={`bottom-nav-item ${active ? "active" : ""}`}>
+              <button key={tab.path} type="button" aria-current={active ? "page" : undefined} onClick={() => onNavigate(tab.path)} className={`bottom-nav-item ${active ? "active" : ""}`}>
                 <Icon size={24} />
                 {tab.label}
               </button>

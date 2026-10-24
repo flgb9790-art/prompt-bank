@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
-import { X } from "lucide-react";
+import { ArrowUpRight, SearchX, Sparkles, X } from "lucide-react";
 import { api, ApiError, invalidateReferenceCaches, setAuthTelegramId } from "./api";
 import type { Category, MeResponse, Prompt, PromptCreatePayload, TagStat, TelegramUser, CreatePromptResponse } from "./types";
 import { SettingsScreen } from "./components/settings/SettingsScreen";
@@ -115,6 +115,7 @@ export function WebApp() {
   const [tags, setTags] = useState<TagStat[]>([]);
   const [loading, setLoading] = useState(true);
   const [promptsLoading, setPromptsLoading] = useState(false);
+  const promptListRequestRef = useRef(0);
   const [loadingMoreRemote, setLoadingMoreRemote] = useState(false);
   const [favoritePrompts, setFavoritePrompts] = useState<Prompt[]>([]);
   const [favoritesTotal, setFavoritesTotal] = useState(() => favoritesTotalFromCache());
@@ -291,6 +292,7 @@ export function WebApp() {
   async function loadMoreRemotePrompts() {
     if (loadingMoreRemote || !hasMoreRemote) return;
     const offset = prompts.length;
+    const listRequest = promptListRequestRef.current;
     if (loadMoreOffsetRef.current === offset) return;
 
     loadMoreOffsetRef.current = offset;
@@ -299,6 +301,7 @@ export function WebApp() {
     try {
       const cached = await takePrefetchedPromptsPage(query);
       const promptsData = cached ?? (await api.getPrompts(query));
+      if (listRequest !== promptListRequestRef.current) return;
       const mapped = mapPromptsFromApi(promptsData.items);
       setLastPromptBatchSize(mapped.length);
       setPrompts((prev) => {
@@ -317,21 +320,25 @@ export function WebApp() {
   }
 
   async function loadPrompts() {
+    const requestId = ++promptListRequestRef.current;
     loadMoreOffsetRef.current = null;
     setPromptsLoading(true);
+    setError("");
     try {
       const offset = useWebPinterestPagination ? (page - 1) * webPinterestPageSize : 0;
       const promptsData = await api.getPrompts(buildPromptsQuery(offset));
+      if (requestId !== promptListRequestRef.current) return;
       const mapped = applyFavoriteIdsToList(mapPromptsFromApi(promptsData.items), favoriteIdsRef.current);
       setPrompts(mapped);
       setPromptsTotal(promptsData.total);
       setLastPromptBatchSize(mapped.length);
       scheduleWebPrefetch(mapped.length, promptsData.total);
     } catch (err) {
+      if (requestId !== promptListRequestRef.current) return;
       setError("Не удалось загрузить промпты.");
       console.error(err);
     } finally {
-      setPromptsLoading(false);
+      if (requestId === promptListRequestRef.current) setPromptsLoading(false);
     }
   }
 
@@ -561,14 +568,14 @@ export function WebApp() {
   function closePromptModal() {
     openPromptRequestRef.current += 1;
     setSelectedPrompt(undefined);
-    clearPromptShareUrl();
+    clearPromptShareUrl(path);
   }
 
   useEffect(() => {
     const onPopState = () => {
-      setPath(getRoutePath(window.location.pathname));
       const promptId = parsePromptIdFromLocation();
       if (!promptId) {
+        setPath(getRoutePath(window.location.pathname));
         openPromptRequestRef.current += 1;
         setSelectedPrompt(undefined);
         return;
@@ -931,6 +938,17 @@ export function WebApp() {
 
   function renderPromptList(list: Prompt[], options?: { favorites?: boolean }) {
     const isFavorites = Boolean(options?.favorites);
+    if (!list.length && !(isFavorites ? favoritesLoading : promptsLoading)) {
+      return <section className="library-empty" role="status">
+        <SearchX size={30} aria-hidden />
+        <h2>{isFavorites ? "Ваша коллекция начинается здесь" : "Пока ничего не нашлось"}</h2>
+        <p>{isFavorites ? "Нажмите на звёздочку у понравившегося промпта — он появится здесь." : "Попробуйте другое слово или сбросьте фильтры, чтобы увидеть всю библиотеку."}</p>
+        <button type="button" className="btn-primary" onClick={() => {
+          setSearch(""); setActiveCategory(undefined); setActiveTag(undefined); setPage(1);
+          if (isFavorites) navigate("/prompts");
+        }}>{isFavorites ? "Посмотреть промпты" : "Сбросить поиск и фильтры"}</button>
+      </section>;
+    }
 
     const displayView = path === "/prompts" ? viewMode : "pinterest";
 
@@ -1001,7 +1019,17 @@ export function WebApp() {
 
   const content = (
     <>
-      {path === "/" ? renderPromptList(prompts) : null}
+      {path === "/" ? <>
+        <section className="library-intro">
+          <span className="library-eyebrow"><Sparkles size={14} aria-hidden /> БИБЛИОТЕКА ИДЕЙ</span>
+          <h1>Меньше поиска.<br /><span>Больше вдохновения.</span></h1>
+          <p>Готовые промпты с примерами результата. Выберите, скопируйте и создайте что-то своё.</p>
+          <button type="button" className="library-intro-link" onClick={() => navigate("/prompts")}>Открыть каталог <ArrowUpRight size={17} /></button>
+          <div className="library-intro-decoration" aria-hidden><Sparkles size={72} strokeWidth={1.1} /></div>
+        </section>
+        <div className="library-section-heading"><h2>{search ? "Результаты поиска" : "Новые в коллекции"}</h2><span>{promptsLoading ? "Ищем…" : `${promptsTotal} промптов`}</span></div>
+        {renderPromptList(prompts)}
+      </> : null}
 
       {path === "/prompts" ? (
         <div>
@@ -1013,20 +1041,21 @@ export function WebApp() {
               </h2>
             </div>
           ) : null}
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <h2 className="section-title">{activeTag ? "Промпты по тегу" : "Все промпты"}</h2>
-            <div className="flex items-center gap-2">
+          <div className="catalog-toolbar">
+            <div><h1 className="section-title">{activeTag ? "Промпты по тегу" : "Все промпты"}</h1><p className="catalog-count" role="status">{promptsLoading ? "Обновляем подборку…" : `${promptsTotal} промптов в подборке`}</p></div>
+            <div className="catalog-controls">
               <SortSelect value={sort} onChange={setSort} />
               <ViewModeSwitcher value={viewMode} onChange={handleViewModeChange} />
             </div>
           </div>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <button className={`chip ${!activeCategory ? "active" : ""}`} onClick={() => setActiveCategory(undefined)} type="button">
+          <div className="catalog-filters mt-3 flex flex-wrap gap-2" role="group" aria-label="Категории промптов">
+            <button aria-pressed={!activeCategory} className={`chip ${!activeCategory ? "active" : ""}`} onClick={() => setActiveCategory(undefined)} type="button">
               Все
             </button>
             {categoriesWithPrompts.map((category) => (
               <button
                 key={category.id}
+                aria-pressed={activeCategory === category.slug}
                 className={`chip ${activeCategory === category.slug ? "active" : ""}`}
                 onClick={() => setActiveCategory(category.slug)}
                 type="button"
@@ -1060,6 +1089,7 @@ export function WebApp() {
         ) : (
           <div className="surface-card empty-state mt-5">
             <p className="text-base font-medium text-[var(--text)]">Войдите через Telegram, чтобы сохранять промпты в избранное.</p>
+            <button type="button" onClick={loginTelegram} className="btn-primary mt-4">Войти через Telegram</button>
           </div>
         )
       ) : null}
@@ -1139,9 +1169,9 @@ export function WebApp() {
   );
 
   const body = error ? (
-    <div className="surface-card p-4 text-[var(--red)]">{error}</div>
+    <div className="library-empty" role="alert"><SearchX size={28} /><h2>Не удалось загрузить данные</h2><p>Проверьте соединение и попробуйте ещё раз.</p><button type="button" className="btn-primary" onClick={() => window.location.reload()}>Повторить загрузку</button></div>
   ) : (
-    <div className={promptsLoading ? "pointer-events-none opacity-70 transition-opacity" : "transition-opacity"}>{content}</div>
+    <div className="library-content" aria-busy={promptsLoading}>{content}</div>
   );
 
   const modals = (

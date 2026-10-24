@@ -96,6 +96,7 @@ export default defineConfig(({ mode }) => {
       },
       workbox: {
         globPatterns: ["**/*.{js,css,svg,woff2,webmanifest}"],
+        globIgnores: ["**/prompt-editor-*.js", "**/RichTextEditor-*.js"],
         skipWaiting: false,
         clientsClaim: true,
         navigateFallback: "index.html",
@@ -121,6 +122,9 @@ export default defineConfig(({ mode }) => {
               return "web-app";
             }
             return;
+          }
+          if (id.includes("@tiptap") || id.includes("prosemirror") || id.includes("orderedmap") || id.includes("w3c-keyname") || id.includes("rope-sequence")) {
+            return "prompt-editor";
           }
           if (id.includes("react-dom") || id.includes("/react/")) {
             return "react-vendor";

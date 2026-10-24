@@ -77,14 +77,14 @@ export function maybeRedirectTelegramBrowserToMiniApp(botUsername?: string | nul
   return true;
 }
 
-export function clearPromptShareUrl(): void {
+export function clearPromptShareUrl(returnPath = "/"): void {
   const url = new URL(window.location.href);
   const hadQueryPrompt = url.searchParams.has("prompt");
   const hadPromptPath = Boolean(parsePromptIdFromPathname(url.pathname));
   if (!hadQueryPrompt && !hadPromptPath) return;
   url.searchParams.delete("prompt");
   if (hadPromptPath) {
-    url.pathname = "/";
+    url.pathname = returnPath;
   }
   const next = `${url.pathname}${url.search}${url.hash}`;
   window.history.replaceState({}, "", next);

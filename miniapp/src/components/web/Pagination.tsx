@@ -75,7 +75,7 @@ export function Pagination({
   }
 
   return (
-    <div className="mt-8 flex flex-col items-center gap-4">
+    <nav className="library-pagination mt-8 flex flex-col items-center gap-4" aria-label="Страницы промптов">
       <p className="text-sm text-[var(--muted)]">
         Показано {from}–{to} из {totalItems}
       </p>
@@ -86,6 +86,7 @@ export function Pagination({
             disabled={page <= 1}
             onClick={() => onPageChange(page - 1)}
             className="pagination-btn"
+            aria-label="Предыдущая страница"
           >
             ‹
           </button>
@@ -99,6 +100,8 @@ export function Pagination({
                   type="button"
                   onClick={() => onPageChange(num)}
                   className={`pagination-btn ${page === num ? "active" : ""}`}
+                  aria-label={`Страница ${num}`}
+                  aria-current={page === num ? "page" : undefined}
                 >
                   {num}
                 </button>
@@ -110,11 +113,12 @@ export function Pagination({
             disabled={page >= totalPages}
             onClick={() => onPageChange(page + 1)}
             className="pagination-btn"
+            aria-label="Следующая страница"
           >
             ›
           </button>
         </div>
       ) : null}
-    </div>
+    </nav>
   );
 }
