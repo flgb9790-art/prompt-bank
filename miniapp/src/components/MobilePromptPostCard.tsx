@@ -3,6 +3,7 @@ import { Copy, Sparkles, Star } from "lucide-react";
 import { api, resolveCardMediaUrl, resolveMediaUrl } from "../api";
 import type { Prompt } from "../types";
 import { hasFullPromptDetails } from "../utils/promptContent";
+import { getPromptLabel } from "../utils/promptTitle";
 import { resolvePostMedia } from "../utils/resolvePostMedia";
 import { TagPill } from "./TagPill";
 import { usePromptFavorite } from "../context/FavoriteIdsContext";
@@ -166,6 +167,7 @@ export const MobilePromptPostCard = memo(function MobilePromptPostCard({
       </div>
 
       <div className="mobile-post-content">
+        <h3 className="prompt-short-title">{getPromptLabel(prompt)}</h3>
         {metaLabel ? (
           <div className="mobile-post-header-row">
             <span className="mobile-post-meta-label">{metaLabel}</span>

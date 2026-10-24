@@ -2,6 +2,7 @@ import { prisma } from "../db";
 import { extractKeywords } from "../keywordExtractor";
 import { normalizePromptContent } from "../utils/promptContent";
 import { derivePromptTitle } from "../utils/promptTitle";
+import { isShortPromptTitle, resolvePromptTitle } from "../utils/shortPromptTitle";
 import { parseTelegramPostLink } from "../utils/telegramPostLink";
 
 type MediaType = "image" | "video";
@@ -66,11 +67,11 @@ export class PromptService {
   }
 
   private static toListResponse(
-    prompt: { id: number; content: string },
+    prompt: { id: number; content: string; title?: string },
     favoriteIds: Set<number>,
     lite: boolean
   ) {
-    const withFavorite = PromptService.withFavorite(prompt, favoriteIds);
+    const withFavorite = PromptService.withFavorite({ ...prompt, title: resolvePromptTitle(prompt) }, favoriteIds);
     if (!lite) {
       return withFavorite;
     }
@@ -273,6 +274,7 @@ export class PromptService {
     });
     const result = {
       ...rest,
+      title: resolvePromptTitle(rest),
       isFavorite: (favorites?.length ?? 0) > 0,
       telegramPublication,
       pinterestPublication
@@ -287,7 +289,7 @@ export class PromptService {
 
   static async create(input: PromptCreateInput) {
     const telegramPost = input.telegramPostUrl ? parseTelegramPostLink(input.telegramPostUrl) : undefined;
-    const title = derivePromptTitle(input.title?.trim() || input.content);
+    const title = isShortPromptTitle(input.title) ? input.title!.trim() : derivePromptTitle(input.content);
     const keywords = extractKeywords(input.content, title);
 
     const prompt = await prisma.prompt.create({
@@ -335,7 +337,7 @@ export class PromptService {
     const normalizedContent = input.content !== undefined ? normalizePromptContent(input.content) : undefined;
     const nextTitle =
       normalizedContent !== undefined
-        ? derivePromptTitle(input.title?.trim() || normalizedContent)
+        ? (isShortPromptTitle(input.title) ? input.title!.trim() : derivePromptTitle(normalizedContent))
         : input.title?.trim();
     const keywords = normalizedContent ? extractKeywords(normalizedContent, nextTitle) : null;
 

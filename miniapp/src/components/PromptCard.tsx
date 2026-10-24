@@ -5,6 +5,7 @@ import type { Prompt } from "../types";
 import { getPromptExcerpt, hasFullPromptDetails } from "../utils/promptContent";
 import { TagPill } from "./TagPill";
 import { getCategoryBadgeClass } from "../utils/categoryStyle";
+import { getPromptLabel } from "../utils/promptTitle";
 
 type Props = {
   prompt: Prompt;
@@ -133,6 +134,7 @@ export const PromptCard = memo(function PromptCard({
           <CardPreview prompt={prompt} variant="list" imagePriority={imagePriority} />
           <div className="prompt-card-body prompt-card-body--list">
             <span className={`category-badge category-badge-mobile ${badgeClass}`}>{prompt.category.name}</span>
+            <h3 className="prompt-short-title">{getPromptLabel(prompt)}</h3>
             <p className="prompt-card-excerpt prompt-card-excerpt--list">{getPromptExcerpt(prompt)}</p>
           </div>
           <button
@@ -182,6 +184,7 @@ export const PromptCard = memo(function PromptCard({
           <CardPreview prompt={prompt} variant="desktop" imagePriority={imagePriority} />
           <div className="prompt-card-body prompt-card-body--desktop">
             <span className={`category-badge ${badgeClass}`}>{prompt.category.name}</span>
+            <h3 className="prompt-short-title">{getPromptLabel(prompt)}</h3>
             <p className="prompt-card-excerpt prompt-card-excerpt--desktop">{getPromptExcerpt(prompt)}</p>
           </div>
           <button
@@ -231,6 +234,7 @@ export const PromptCard = memo(function PromptCard({
         <CardPreview prompt={prompt} variant="mobile" imagePriority={imagePriority} />
         <div className="prompt-card-body prompt-card-body--mobile">
           <span className={`category-badge category-badge-mobile ${badgeClass}`}>{prompt.category.name}</span>
+          <h3 className="prompt-short-title">{getPromptLabel(prompt)}</h3>
           <p className="prompt-card-excerpt prompt-card-excerpt--mobile">{getPromptExcerpt(prompt)}</p>
         </div>
         <button

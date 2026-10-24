@@ -1,5 +1,6 @@
 /* Library refresh. Shared tokens; responsive layouts for web and Telegram. */
 :root { --prompt-font-size: 16px; }
+.prompt-short-title { margin-block: 10px 6px; font-size: 15px; line-height: 1.4; font-weight: 700; color: var(--text); }
 :root[data-reading-size="compact"] { --prompt-font-size: 14px; }
 :root[data-reading-size="large"] { --prompt-font-size: 18px; }
 button, input, select, textarea, a { -webkit-tap-highlight-color: transparent; }
