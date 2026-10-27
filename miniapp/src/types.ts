@@ -127,6 +127,8 @@ export type BootstrapResponse = {
 };
 
 export type TelegramUser = {
+  hash?: string;
+  auth_date?: number;
   id: number;
   username?: string;
   first_name?: string;

@@ -1,6 +1,7 @@
 import { prisma } from "../db";
 import { parseTelegramPostLink } from "../utils/telegramPostLink";
 import { config } from "../config";
+import { getPinterestCredentials } from "./pinterestConnection.service";
 import { PromptService } from "./prompt.service";
 import { resolvePublicMediaUrl } from "./telegramPublisher.service";
 import { derivePromptTitle } from "../utils/promptTitle";
@@ -141,12 +142,13 @@ async function createPinterestPin(payload: {
   description: string;
   destinationLink: string;
   imageUrl: string;
+  credentials: Awaited<ReturnType<typeof getPinterestCredentials>>;
 }): Promise<PinterestPinResult> {
-  const token = config.pinterestAccessToken;
+  const { accessToken: token, boardId } = payload.credentials;
   if (!token) {
     throw new Error("PINTEREST_ACCESS_TOKEN не указан");
   }
-  if (!config.pinterestBoardId) {
+  if (!boardId) {
     throw new Error("PINTEREST_BOARD_ID не указан");
   }
 
@@ -157,7 +159,7 @@ async function createPinterestPin(payload: {
       "Content-Type": "application/json"
     },
     body: JSON.stringify({
-      board_id: config.pinterestBoardId,
+      board_id: boardId,
       title: payload.title,
       description: payload.description,
       link: payload.destinationLink,
@@ -223,7 +225,19 @@ export async function preparePinterestPublication(promptId: number, overrides?: 
   return publication;
 }
 
-export async function sendPromptToPinterest(promptId: number, overrides?: PinterestPinOverrides, confirmedDestination?: string) {
+export async function previewPinterestPublication(promptId: number) {
+  const prompt = await prisma.prompt.findUniqueOrThrow({
+    where: { id: promptId }, include: { category: true, examples: { orderBy: { id: "asc" } } }
+  });
+  const latest = await getLatestPinterestPublication(promptId);
+  const content = buildPinterestPin(prompt, resolvePublicationOverrides(undefined, latest));
+  const credentials = await getPinterestCredentials();
+  if (!credentials.accessToken || !credentials.boardId) throw new Error("Подключите Pinterest и выберите доску в настройках.");
+  const media = selectPinterestMedia(prompt);
+  return { ...content, imageUrl: media.url, boardId: credentials.boardId, boardName: credentials.boardName };
+}
+
+export async function sendPromptToPinterest(promptId: number, overrides?: PinterestPinOverrides, confirmedDestination?: string, confirmedBoardId?: string) {
   const prompt = await prisma.prompt.findUnique({
     where: { id: promptId },
     include: {
@@ -299,11 +313,16 @@ export async function sendPromptToPinterest(promptId: number, overrides?: Pinter
   });
 
   try {
+    const credentials = await getPinterestCredentials();
+    if (!confirmedBoardId || confirmedBoardId !== credentials.boardId) {
+      throw new Error("Доска Pinterest изменилась или не подтверждена. Проверьте настройки и подтвердите публикацию ещё раз.");
+    }
     const result = await createPinterestPin({
       title: pinContent.title,
       description: pinContent.description,
       destinationLink: pinContent.destinationLink,
-      imageUrl: media.url
+      imageUrl: media.url,
+      credentials
     });
 
     // The API's `link` is the destination (Telegram), not the Pin permalink.
@@ -315,7 +334,7 @@ export async function sendPromptToPinterest(promptId: number, overrides?: Pinter
         data: {
           status: "published",
           pinterestPinId: result.id,
-          pinterestBoardId: config.pinterestBoardId,
+          pinterestBoardId: credentials.boardId,
           publishedUrl,
           publishedAt: new Date()
         }

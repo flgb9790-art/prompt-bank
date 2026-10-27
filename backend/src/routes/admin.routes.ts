@@ -2,11 +2,21 @@ import { Router } from "express";
 import { isAdminRequest, readTelegramId } from "../auth";
 import { PromptService } from "../services/prompt.service";
 import { sendPromptToTelegram } from "../services/telegramPublisher.service";
-import { sendPromptToPinterest } from "../services/pinterestPublisher.service";
+import { sendPromptToPinterest, previewPinterestPublication } from "../services/pinterestPublisher.service";
 import { prisma } from "../db";
 import { parseTelegramPostLink } from "../utils/telegramPostLink";
 
 const router = Router();
+
+router.get("/prompts/:id/pinterest-preview", async (req, res, next) => {
+  try {
+    if (!readTelegramId(req)) return res.status(401).json({ error: "AUTH_REQUIRED" });
+    if (!isAdminRequest(req)) return res.status(403).json({ message: "Только администратор может публиковать пины" });
+    const promptId = Number(req.params.id);
+    if (!Number.isSafeInteger(promptId) || promptId <= 0) return res.status(400).json({ message: "Invalid prompt id" });
+    res.json(await previewPinterestPublication(promptId));
+  } catch (error) { next(error); }
+});
 
 router.patch("/prompts/:id/telegram-post-link", async (req, res, next) => {
   try {
@@ -76,7 +86,7 @@ router.post("/prompts/:id/publish-pinterest", async (req, res, next) => {
       return res.status(404).json({ message: "Prompt not found" });
     }
 
-    const result = await sendPromptToPinterest(promptId, undefined, req.body?.destinationLink);
+    const result = await sendPromptToPinterest(promptId, undefined, req.body?.destinationLink, req.body?.boardId);
     res.json({
       status: result.status,
       error: result.status === "failed" ? result.error : undefined,

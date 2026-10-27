@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowUpRight, SearchX, Sparkles, X } from "lucide-react";
-import { api, ApiError, invalidateReferenceCaches, setAuthTelegramId } from "./api";
+import { api, ApiError, invalidateReferenceCaches, confirmPinterestPublication, setAuthTelegramId } from "./api";
 import type { Category, MeResponse, Prompt, PromptCreatePayload, TagStat, TelegramUser, CreatePromptResponse } from "./types";
 import { SettingsScreen } from "./components/settings/SettingsScreen";
 import { PrivacyPolicyPage } from "./pages/PrivacyPolicyPage";
@@ -96,7 +96,7 @@ function parseSavedUser(): TelegramUser | null {
   if (!raw) return null;
   try {
     const parsed = JSON.parse(raw) as TelegramUser;
-    return parsed?.id ? parsed : null;
+    return parsed?.id && parsed.hash && parsed.auth_date && Date.now() / 1000 - parsed.auth_date < 86400 ? parsed : null;
   } catch {
     return null;
   }
@@ -792,10 +792,17 @@ export function WebApp() {
     }
     try {
       let created = withPromptDetails(await api.createPrompt(payload)) as CreatePromptResponse;
-      if (created.pinterestPublicationStatus === "awaiting_confirmation" && created.telegramPostUrl &&
-          window.confirm(`Создать пин со ссылкой назначения?\n\n${created.telegramPostUrl}`)) {
+      let confirmedBoard: string | null = null;
+      if (created.pinterestPublicationStatus === "awaiting_confirmation" && created.telegramPostUrl) {
+        try { confirmedBoard = await confirmPinterestPublication(created); }
+        catch (error) {
+          created.pinterestPublicationStatus = "failed";
+          created.pinterestPublicationError = error instanceof Error ? error.message : "Проверьте подключение Pinterest в настройках.";
+        }
+      }
+      if (confirmedBoard && created.telegramPostUrl) {
         try {
-          const result = await api.publishPromptToPinterest(created.id, created.telegramPostUrl);
+          const result = await api.publishPromptToPinterest(created.id, created.telegramPostUrl, confirmedBoard);
           created = { ...withPromptDetails(await api.getPrompt(created.id, true)),
             telegramPublicationStatus: created.telegramPublicationStatus,
             pinterestPublicationStatus: result.status, pinterestPublicationError: result.error };
@@ -859,8 +866,9 @@ export function WebApp() {
         setToast("Пин не создан: сохраните ссылку на Telegram-пост или сначала опубликуйте промпт в Telegram.");
         return;
       }
-      if (!window.confirm(`Создать пин со ссылкой назначения?\n\n${preview.telegramPostUrl}`)) return;
-      const result = await api.publishPromptToPinterest(promptId, preview.telegramPostUrl);
+      const confirmedBoard = await confirmPinterestPublication(preview);
+      if (!confirmedBoard) return;
+      const result = await api.publishPromptToPinterest(promptId, preview.telegramPostUrl, confirmedBoard);
       const fresh = withPromptDetails(await api.getPrompt(promptId, true));
       persistPublicationTemplatesFromPrompt(fresh);
       upsertPromptInList(fresh);
@@ -1228,6 +1236,8 @@ export function WebApp() {
         botUsername={extractBotUsername()}
         onClose={() => setTelegramAuthModalOpen(false)}
         onAuthSuccess={(telegramUser) => {
+          localStorage.setItem(storageKey, JSON.stringify(telegramUser));
+          setAuthTelegramId(String(telegramUser.id));
           setUser(telegramUser);
           setToast("Успешный вход через Telegram");
           void refreshMe().then(() => loadPrompts());

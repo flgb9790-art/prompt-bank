@@ -16,6 +16,8 @@ declare global {
       last_name?: string;
       username?: string;
       photo_url?: string;
+      auth_date: number;
+      hash: string;
     }) => void;
   }
 }
@@ -30,13 +32,8 @@ export function TelegramAuthModal({ open, botUsername, onClose, onAuthSuccess }:
     container.innerHTML = "";
 
     window.onTelegramAuth = (user) => {
-      onAuthSuccess({
-        id: user.id,
-        first_name: user.first_name,
-        last_name: user.last_name,
-        username: user.username,
-        photo_url: user.photo_url?.trim() || undefined
-      });
+      // Preserve the exact signed fields; normalization would invalidate the signature.
+      onAuthSuccess(user);
       onClose();
     };
 

@@ -5,6 +5,7 @@ import { ToggleSwitch } from "../ui/ToggleSwitch";
 import { formatRegistrationDate } from "../../utils/formatRelativeTime";
 import { ProfileAvatar } from "./ProfileAvatar";
 import { ReadingSettings } from "./ReadingSettings";
+import { PinterestSettings } from "./PinterestSettings";
 
 type Props = {
   user: TelegramUser | null;
@@ -256,6 +257,7 @@ export function SettingsScreen({
           </section>
           {actionCards}
           {privacyCard}
+          {me?.isAdmin && <PinterestSettings />}
           <ReadingSettings />
         </div>
       </div>
@@ -273,6 +275,7 @@ export function SettingsScreen({
         {accountCard}
         {actionCards}
         {privacyCard}
+        {me?.isAdmin && <PinterestSettings />}
         <ReadingSettings />
       </div>
       {privacyFooter}

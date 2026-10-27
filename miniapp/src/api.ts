@@ -73,7 +73,15 @@ export function invalidateReferenceCaches() {
 }
 
 function buildAuthHeader() {
-  return authTelegramId ? ({ "x-telegram-id": authTelegramId } as Record<string, string>) : ({} as Record<string, string>);
+  if (!authTelegramId) return {} as Record<string, string>;
+  const initData = window.Telegram?.WebApp?.initData;
+  if (initData) return { "x-telegram-init-data": initData } as Record<string, string>;
+  try {
+    const saved = localStorage.getItem("prompt-bank-web-auth");
+    const login = saved ? JSON.parse(saved) : null;
+    if (login?.hash && login?.auth_date) return { "x-telegram-login": encodeURIComponent(JSON.stringify(login)) };
+  } catch { /* A fresh Telegram login is required. */ }
+  return {} as Record<string, string>;
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -92,8 +100,9 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   }
 
   const response = await fetch(`${baseUrl}${path}`, {
+    ...init,
     headers,
-    ...init
+    credentials: "include"
   });
   const contentType = response.headers.get("content-type") ?? "";
   if (contentType && !contentType.includes("application/json") && !contentType.includes("text/json")) {
@@ -121,6 +130,15 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const api = {
+  pinterestStatus() { return request<PinterestStatus>("/api/pinterest/status"); },
+  connectPinterest() { return request<{url: string}>("/api/pinterest/connect", { method: "POST" }); },
+  disconnectPinterest() { return request<PinterestStatus>("/api/pinterest/connection", { method: "DELETE" }); },
+  pinterestBoards(bookmark?: string) {
+    return request<{items: Array<{id: string; name: string}>; bookmark: string | null}>(`/api/pinterest/boards${bookmark ? `?bookmark=${encodeURIComponent(bookmark)}` : ""}`);
+  },
+  selectPinterestBoard(boardId: string) {
+    return request<PinterestStatus>("/api/pinterest/board", {method: "PUT", body: JSON.stringify({boardId})});
+  },
   bootstrap(promptLimit = 25) {
     const query = promptLimit ? `?promptLimit=${promptLimit}` : "";
     return request<BootstrapResponse>(`/api/bootstrap${query}`);
@@ -182,9 +200,9 @@ export const api = {
       method: "PATCH", body: JSON.stringify({ telegramPostUrl })
     }).then((prompt) => { promptCache.set(promptId, prompt); return prompt; });
   },
-  publishPromptToPinterest(promptId: number, destinationLink: string) {
+  publishPromptToPinterest(promptId: number, destinationLink: string, boardId: string) {
     return request<PublishPinterestResponse>(`/api/admin/prompts/${promptId}/publish-pinterest`, {
-      method: "POST", body: JSON.stringify({ destinationLink })
+      method: "POST", body: JSON.stringify({ destinationLink, boardId })
     }).then((result) => {
       const cached = promptCache.get(promptId);
       if (cached && result.pinterestPublication) {
@@ -362,4 +380,14 @@ export function resolveCardMediaUrl(url: string, type: "image" | "video") {
 
   const thumbName = `${match[1].replace(/\.[^.]+$/i, "")}.webp`;
   return full.replace(/\/images\/[^/?#]+$/i, `/images/thumbs/${thumbName}`);
+}
+
+export type PinterestStatus = {
+  connected: boolean; legacyConfigured: boolean; configured: boolean; needsReconnect: boolean;
+  boardId: string | null; boardName: string | null;
+};
+
+export async function confirmPinterestPublication(prompt: Prompt): Promise<string | null> {
+  const preview = await request<{title: string; description: string; destinationLink: string; boardId: string; boardName: string}>(`/api/admin/prompts/${prompt.id}/pinterest-preview`);
+  return window.confirm(`Создать пин в Pinterest?\n\nНазвание: ${preview.title}\nОписание: ${preview.description}\nДоска: ${preview.boardName || preview.boardId}\nСсылка назначения: ${preview.destinationLink}`) ? preview.boardId : null;
 }

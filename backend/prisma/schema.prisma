@@ -8,6 +8,25 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
+model PinterestConnection {
+  id                    String    @id
+  ownerTelegramId       String
+  accessTokenEncrypted  String?
+  refreshTokenEncrypted String?
+  expiresAt             DateTime?
+  scope                 String?
+  boardId               String?
+  boardName             String?
+  updatedAt             DateTime  @updatedAt
+}
+
+model PinterestOAuthState {
+  stateHash       String   @id
+  browserHash     String
+  ownerTelegramId String
+  expiresAt       DateTime
+}
+
 model User {
   id               Int           @id @default(autoincrement())
   telegramId       String        @unique

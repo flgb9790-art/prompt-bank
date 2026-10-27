@@ -30,8 +30,13 @@ import { ensureLocalThumbnail } from "./services/localThumbnail.service";
 const app = express();
 
 app.use(compression());
-app.use(cors());
+app.use(cors({
+  origin: [config.webAppUrl, config.publicSiteUrl, config.publicBackendUrl,
+    ...(process.env.NODE_ENV !== "production" ? ["http://localhost:5173", "http://127.0.0.1:5173"] : [])],
+  credentials: true
+}));
 app.use(express.json({ limit: "3mb" }));
+app.use("/api", (_req, res, next) => { res.setHeader("Cache-Control", "no-store"); next(); });
 
 fs.mkdirSync(path.join(uploadsDir, "images"), { recursive: true });
 fs.mkdirSync(path.join(uploadsDir, "images", "thumbs"), { recursive: true });
@@ -80,6 +85,7 @@ app.use("/api/upload", authRequired, uploadRouter);
 
 app.delete("/api/examples/:id", authRequired, async (req, res, next) => {
   try {
+    if (!isAdminRequest(req)) return res.status(403).json({ message: "Только администратор может удалять медиа" });
     await prisma.mediaExample.delete({ where: { id: Number(req.params.id) } });
     res.status(204).send();
   } catch (error) {

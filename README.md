@@ -118,95 +118,11 @@ npm run dev
 
 ## 11) Pinterest Publishing
 
-Админ может автоматически публиковать новый промпт в Pinterest при сохранении. Пин ведёт в Telegram-канал (не на сайт).
+Публикация доступна администратору после проверки подписи Telegram. Pinterest подключается через OAuth из настроек; токены шифруются на сервере и не выводятся в браузер. Администратор выбирает доску и отдельно подтверждает каждый пин.
 
-### Настройка
+Назначение пина — сохранённая ссылка на конкретный Telegram-пост. При совместной публикации сначала выполняется Telegram. Если отправка не удалась, пин не создаётся; повтор Pinterest не отправляет материал в Telegram заново. Для старых материалов можно вручную сохранить URL поста. «Открыть Pin» открывает Pinterest, а не ссылку назначения.
 
-1. Создайте приложение в [Pinterest Developers](https://developers.pinterest.com/).
-2. Получите access token с правами на создание pins (см. **Pinterest OAuth** ниже).
-3. Получите `board_id` нужной доски Pinterest.
-4. Заполните в `.env`:
-   - `PINTEREST_ACCESS_TOKEN`
-   - `PINTEREST_BOARD_ID`
-   - `PINTEREST_API_BASE_URL` (по умолчанию `https://api.pinterest.com/v5`)
-   - `TELEGRAM_CHANNEL_URL` — публичная ссылка на канал, например `https://t.me/promptbank_channel`
-   - `PUBLIC_BACKEND_URL` — публичный URL для изображений (`/uploads/...`), если отличается от `BACKEND_URL`
-5. Убедитесь, что изображения доступны по публичному HTTPS URL.
-6. Примените миграцию схемы:
-   ```bash
-   npm --prefix backend run prisma:push
-   ```
-7. Перезапустите backend.
-
-### Pinterest OAuth (получение access_token)
-
-Используйте OAuth flow, если нужно получить `PINTEREST_ACCESS_TOKEN` через Pinterest Developers.
-
-#### 1. Redirect URI в Pinterest Developers
-
-1. Откройте приложение в [Pinterest Developers](https://developers.pinterest.com/).
-2. В настройках OAuth добавьте **Redirect URI** — точный URL callback endpoint backend:
-   - продакшен: `https://api.prompt-bank.one/api/pinterest/callback`
-   - локально (через ngrok/public tunnel): `https://<your-public-host>/api/pinterest/callback`
-3. URI должен совпадать **символ в символ** с `PINTEREST_REDIRECT_URI` в `.env`.
-
-#### 2. Переменные окружения
-
-Добавьте в `.env`:
-
-```env
-PINTEREST_CLIENT_ID=your_client_id
-PINTEREST_CLIENT_SECRET=your_client_secret
-PINTEREST_REDIRECT_URI=https://api.prompt-bank.one/api/pinterest/callback
-```
-
-`PINTEREST_REDIRECT_URI` — это URL endpoint `GET /api/pinterest/callback`, не URL mini app.
-
-#### 3. Получить OAuth URL
-
-Откройте в браузере или через curl:
-
-```bash
-curl https://api.prompt-bank.one/api/pinterest/auth-url
-```
-
-Ответ:
-
-```json
-{
-  "url": "https://www.pinterest.com/oauth/?client_id=...&redirect_uri=...&response_type=code&scope=boards:read,boards:write,pins:read,pins:write"
-}
-```
-
-#### 4. Авторизовать приложение
-
-1. Перейдите по `url` из ответа.
-2. Подтвердите доступ в Pinterest.
-3. Pinterest перенаправит на `GET /api/pinterest/callback?code=...`.
-4. Backend обменяет `code` на токен и покажет HTML-страницу **«Pinterest подключен»** с:
-   - `access_token`
-   - `refresh_token`
-   - `scope`
-
-#### 5. Сохранить токен
-
-1. Скопируйте `access_token` со страницы callback.
-2. Добавьте в Railway / `.env` как `PINTEREST_ACCESS_TOKEN`.
-3. Перезапустите backend.
-
-Текущая публикация промптов продолжает использовать `PINTEREST_ACCESS_TOKEN` — OAuth endpoints только помогают его получить.
-
-Для preview Pinterest-публикации в miniapp можно указать `VITE_TELEGRAM_CHANNEL_URL` в `miniapp/.env`.
-
-### Использование
-
-- У админа в форме добавления промпта есть checkbox **«Опубликовать в Pinterest»**.
-- После сохранения backend создаёт image pin с title, description и destination link на Telegram-канал.
-- Для Pinterest используется cover image или первый example image. Video pins в MVP не поддерживаются.
-- Если публикация не удалась, промпт всё равно сохраняется; ошибка видна админу в деталях промпта.
-- Telegram и Pinterest публикуются независимо друг от друга.
-- Ручная публикация или повтор после ошибки:
-  `POST /api/admin/prompts/:id/publish-pinterest`
+Полная настройка, безопасная PostgreSQL-миграция и сценарий видео: [Pinterest review readiness](docs/PINTEREST_REVIEW_READINESS.md).
 
 ## 12) Структура проекта
 

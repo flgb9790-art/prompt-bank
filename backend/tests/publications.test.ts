@@ -1,12 +1,13 @@
 import { test, beforeEach, after } from "node:test";
 import assert from "node:assert/strict";
+import { signedHeaders } from "./telegramTestIdentity";
 import { readFileSync } from "node:fs";
 import { PGlite } from "@electric-sql/pglite";
 import { prisma } from "../src/db";
 import { config } from "../src/config";
 import { parseTelegramPostLink, buildTelegramPostLink } from "../src/utils/telegramPostLink";
 import { sendPromptToTelegram, splitTelegramText } from "../src/services/telegramPublisher.service";
-import { buildPinterestPin, sendPromptToPinterest, preparePinterestPublication } from "../src/services/pinterestPublisher.service";
+import { buildPinterestPin, sendPromptToPinterest, preparePinterestPublication, previewPinterestPublication } from "../src/services/pinterestPublisher.service";
 import { PromptService } from "../src/services/prompt.service";
 import express from "express";
 import adminRouter from "../src/routes/admin.routes";
@@ -57,6 +58,7 @@ beforeEach(() => {
       return Object.assign(prompt, data);
     }
   });
+  Object.assign(prisma.pinterestConnection, { findUnique: async () => null });
   Object.assign(prisma.telegramPublication, fakeCollection(() => telegramPublications));
   Object.assign(prisma.user, { upsert: async () => ({ id: 1 }) });
   Object.assign(prisma.pinterestPublication, fakeCollection(() => pinterestPublications));
@@ -105,7 +107,7 @@ test("Telegram persists the message containing prompt text, then Pinterest uses 
   prompt.coverMediaUrl = "https://cdn.example.com/image.jpg"; prompt.coverMediaType = "image";
   await preparePinterestPublication(1, { title: "Custom title", description: "Custom description" });
   assert.equal(requests.length, 1, "Preparing preview must not create a pin");
-  const result = await sendPromptToPinterest(1, undefined, prompt.telegramPostUrl);
+  const result = await sendPromptToPinterest(1, undefined, prompt.telegramPostUrl, "board");
   assert.equal(result.status, "published");
   assert.equal(requests.at(-1)!.body.link, prompt.telegramPostUrl);
   assert.equal(pinterestPublications.at(-1).pinterestPinId, "1234567890123456789");
@@ -126,9 +128,9 @@ test("Pinterest retry never republishes Telegram and ignores old channel overrid
   await sendPromptToTelegram(1);
   prompt.coverMediaUrl = "https://cdn.example.com/image.jpg"; prompt.coverMediaType = "image";
   failPinterest = true;
-  assert.equal((await sendPromptToPinterest(1, { link: config.telegramChannelUrl }, prompt.telegramPostUrl)).status, "failed");
+  assert.equal((await sendPromptToPinterest(1, { link: config.telegramChannelUrl }, prompt.telegramPostUrl, "board")).status, "failed");
   failPinterest = false;
-  assert.equal((await sendPromptToPinterest(1, undefined, prompt.telegramPostUrl)).status, "published");
+  assert.equal((await sendPromptToPinterest(1, undefined, prompt.telegramPostUrl, "board")).status, "published");
   await sendPromptToTelegram(1);
   assert.equal(sequence.filter((item) => item === "telegram").length, 1);
   assert.equal(requests.at(-1)!.body.link, prompt.telegramPostUrl);
@@ -139,6 +141,26 @@ test("changed destination must be confirmed again", async () => {
   const result = await sendPromptToPinterest(1, undefined, "https://t.me/sample_channel/100");
   assert.equal(result.status, "failed");
   assert.equal(requests.length, 0);
+});
+
+test("publication preview uses actual server templates and the selected board without publishing", async () => {
+  prompt.telegramPostUrl = "https://t.me/sample_channel/100";
+  prompt.coverMediaUrl = "https://cdn.example.com/image.jpg"; prompt.coverMediaType = "image";
+  prompt.pinterestDescriptionTemplate = "Читать: {{link}}";
+  const preview = await previewPinterestPublication(1);
+  assert.equal(preview.description, "Читать: https://t.me/sample_channel/100");
+  assert.equal(preview.boardId, "board");
+  assert.equal(preview.destinationLink, prompt.telegramPostUrl);
+  assert.equal(requests.length, 0);
+  assert.equal(pinterestPublications.length, 0);
+});
+
+test("changed or missing board confirmation never creates a pin", async () => {
+  prompt.telegramPostUrl = "https://t.me/sample_channel/100";
+  prompt.coverMediaUrl = "https://cdn.example.com/image.jpg"; prompt.coverMediaType = "image";
+  assert.equal((await sendPromptToPinterest(1, undefined, prompt.telegramPostUrl, "different-board")).status, "failed");
+  assert.equal((await sendPromptToPinterest(1, undefined, prompt.telegramPostUrl)).status, "failed");
+  assert.equal(sequence.filter(item => item === "pinterest").length, 0);
 });
 
 test("templates use the saved post URL, never a channel fallback", () => {
@@ -192,7 +214,7 @@ test("admin can save an existing post without publishing; other users and channe
   await withLocalApp(async (base) => {
     const body = JSON.stringify({ telegramPostUrl: "https://t.me/sample_channel/999" });
     const send = (telegramId?: string, payload = body) => realFetch(`${base}/admin/prompts/1/telegram-post-link`, {
-      method: "PATCH", headers: { "Content-Type": "application/json", ...(telegramId ? { "x-telegram-id": telegramId } : {}) }, body: payload
+      method: "PATCH", headers: { "Content-Type": "application/json", ...(telegramId ? signedHeaders(telegramId) : {}) }, body: payload
     });
     assert.equal((await send()).status, 401);
     assert.equal((await send("43")).status, 403);
@@ -210,7 +232,7 @@ test("combined create saves Telegram first and waits for destination confirmatio
   try {
     await withLocalApp(async (base) => {
       const response = await realFetch(`${base}/prompts`, { method: "POST",
-        headers: { "Content-Type": "application/json", "x-telegram-id": "42" },
+        headers: { "Content-Type": "application/json", ...signedHeaders("42") },
         body: JSON.stringify({ userId: 1, content: prompt.content, categoryId: 1, publishToTelegram: true, publishToPinterest: true }) });
       assert.equal(response.status, 201);
       const created = await response.json();
@@ -228,7 +250,7 @@ test("combined create returns a clear error and no Pinterest draft when Telegram
   try {
     await withLocalApp(async (base) => {
       const response = await realFetch(`${base}/prompts`, { method: "POST",
-        headers: { "Content-Type": "application/json", "x-telegram-id": "42" },
+        headers: { "Content-Type": "application/json", ...signedHeaders("42") },
         body: JSON.stringify({ userId: 1, content: prompt.content, categoryId: 1, publishToTelegram: true, publishToPinterest: true }) });
       assert.equal(response.status, 201, "The prompt is saved even when publication fails");
       const created = await response.json();

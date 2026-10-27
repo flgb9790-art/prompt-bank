@@ -80,6 +80,7 @@ export const config = {
   pinterestAccessToken: process.env.PINTEREST_ACCESS_TOKEN?.trim() || "",
   pinterestBoardId: process.env.PINTEREST_BOARD_ID?.trim() || "",
   pinterestClientId: process.env.PINTEREST_CLIENT_ID?.trim() || "",
+  pinterestTokenEncryptionKey: process.env.PINTEREST_TOKEN_ENCRYPTION_KEY?.trim() || "",
   pinterestClientSecret: process.env.PINTEREST_CLIENT_SECRET?.trim() || "",
   pinterestRedirectUri: process.env.PINTEREST_REDIRECT_URI?.trim() || "",
   pinterestApiBaseUrl: normalizeUrl(
