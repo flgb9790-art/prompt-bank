@@ -32,14 +32,14 @@ export function AuthButton({ user, onLoginTelegram, onOpenSettings, onLogout }: 
         {avatarLetter}
       </button>
       {open ? (
-        <div className="absolute right-0 top-12 z-50 w-56 rounded-xl border border-[var(--border)] bg-white p-2 shadow-hover">
+        <div className="absolute right-0 top-12 z-50 w-56 rounded-xl border border-[var(--border)] bg-[var(--card)] p-2 shadow-hover">
           <div className="px-2 py-1.5">
             <p className="text-sm font-medium text-[var(--text)]">{user.first_name ?? "User"}</p>
             <p className="text-xs text-[var(--muted)]">@{user.username ?? "telegram"}</p>
           </div>
           <button
             type="button"
-            className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-sm text-[var(--text-soft)] hover:bg-[#f5f6fb]"
+            className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-sm text-[var(--text-soft)] hover:bg-[var(--card-soft)]"
             onClick={onOpenSettings}
           >
             <Settings size={16} />

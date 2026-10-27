@@ -3,41 +3,41 @@
 @tailwind utilities;
 
 :root {
-  --bg: #f8f9fd;
-  --bg-soft: #ffffff;
-  --sidebar-bg: #ffffff;
-  --card: #ffffff;
-  --card-soft: #f9fafc;
-  --border: #e5e9f2;
-  --border-soft: #edf0f6;
+  --bg: #100d19;
+  --bg-soft: #171220;
+  --sidebar-bg: #14101e;
+  --card: #1b1527;
+  --card-soft: #1b1628;
+  --border: #393046;
+  --border-soft: #2d2539;
 
-  --text: #101828;
-  --text-soft: #344054;
-  --muted: #667085;
-  --muted-light: #98a2b3;
+  --text: #f0eaf8;
+  --text-soft: #d1c7df;
+  --muted: #aea0bf;
+  --muted-light: #998aa9;
 
-  --primary: #6d5dfc;
-  --primary-hover: #5b4df2;
-  --primary-soft: #f0edff;
-  --primary-border: #ded7ff;
+  --primary: #a78bfa;
+  --primary-hover: #bda4ff;
+  --primary-soft: #2d2242;
+  --primary-border: #594070;
 
-  --blue: #2f80ed;
-  --blue-soft: #eaf3ff;
+  --blue: #8ebcff;
+  --blue-soft: #1e293e;
 
   --purple: #8b5cf6;
-  --purple-soft: #f1eaff;
+  --purple-soft: #2d2141;
 
   --yellow: #f6b51e;
-  --yellow-soft: #fff6df;
+  --yellow-soft: #352a20;
 
-  --green: #16a34a;
-  --green-soft: #e9f8ef;
+  --green: #8ed3ac;
+  --green-soft: #193127;
 
   --orange: #f97316;
-  --orange-soft: #fff1e7;
+  --orange-soft: #35251e;
 
-  --red: #ef4444;
-  --red-soft: #feecec;
+  --red: #ff91a3;
+  --red-soft: #3b202b;
 
   --shadow-card: 0 10px 30px rgba(16, 24, 40, 0.045);
   --shadow-hover: 0 18px 45px rgba(16, 24, 40, 0.075);
@@ -103,7 +103,7 @@ html.web-mode #root {
 .web-app-header {
   grid-column: 1;
   grid-row: 1;
-  background: rgba(255, 255, 255, 0.9);
+  background: rgba(23, 17, 34, 0.94);
   backdrop-filter: blur(16px);
   border-bottom: 1px solid var(--border);
 }
@@ -114,7 +114,7 @@ html.web-mode #root {
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
-  background: linear-gradient(180deg, #ffffff 0%, #f8f9fd 100%);
+  background: linear-gradient(180deg, #1b1228 0%, #100d19 100%);
   padding: 24px 28px 36px;
 }
 
@@ -179,7 +179,7 @@ html.web-mode #root {
 @media (max-width: 767px) {
   .web-app-main {
     padding: 0 16px 92px;
-    background: #ffffff;
+    background: var(--card);
   }
 }
 
@@ -275,8 +275,8 @@ html.telegram-mini-app .mobile-post-card-skeleton--grid {
 
 .mobile-post-card {
   width: 100%;
-  background: #ffffff;
-  border: 1px solid #e5e9f2;
+  background: var(--card);
+  border: 1px solid #393046;
   border-radius: 22px;
   overflow: hidden;
   box-shadow: 0 8px 24px rgba(16, 24, 40, 0.045);
@@ -302,7 +302,7 @@ html.telegram-mini-app .mobile-post-card-skeleton--grid {
   width: 100%;
   max-height: 620px;
   overflow: hidden;
-  background: #f2f4f7;
+  background: #231d32;
   position: relative;
   display: block;
   border: none;
@@ -332,7 +332,7 @@ html.telegram-mini-app .mobile-post-card-skeleton--grid {
 .mobile-post-media-shimmer {
   position: absolute;
   inset: 0;
-  background: linear-gradient(90deg, #eef2f7 0%, #f8fafc 50%, #eef2f7 100%);
+  background: linear-gradient(90deg, #211a30 0%, #191423 50%, #211a30 100%);
   background-size: 200% 100%;
   animation: mobile-post-shimmer 1.2s ease-in-out infinite;
 }
@@ -349,7 +349,7 @@ html.telegram-mini-app .mobile-post-card-skeleton--grid {
 .mobile-post-placeholder {
   width: 100%;
   aspect-ratio: 4 / 5;
-  background: linear-gradient(135deg, #f1eaff, #eaf3ff);
+  background: linear-gradient(135deg, #2d2141, #1e293e);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -360,12 +360,12 @@ html.telegram-mini-app .mobile-post-card-skeleton--grid {
   flex-direction: column;
   align-items: center;
   gap: 8px;
-  color: #6d5dfc;
+  color: #a78bfa;
 }
 
 .mobile-post-placeholder-inner span {
   font-size: 14px;
-  color: #667085;
+  color: #aea0bf;
 }
 
 .mobile-post-video-badge {
@@ -378,7 +378,7 @@ html.telegram-mini-app .mobile-post-card-skeleton--grid {
   background: rgba(16, 24, 40, 0.72);
   color: #ffffff;
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 500;
   line-height: 26px;
   backdrop-filter: blur(8px);
 }
@@ -390,20 +390,20 @@ html.telegram-mini-app .mobile-post-card-skeleton--grid {
   width: 42px;
   height: 42px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.92);
+  background: rgba(23, 17, 34, 0.94);
   backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.65);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #667085;
+  color: #aea0bf;
   box-shadow: 0 8px 18px rgba(16, 24, 40, 0.1);
   z-index: 2;
 }
 
 .mobile-post-favorite-overlay.active,
 .mobile-post-favorite-overlay.favorite-lit {
-  color: #b45309;
+  color: #e8b86d;
   background: var(--yellow-soft);
   border-color: #f6d66b;
 }
@@ -416,7 +416,7 @@ html.telegram-mini-app .mobile-post-card-skeleton--grid {
 
 html.telegram-mini-app .mobile-post-favorite-overlay.active,
 html.telegram-mini-app .mobile-post-favorite-overlay.favorite-lit {
-  color: #b45309;
+  color: #e8b86d;
   background: var(--yellow-soft);
   border-color: #f6d66b;
 }
@@ -445,7 +445,7 @@ html.telegram-mini-app .mobile-post-favorite-overlay.favorite-lit svg {
 
 .mobile-post-content {
   padding: 14px 14px 16px;
-  background: #ffffff;
+  background: var(--card);
 }
 
 .mobile-post-header-row {
@@ -460,7 +460,7 @@ html.telegram-mini-app .mobile-post-favorite-overlay.favorite-lit svg {
   padding: 0 10px;
   border-radius: 999px;
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 500;
   display: inline-flex;
   align-items: center;
   white-space: nowrap;
@@ -470,7 +470,7 @@ html.telegram-mini-app .mobile-post-favorite-overlay.favorite-lit svg {
 .mobile-post-meta-label {
   font-size: 12px;
   line-height: 18px;
-  color: #98a2b3;
+  color: #998aa9;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -485,8 +485,8 @@ html.telegram-mini-app .mobile-post-favorite-overlay.favorite-lit svg {
   text-align: left;
   font-size: 18px;
   line-height: 24px;
-  font-weight: 800;
-  color: #101828;
+  font-weight: 500;
+  color: #f0eaf8;
   letter-spacing: -0.01em;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -516,8 +516,8 @@ html.telegram-mini-app .mobile-post-favorite-overlay.favorite-lit svg {
   height: 24px;
   padding: 0 9px;
   border-radius: 999px;
-  background: #f2f4f7;
-  color: #667085;
+  background: #231d32;
+  color: #aea0bf;
   font-size: 12px;
   line-height: 24px;
   font-weight: 500;
@@ -534,7 +534,7 @@ html.telegram-mini-app .mobile-post-favorite-overlay.favorite-lit svg {
   height: 46px;
   border-radius: 14px;
   font-size: 15px;
-  font-weight: 750;
+  font-weight: 500;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -548,19 +548,19 @@ html.telegram-mini-app .mobile-post-favorite-overlay.favorite-lit svg {
 }
 
 .mobile-post-action--copy {
-  background: linear-gradient(135deg, #6d5dfc, #7c3aed);
+  background: linear-gradient(135deg, #a78bfa, #7c3aed);
   color: #ffffff;
   box-shadow: 0 10px 22px rgba(109, 93, 252, 0.22);
 }
 
 .mobile-post-action--favorite {
-  border: 1px solid #e5e9f2;
-  background: #ffffff;
-  color: #344054;
+  border: 1px solid #393046;
+  background: var(--card);
+  color: #d1c7df;
 }
 
 .mobile-post-action--favorite.active {
-  color: #b45309;
+  color: #e8b86d;
   border-color: #f6d66b;
   background: var(--yellow-soft);
 }
@@ -568,7 +568,7 @@ html.telegram-mini-app .mobile-post-favorite-overlay.favorite-lit svg {
 html.telegram-mini-app .action-button-row .btn-secondary--favorite {
   border-color: #f6d66b;
   background: var(--yellow-soft);
-  color: #b45309;
+  color: #e8b86d;
 }
 
 @media (max-width: 380px) {
@@ -605,7 +605,7 @@ html.telegram-mini-app .action-button-row .btn-secondary--favorite {
   max-width: 480px;
   height: 100%;
   min-height: 100%;
-  background: #ffffff;
+  background: var(--card);
   overflow-y: auto;
   overscroll-behavior-y: contain;
   -webkit-overflow-scrolling: touch;
@@ -659,10 +659,10 @@ button.brand-logo {
   width: 40px;
   height: 40px;
   border-radius: 12px;
-  background: linear-gradient(135deg, #6d5dfc 0%, #8b5cf6 55%, #3b82f6 100%);
+  background: linear-gradient(135deg, #a78bfa 0%, #8b5cf6 55%, #3b82f6 100%);
   color: #ffffff;
   font-size: 24px;
-  font-weight: 800;
+  font-weight: 500;
   display: grid;
   place-items: center;
   box-shadow: 0 8px 20px rgba(109, 93, 252, 0.25);
@@ -672,7 +672,7 @@ button.brand-logo {
 .brand-logo-text {
   font-size: 22px;
   line-height: 28px;
-  font-weight: 750;
+  font-weight: 500;
   color: var(--text);
 }
 
@@ -702,7 +702,7 @@ button.brand-logo {
 }
 
 .nav-item:hover {
-  background: #f5f6fb;
+  background: #251e35;
 }
 
 .nav-item.active {
@@ -717,7 +717,7 @@ button.brand-logo {
 /* Category sidebar */
 .categories-label {
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 500;
   letter-spacing: 0.06em;
   color: var(--muted-light);
   text-transform: uppercase;
@@ -739,7 +739,7 @@ button.brand-logo {
 }
 
 .category-item:hover {
-  background: #f5f6fb;
+  background: #251e35;
 }
 
 .category-item.active {
@@ -762,7 +762,7 @@ button.brand-logo {
   height: 38px;
   padding: 0 16px;
   border-radius: 999px;
-  background: #ffffff;
+  background: var(--card);
   border: 1px solid var(--border);
   color: var(--text-soft);
   font-size: 14px;
@@ -777,7 +777,7 @@ button.brand-logo {
 }
 
 .chip.active {
-  background: linear-gradient(135deg, #6d5dfc, #7c3aed);
+  background: linear-gradient(135deg, #a78bfa, #7c3aed);
   color: #ffffff;
   border-color: transparent;
 }
@@ -788,10 +788,10 @@ button.brand-logo {
   padding: 0 20px;
   border-radius: 11px;
   border: none;
-  background: linear-gradient(135deg, #6d5dfc, #7c3aed);
+  background: linear-gradient(135deg, #a78bfa, #7c3aed);
   color: #ffffff;
   font-size: 14px;
-  font-weight: 650;
+  font-weight: 500;
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -809,11 +809,11 @@ button.brand-logo {
   height: 44px;
   padding: 0 18px;
   border-radius: 11px;
-  background: #ffffff;
+  background: var(--card);
   border: 1px solid var(--border);
   color: var(--text-soft);
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 500;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -840,7 +840,7 @@ button.brand-logo {
   height: 42px;
   border-radius: 12px;
   border: 1px solid var(--border);
-  background: #ffffff;
+  background: var(--card);
   color: var(--muted);
   display: grid;
   place-items: center;
@@ -849,8 +849,8 @@ button.brand-logo {
 }
 
 .btn-ghost-icon.active {
-  border-color: #c9c2ff;
-  background: #f3f0ff;
+  border-color: #6d538c;
+  background: #302244;
   color: var(--primary);
 }
 
@@ -859,7 +859,7 @@ button.brand-logo {
   height: 44px;
   border-radius: 13px;
   border: 1px solid var(--border);
-  background: #ffffff;
+  background: var(--card);
   display: flex;
   align-items: center;
   padding: 0 16px;
@@ -883,7 +883,7 @@ button.brand-logo {
   height: 58px;
   border-radius: 16px;
   border: 1px solid var(--border);
-  background: #ffffff;
+  background: var(--card);
   padding: 0 18px;
   font-size: 16px;
   width: 100%;
@@ -899,7 +899,7 @@ button.brand-logo {
 .stat-card {
   min-height: 94px;
   border-radius: 16px;
-  background: #ffffff;
+  background: var(--card);
   border: 1px solid var(--border);
   box-shadow: var(--shadow-card);
   padding: 20px;
@@ -911,7 +911,7 @@ button.brand-logo {
 .stat-card-mobile {
   height: 92px;
   border-radius: 17px;
-  background: #ffffff;
+  background: var(--card);
   border: 1px solid var(--border);
   box-shadow: 0 8px 24px rgba(16, 24, 40, 0.045);
   padding: 16px;
@@ -969,7 +969,7 @@ button.brand-logo {
 .preview-4x5 {
   position: relative;
   overflow: hidden;
-  background: #f2f4f7;
+  background: #231d32;
   border-radius: 14px;
   flex: 0 0 auto;
   width: 100%;
@@ -1001,7 +1001,7 @@ button.brand-logo {
 .preview-4x5-shimmer {
   position: absolute;
   inset: 0;
-  background: linear-gradient(110deg, #eef2f7 8%, #f8fafc 18%, #eef2f7 33%);
+  background: linear-gradient(110deg, #211a30 8%, #191423 18%, #211a30 33%);
   background-size: 200% 100%;
   animation: preview-shimmer 1.2s linear infinite;
 }
@@ -1035,7 +1035,7 @@ button.brand-logo {
   min-height: 258px;
   height: auto;
   border-radius: 18px;
-  background: #ffffff;
+  background: var(--card);
   border: 1px solid var(--border);
   box-shadow: var(--shadow-card);
   overflow: hidden;
@@ -1127,7 +1127,7 @@ button.brand-logo {
 .prompt-card-desktop:hover {
   transform: translateY(-2px);
   box-shadow: var(--shadow-hover);
-  border-color: #d8d2ff;
+  border-color: #614878;
 }
 
 .prompt-card-mobile {
@@ -1135,7 +1135,7 @@ button.brand-logo {
   min-height: 196px;
   height: auto;
   border-radius: 17px;
-  background: #ffffff;
+  background: var(--card);
   border: 1px solid var(--border);
   box-shadow: 0 8px 24px rgba(16, 24, 40, 0.045);
   display: flex;
@@ -1230,7 +1230,7 @@ button.brand-logo {
   padding-right: 0;
   font-size: 16px;
   line-height: 22px;
-  font-weight: 750;
+  font-weight: 500;
   color: var(--text);
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -1261,7 +1261,7 @@ button.brand-logo {
   min-height: 0;
   margin: 0;
   overflow: hidden;
-  color: #475467;
+  color: #b9accb;
   word-break: break-word;
 }
 
@@ -1392,7 +1392,7 @@ button.brand-logo {
   min-height: 148px;
   height: auto;
   border-radius: 16px;
-  background: #ffffff;
+  background: var(--card);
   border: 1px solid var(--border);
   box-shadow: 0 6px 18px rgba(16, 24, 40, 0.04);
   overflow: hidden;
@@ -1482,7 +1482,7 @@ button.brand-logo {
 /* Category badges */
 .badge-image {
   background: var(--purple-soft);
-  color: #7c3aed;
+  color: #c6a4f4;
 }
 
 .badge-video {
@@ -1501,33 +1501,33 @@ button.brand-logo {
 }
 
 .badge-default {
-  background: #f2f4f7;
+  background: #231d32;
   color: var(--muted);
 }
 
 .badge-beauty {
-  background: #fdf2f8;
+  background: #321e30;
   color: #ec4899;
 }
 
 .badge-logo {
-  background: #fff6df;
+  background: #352a20;
   color: #b7791f;
 }
 
 .badge-landing {
-  background: #eef2ff;
-  color: #4f46e5;
+  background: #281e3d;
+  color: #b4a4ff;
 }
 
 .badge-ads {
-  background: #fff1e7;
+  background: #35251e;
   color: #ea580c;
 }
 
 .badge-sketch {
-  background: #f0fdf4;
-  color: #15803d;
+  background: #193127;
+  color: #8ed3ac;
 }
 
 .category-badge {
@@ -1537,7 +1537,7 @@ button.brand-logo {
   border-radius: 8px;
   font-size: 12px;
   line-height: 24px;
-  font-weight: 650;
+  font-weight: 500;
 }
 
 .category-badge-mobile {
@@ -1552,7 +1552,7 @@ button.brand-logo {
   height: 22px;
   padding: 0 8px;
   border-radius: 999px;
-  background: #f2f4f7;
+  background: #231d32;
   color: var(--muted);
   font-size: 11px;
   line-height: 22px;
@@ -1596,7 +1596,7 @@ button.brand-logo {
 .sidebar-telegram-card {
   border-radius: 14px;
   border: 1px solid var(--border-soft);
-  background: #fafbfc;
+  background: #1b1527;
   padding: 10px 8px 8px;
 }
 
@@ -1672,7 +1672,7 @@ button.brand-logo {
 }
 
 .pagination-btn.active {
-  background: linear-gradient(135deg, #6d5dfc, #7c3aed);
+  background: linear-gradient(135deg, #a78bfa, #7c3aed);
   color: #ffffff;
 }
 
@@ -1727,7 +1727,7 @@ button.brand-logo {
   background: transparent;
   color: var(--muted);
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
   cursor: pointer;
 }
 
@@ -1771,7 +1771,7 @@ button.brand-logo {
 }
 
 .modal-panel {
-  background: #ffffff;
+  background: var(--card);
   border-radius: 22px;
   border: 1px solid var(--border);
   box-shadow: 0 24px 70px rgba(16, 24, 40, 0.18);
@@ -1824,7 +1824,7 @@ html.web-mode .modal-panel--add-prompt-fullscreen {
   border-radius: 0;
   border: none;
   box-shadow: none;
-  background: #ffffff;
+  background: var(--card);
 }
 
 html.web-mode .prompt-form-modal-header {
@@ -1872,7 +1872,7 @@ html.web-mode .prompt-form-section {
   padding: 1rem 1.15rem;
   border: 1px solid var(--border);
   border-radius: 14px;
-  background: #ffffff;
+  background: var(--card);
 }
 
 html.web-mode .prompt-form-section--plain {
@@ -1994,7 +1994,7 @@ html.web-mode .prompt-detail-action-btn {
   padding: 0 10px;
   border-radius: 10px;
   border: 1px solid var(--border);
-  background: #ffffff;
+  background: var(--card);
   color: var(--text-soft);
   font-size: 13px;
   font-weight: 500;
@@ -2032,7 +2032,7 @@ html.web-mode .prompt-detail-action-btn--danger {
 }
 
 html.web-mode .prompt-detail-action-btn--danger:hover {
-  border-color: #fecaca;
+  border-color: #70404e;
   background: var(--red-soft);
   color: var(--red);
 }
@@ -2040,25 +2040,25 @@ html.web-mode .prompt-detail-action-btn--danger:hover {
 html.web-mode .prompt-detail-action-btn--favorite {
   border-color: #f6d66b;
   background: var(--yellow-soft);
-  color: #b45309;
+  color: #e8b86d;
 }
 
 html.web-mode .prompt-detail-action-btn--favorite:hover {
   border-color: #f6b51e;
-  background: #fff6df;
-  color: #92400e;
+  background: #352a20;
+  color: #e8b86d;
 }
 
 .btn-secondary--favorite {
   border-color: #f6d66b;
   background: var(--yellow-soft);
-  color: #b45309;
+  color: #e8b86d;
 }
 
 .btn-secondary--favorite:hover {
   border-color: #f6b51e;
-  background: #fff6df;
-  color: #92400e;
+  background: #352a20;
+  color: #e8b86d;
 }
 
 html.web-mode .prompt-publish-panels--row {
@@ -2115,7 +2115,7 @@ html.web-mode .prompt-gallery-preview--fit.preview-fit-contain {
   max-width: 100%;
   min-height: 0;
   line-height: 0;
-  background: #f2f4f7;
+  background: #231d32;
   border-radius: 14px;
   overflow: hidden;
 }
@@ -2247,7 +2247,7 @@ html.telegram-mini-app .modal-panel {
   width: 100%;
   border-radius: 12px;
   border: 1px solid var(--border);
-  background: #ffffff;
+  background: var(--card);
   color: var(--text);
   padding: 0 14px;
   outline: none;
@@ -2288,7 +2288,7 @@ html.telegram-mini-app .modal-panel {
 }
 
 .upload-zone {
-  border: 1px dashed #d0d5dd;
+  border: 1px dashed #51445f;
   border-radius: 14px;
   background: var(--card-soft);
   padding: 16px;
@@ -2302,7 +2302,7 @@ html.telegram-mini-app .modal-panel {
   right: 0;
   height: calc(78px + env(safe-area-inset-bottom, 0px));
   padding-bottom: env(safe-area-inset-bottom, 0px);
-  background: rgba(255, 255, 255, 0.94);
+  background: rgba(23, 17, 34, 0.94);
   backdrop-filter: blur(18px);
   border-top: 1px solid var(--border);
   z-index: 50;
@@ -2343,10 +2343,10 @@ html.telegram-mini-app .modal-panel {
   width: 100%;
   height: 60px;
   border-radius: 16px;
-  background: linear-gradient(135deg, #6d5dfc, #7c3aed);
+  background: linear-gradient(135deg, #a78bfa, #7c3aed);
   color: #ffffff;
   font-size: 18px;
-  font-weight: 750;
+  font-weight: 500;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2369,7 +2369,7 @@ html.telegram-mini-app .modal-panel {
 .stat-tile-mobile {
   border-radius: 12px;
   border: 1px solid var(--border-soft);
-  background: #ffffff;
+  background: var(--card);
   padding: 10px 12px;
   min-height: 62px;
   display: flex;
@@ -2403,7 +2403,7 @@ html.telegram-mini-app .modal-panel {
 }
 
 .prompt-form-media-block {
-  border: 1px dashed #d0d5dd;
+  border: 1px dashed #51445f;
   border-radius: 14px;
   background: var(--card-soft);
   padding: 12px 14px;
@@ -2452,7 +2452,7 @@ html.telegram-mini-app .modal-panel {
 .skeleton {
   position: relative;
   overflow: hidden;
-  background: #eef1f6;
+  background: #21182e;
   border-radius: 16px;
 }
 
@@ -2473,7 +2473,7 @@ html.telegram-mini-app .modal-panel {
 .welcome-title {
   font-size: 24px;
   line-height: 32px;
-  font-weight: 750;
+  font-weight: 500;
   color: var(--text);
   margin: 0;
 }
@@ -2488,14 +2488,14 @@ html.telegram-mini-app .modal-panel {
 .section-title {
   font-size: 18px;
   line-height: 26px;
-  font-weight: 750;
+  font-weight: 500;
   color: var(--text);
 }
 
 .mobile-welcome-title {
   font-size: 26px;
   line-height: 32px;
-  font-weight: 800;
+  font-weight: 500;
   color: var(--text);
 }
 
@@ -2509,7 +2509,7 @@ html.telegram-mini-app .modal-panel {
 .link-primary {
   font-size: 15px;
   color: var(--primary);
-  font-weight: 650;
+  font-weight: 500;
   border: none;
   background: transparent;
   cursor: pointer;
@@ -2519,7 +2519,7 @@ html.telegram-mini-app .modal-panel {
   pointer-events: none;
   border-radius: 12px;
   border: 1px solid var(--border);
-  background: #ffffff;
+  background: var(--card);
   color: var(--text);
   box-shadow: var(--shadow-hover);
   padding: 10px 16px;
@@ -2580,10 +2580,10 @@ html.telegram-mini-app .modal-panel {
   padding: 0 14px;
   border-radius: 10px;
   border: 1px solid var(--border);
-  background: #ffffff;
+  background: var(--card);
   color: var(--primary);
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
   white-space: nowrap;
 }
 
@@ -2598,10 +2598,10 @@ html.telegram-mini-app .modal-panel {
   padding: 0 14px;
   border-radius: 10px;
   border: 1px solid var(--border);
-  background: #ffffff;
+  background: var(--card);
   color: var(--text-soft);
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
   cursor: pointer;
   white-space: nowrap;
   flex-shrink: 0;
@@ -2609,7 +2609,7 @@ html.telegram-mini-app .modal-panel {
 
 .btn-compact-danger {
   color: var(--red);
-  border-color: #fecaca;
+  border-color: #70404e;
   background: var(--red-soft);
 }
 
@@ -2631,7 +2631,7 @@ html.telegram-mini-app .modal-panel {
   border-radius: 12px;
   overflow: hidden;
   border: 1px solid var(--border-soft);
-  background: #fff;
+  background: var(--card);
   box-shadow: 0 2px 8px rgba(16, 24, 40, 0.05);
 }
 
@@ -2641,7 +2641,7 @@ html.telegram-mini-app .modal-panel {
   height: 108px;
   object-fit: cover;
   display: block;
-  background: #f2f4f7;
+  background: #231d32;
 }
 
 .prompt-media-badge {
@@ -2654,7 +2654,7 @@ html.telegram-mini-app .modal-panel {
   background: var(--primary);
   color: #fff;
   font-size: 9px;
-  font-weight: 700;
+  font-weight: 500;
   letter-spacing: 0.02em;
   line-height: 1.3;
 }
@@ -2674,7 +2674,7 @@ html.telegram-mini-app .modal-panel {
   height: 26px;
   border: none;
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.94);
+  background: rgba(23, 17, 34, 0.94);
   color: var(--text-soft);
   display: grid;
   place-items: center;
@@ -2708,7 +2708,7 @@ html.telegram-mini-app .modal-panel {
 .rich-text-editor {
   border: 1px solid var(--border);
   border-radius: 12px;
-  background: #fff;
+  background: var(--card);
   overflow: hidden;
 }
 
@@ -2794,25 +2794,25 @@ html.telegram-mini-app .modal-panel {
   background: var(--primary-soft);
   color: var(--primary);
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 500;
   cursor: pointer;
 }
 
 .template-var-chip:hover {
-  background: #e8e4ff;
+  background: #302244;
 }
 
 .template-preview {
   border-radius: 12px;
   border: 1px solid var(--border-soft);
-  background: #fff;
+  background: var(--card);
   padding: 12px 14px;
 }
 
 .template-preview-label {
   margin: 0 0 8px;
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 500;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--muted);
@@ -2821,7 +2821,7 @@ html.telegram-mini-app .modal-panel {
 .template-preview-pin-title {
   margin: 0 0 10px;
   font-size: 15px;
-  font-weight: 700;
+  font-weight: 500;
   line-height: 1.35;
   color: var(--text);
   word-break: break-word;
@@ -2850,18 +2850,18 @@ html.telegram-mini-app .modal-panel {
 
 .template-preview-body strong,
 .template-preview-body b {
-  font-weight: 700;
+  font-weight: 500;
   color: var(--text);
 }
 
 .template-preview--telegram {
-  border-color: #c7ddff;
-  background: #fafcff;
+  border-color: #3c5277;
+  background: #1a1726;
 }
 
 .template-preview--pinterest {
-  border-color: #fecaca;
-  background: #fffcfc;
+  border-color: #70404e;
+  background: #231822;
 }
 
 .example-remove-btn {
@@ -2875,7 +2875,7 @@ html.telegram-mini-app .modal-panel {
   background: rgba(239, 68, 68, 0.92);
   color: #ffffff;
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 500;
   cursor: pointer;
 }
 
@@ -2887,7 +2887,7 @@ html.telegram-mini-app .modal-panel {
   min-width: 0;
   border: none;
   padding: 0;
-  background: #f2f4f7;
+  background: #231d32;
   border-radius: 14px;
   overflow: hidden;
   text-align: initial;
@@ -2927,7 +2927,7 @@ html.telegram-mini-app .modal-panel {
   background: rgba(16, 24, 40, 0.55);
   color: #ffffff;
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 500;
   pointer-events: none;
 }
 
@@ -2945,7 +2945,7 @@ html.telegram-mini-app .modal-panel {
   width: 100%;
   border: none;
   padding: 0;
-  background: #f2f4f7;
+  background: #231d32;
   border-radius: 14px;
   display: flex;
   align-items: center;
@@ -3037,7 +3037,7 @@ html.telegram-mini-app .media-lightbox-nav {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #f2f4f7;
+  background: #231d32;
 }
 
 .preview-fit-contain img,
@@ -3071,7 +3071,7 @@ html.telegram-mini-app .media-lightbox-nav {
   min-height: 0;
   height: auto;
   max-height: none;
-  background: #f2f4f7;
+  background: #231d32;
   border-radius: 14px;
 }
 
@@ -3104,7 +3104,7 @@ html.telegram-mini-app .media-lightbox-nav {
   height: 34px;
   border-radius: 999px;
   border: 1px solid var(--border);
-  background: #ffffff;
+  background: var(--card);
   color: var(--text-soft);
   display: grid;
   place-items: center;
@@ -3126,7 +3126,7 @@ html.telegram-mini-app .media-lightbox-nav {
   overflow: hidden;
   border: 2px solid transparent;
   padding: 0;
-  background: #f2f4f7;
+  background: #231d32;
   cursor: pointer;
 }
 
@@ -3139,7 +3139,7 @@ html.telegram-mini-app .media-lightbox-nav {
   width: 100%;
   height: 100%;
   object-fit: contain;
-  background: #f2f4f7;
+  background: #231d32;
 }
 
 /* Fullscreen media lightbox */
@@ -3192,9 +3192,9 @@ html.telegram-mini-app .media-lightbox-nav {
 
 .media-lightbox-caption {
   margin: 0;
-  color: #f8fafc;
+  color: #f0eaf8;
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 500;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -3215,7 +3215,7 @@ html.telegram-mini-app .media-lightbox-nav {
   min-width: 44px;
   text-align: center;
   font-size: 12px;
-  font-weight: 650;
+  font-weight: 500;
   color: #e4e7ec;
 }
 
@@ -3371,7 +3371,7 @@ html.telegram-mini-app .media-lightbox-nav {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  background: #101828;
+  background: var(--card-soft);
 }
 
 @media (max-width: 767px) {
@@ -3403,7 +3403,7 @@ html.telegram-mini-app .media-lightbox-nav {
   align-items: center;
   justify-content: center;
   gap: 20px;
-  background: linear-gradient(165deg, #f8f9fd 0%, #eef2ff 45%, #f5f3ff 100%);
+  background: linear-gradient(165deg, #100d19 0%, #281e3d 45%, #1c1428 100%);
   padding: 24px;
 }
 
@@ -3434,7 +3434,7 @@ html.telegram-mini-app .media-lightbox-nav {
 .brand-splash-text {
   margin: 0;
   font-size: 15px;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--muted);
   letter-spacing: 0.02em;
 }
@@ -3451,7 +3451,7 @@ html.telegram-mini-app .media-lightbox-nav {
   width: 42%;
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, #6d5dfc, #2f80ed, #6d5dfc);
+  background: linear-gradient(90deg, #a78bfa, #2f80ed, #a78bfa);
   background-size: 200% 100%;
   animation: brand-splash-progress 1.4s ease-in-out infinite;
 }
@@ -3500,7 +3500,7 @@ html.telegram-mini-app .media-lightbox-nav {
   align-items: center;
   gap: 10px;
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--muted);
 }
 
@@ -3519,7 +3519,7 @@ html.telegram-mini-app .media-lightbox-nav {
   max-width: 100%;
   aspect-ratio: 4 / 5;
   border-radius: 16px;
-  background: linear-gradient(90deg, #eef2ff 0%, #f8f9fd 45%, #eef2ff 100%);
+  background: linear-gradient(90deg, #281e3d 0%, #100d19 45%, #281e3d 100%);
   background-size: 200% 100%;
   animation: prompt-details-shimmer 1.4s ease-in-out infinite;
 }
@@ -3527,7 +3527,7 @@ html.telegram-mini-app .media-lightbox-nav {
 .prompt-details-skeleton-line {
   height: 12px;
   border-radius: 999px;
-  background: linear-gradient(90deg, #eef2ff 0%, #f8f9fd 45%, #eef2ff 100%);
+  background: linear-gradient(90deg, #281e3d 0%, #100d19 45%, #281e3d 100%);
   background-size: 200% 100%;
   animation: prompt-details-shimmer 1.4s ease-in-out infinite;
 }
@@ -3573,7 +3573,7 @@ html.telegram-mini-app .media-lightbox-nav {
 .settings-page-title {
   font-size: 28px;
   line-height: 34px;
-  font-weight: 800;
+  font-weight: 500;
   letter-spacing: -0.03em;
   color: var(--text);
 }
@@ -3628,7 +3628,7 @@ html.telegram-mini-app .media-lightbox-nav {
   margin-bottom: 14px;
   font-size: 16px;
   line-height: 24px;
-  font-weight: 750;
+  font-weight: 500;
   color: var(--text);
 }
 
@@ -3646,10 +3646,10 @@ html.telegram-mini-app .media-lightbox-nav {
   width: 72px;
   height: 72px;
   border-radius: 999px;
-  background: linear-gradient(135deg, #8b5cf6, #6d5dfc);
+  background: linear-gradient(135deg, #8b5cf6, #a78bfa);
   color: #fff;
   font-size: 30px;
-  font-weight: 800;
+  font-weight: 500;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -3659,7 +3659,7 @@ html.telegram-mini-app .media-lightbox-nav {
 
 .settings-avatar-image {
   object-fit: cover;
-  background: #f3f4f6;
+  background: #211a2e;
   box-shadow: 0 12px 24px rgba(16, 24, 40, 0.12);
 }
 
@@ -3672,7 +3672,7 @@ html.telegram-mini-app .media-lightbox-nav {
 .settings-profile-name {
   font-size: 18px;
   line-height: 24px;
-  font-weight: 800;
+  font-weight: 500;
   color: var(--text);
 }
 
@@ -3695,10 +3695,10 @@ html.telegram-mini-app .media-lightbox-nav {
   padding: 0 16px;
   border-radius: 10px;
   border: 1px solid var(--border);
-  background: #fff;
+  background: var(--card);
   color: var(--text-soft);
   font-size: 13px;
-  font-weight: 650;
+  font-weight: 500;
 }
 
 .settings-logout-btn--mobile {
@@ -3709,8 +3709,8 @@ html.telegram-mini-app .media-lightbox-nav {
 }
 
 .settings-logout-btn:hover {
-  background: #f9fafb;
-  border-color: #d0d5dd;
+  background: #1b1527;
+  border-color: #51445f;
 }
 
 .settings-account-status {
@@ -3734,7 +3734,7 @@ html.telegram-mini-app .media-lightbox-nav {
 
 .settings-account-title {
   font-size: 16px;
-  font-weight: 750;
+  font-weight: 500;
   color: var(--text);
 }
 
@@ -3749,10 +3749,10 @@ html.telegram-mini-app .media-lightbox-nav {
   height: 26px;
   padding: 0 10px;
   border-radius: 999px;
-  background: #dcfce7;
+  background: #193127;
   color: var(--green);
   font-size: 12px;
-  font-weight: 650;
+  font-weight: 500;
   display: inline-flex;
   align-items: center;
 }
@@ -3792,7 +3792,7 @@ html.telegram-mini-app .media-lightbox-nav {
   min-height: 74px;
   border-radius: 14px;
   border: 1px solid var(--border-soft);
-  background: #fff;
+  background: var(--card);
   padding: 12px;
   display: flex;
   align-items: center;
@@ -3818,7 +3818,7 @@ html.telegram-mini-app .media-lightbox-nav {
 
 .settings-mini-stat-value {
   font-size: 20px;
-  font-weight: 800;
+  font-weight: 500;
   color: var(--text);
 }
 
@@ -3883,7 +3883,7 @@ html.telegram-mini-app .media-lightbox-nav {
 .settings-action-title {
   font-size: 16px;
   line-height: 22px;
-  font-weight: 750;
+  font-weight: 500;
   color: var(--text);
 }
 
@@ -3899,7 +3899,7 @@ html.telegram-mini-app .media-lightbox-nav {
   height: 40px;
   border-radius: 999px;
   border: 1px solid var(--border);
-  background: #fff;
+  background: var(--card);
   color: var(--primary);
   display: flex;
   align-items: center;
@@ -3961,7 +3961,7 @@ html.telegram-mini-app .media-lightbox-nav {
 
 .settings-toggle-label {
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 500;
   color: var(--text);
 }
 
@@ -3975,7 +3975,7 @@ html.telegram-mini-app .media-lightbox-nav {
   width: 44px;
   height: 24px;
   border-radius: 999px;
-  background: #e5e7eb;
+  background: #393046;
   border: none;
   position: relative;
   transition: background 0.18s ease;
@@ -3993,7 +3993,7 @@ html.telegram-mini-app .media-lightbox-nav {
   width: 20px;
   height: 20px;
   border-radius: 999px;
-  background: #fff;
+  background: var(--card);
   transition: transform 0.18s ease;
 }
 
@@ -4037,7 +4037,7 @@ html.telegram-mini-app .media-lightbox-nav {
   height: 44px;
   border-radius: 12px;
   border: 1px solid var(--border);
-  background: #fff;
+  background: var(--card);
   color: var(--text-soft);
   display: flex;
   align-items: center;
@@ -4059,7 +4059,7 @@ html.telegram-mini-app .media-lightbox-nav {
   max-width: 460px;
   border-radius: 13px;
   border: 1px solid var(--border);
-  background: #fff;
+  background: var(--card);
   padding: 0 16px;
   font-size: 14px;
 }
@@ -4076,7 +4076,7 @@ html.telegram-mini-app .media-lightbox-nav {
 }
 
 .history-item {
-  background: #fff;
+  background: var(--card);
   border: 1px solid var(--border);
   border-radius: 18px;
   box-shadow: 0 8px 24px rgba(16, 24, 40, 0.04);
@@ -4100,7 +4100,7 @@ html.telegram-mini-app .media-lightbox-nav {
   flex: 0 0 72px;
   border-radius: 12px;
   overflow: hidden;
-  background: #f2f4f7;
+  background: #231d32;
 }
 
 .history-item-preview img {
@@ -4112,7 +4112,7 @@ html.telegram-mini-app .media-lightbox-nav {
 .history-item-preview-fallback {
   width: 100%;
   height: 100%;
-  background: linear-gradient(135deg, #eef2ff, #f8f9fd);
+  background: linear-gradient(135deg, #281e3d, #100d19);
 }
 
 .history-item-content {
@@ -4123,7 +4123,7 @@ html.telegram-mini-app .media-lightbox-nav {
 .history-item-title {
   font-size: 16px;
   line-height: 22px;
-  font-weight: 750;
+  font-weight: 500;
   color: var(--text);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -4140,7 +4140,7 @@ html.telegram-mini-app .media-lightbox-nav {
   margin-top: 8px;
   font-size: 14px;
   line-height: 20px;
-  color: #475467;
+  color: #b9accb;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -4158,7 +4158,7 @@ html.telegram-mini-app .media-lightbox-nav {
   height: 22px;
   padding: 0 8px;
   border-radius: 999px;
-  background: #f2f4f7;
+  background: #231d32;
   color: var(--muted);
   font-size: 11px;
   line-height: 22px;
@@ -4180,7 +4180,7 @@ html.telegram-mini-app .media-lightbox-nav {
   color: #fff;
   border: none;
   font-size: 13px;
-  font-weight: 650;
+  font-weight: 500;
 }
 
 .history-action-icon {
@@ -4188,7 +4188,7 @@ html.telegram-mini-app .media-lightbox-nav {
   height: 38px;
   border-radius: 10px;
   border: 1px solid var(--border);
-  background: #fff;
+  background: var(--card);
   color: var(--muted);
   display: flex;
   align-items: center;
@@ -4200,7 +4200,7 @@ html.telegram-mini-app .media-lightbox-nav {
 }
 
 .history-empty-card {
-  background: #fff;
+  background: var(--card);
   border: 1px solid var(--border);
   border-radius: 22px;
   padding: 48px;
@@ -4223,7 +4223,7 @@ html.telegram-mini-app .media-lightbox-nav {
 
 .history-empty-title {
   font-size: 20px;
-  font-weight: 800;
+  font-weight: 500;
   color: var(--text);
 }
 
@@ -4279,7 +4279,7 @@ html.telegram-mini-app .media-lightbox-nav {
 .legal-page-title {
   font-size: 28px;
   line-height: 1.2;
-  font-weight: 800;
+  font-weight: 500;
   color: var(--text);
 }
 
@@ -4301,7 +4301,7 @@ html.telegram-mini-app .media-lightbox-nav {
 .legal-page-content section h2 {
   margin-bottom: 10px;
   font-size: 18px;
-  font-weight: 750;
+  font-weight: 500;
   color: var(--text);
 }
 
@@ -4384,9 +4384,9 @@ html.telegram-mini-app .media-lightbox-nav {
   width: 46px;
   height: 42px;
   border-radius: 12px;
-  border: 1px solid #e5e9f2;
-  background: #ffffff;
-  color: #667085;
+  border: 1px solid #393046;
+  background: var(--card);
+  color: #aea0bf;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -4394,14 +4394,14 @@ html.telegram-mini-app .media-lightbox-nav {
 }
 
 .view-mode-switcher-btn:hover {
-  border-color: #ded7ff;
-  color: #6d5dfc;
+  border-color: #594070;
+  color: #a78bfa;
 }
 
 .view-mode-switcher-btn.active {
-  background: #f3f0ff;
-  border-color: #c9c2ff;
-  color: #6d5dfc;
+  background: #302244;
+  border-color: #6d538c;
+  color: #a78bfa;
 }
 
 .view-mode-switcher-btn:active {
@@ -4545,10 +4545,10 @@ html.telegram-mini-app .pinterest-masonry--mini-app-two-col:not(.pinterest-mason
 .pinterest-card {
   width: 100%;
   display: block;
-  background: #ffffff;
+  background: var(--card);
   border-radius: 18px;
   overflow: hidden;
-  border: 1px solid #e5e9f2;
+  border: 1px solid #393046;
   box-shadow: 0 8px 24px rgba(16, 24, 40, 0.045);
   cursor: pointer;
   position: relative;
@@ -4570,18 +4570,18 @@ html.telegram-mini-app .pinterest-masonry--mini-app-two-col:not(.pinterest-mason
 .pinterest-card--visual .pinterest-media {
   border-radius: 18px;
   overflow: hidden;
-  border: 1px solid #e5e9f2;
+  border: 1px solid #393046;
   box-shadow: 0 8px 24px rgba(16, 24, 40, 0.045);
 }
 
 .pinterest-card--visual:hover .pinterest-media {
-  border-color: #ded7ff;
+  border-color: #594070;
 }
 
 .pinterest-card:hover {
   transform: translateY(-2px);
   box-shadow: 0 18px 45px rgba(16, 24, 40, 0.075);
-  border-color: #ded7ff;
+  border-color: #594070;
 }
 
 .pinterest-card:active {
@@ -4592,7 +4592,7 @@ html.telegram-mini-app .pinterest-masonry--mini-app-two-col:not(.pinterest-mason
   width: 100%;
   max-height: 560px;
   overflow: hidden;
-  background: #f2f4f7;
+  background: #231d32;
   position: relative;
 }
 
@@ -4613,17 +4613,17 @@ html.telegram-mini-app .pinterest-masonry--mini-app-two-col:not(.pinterest-mason
 .pinterest-placeholder {
   width: 100%;
   aspect-ratio: 4 / 5;
-  background: linear-gradient(135deg, #f1eaff, #eaf3ff);
+  background: linear-gradient(135deg, #2d2141, #1e293e);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #6d5dfc;
+  color: #a78bfa;
 }
 
 .pinterest-media-skeleton {
   width: 100%;
   aspect-ratio: 4 / 5;
-  background: linear-gradient(90deg, #eef2f7 0%, #f8fafc 45%, #eef2f7 100%);
+  background: linear-gradient(90deg, #211a30 0%, #191423 45%, #211a30 100%);
   background-size: 200% 100%;
   animation: prompt-details-shimmer 1.35s ease-in-out infinite;
 }
@@ -4638,7 +4638,7 @@ html.telegram-mini-app .pinterest-masonry--mini-app-two-col:not(.pinterest-mason
   background: rgba(16, 24, 40, 0.72);
   color: #ffffff;
   font-size: 10px;
-  font-weight: 800;
+  font-weight: 500;
   line-height: 24px;
   backdrop-filter: blur(8px);
 }
@@ -4672,10 +4672,10 @@ html.telegram-mini-app .pinterest-masonry--mini-app-two-col:not(.pinterest-mason
   width: 38px;
   height: 38px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.92);
+  background: rgba(23, 17, 34, 0.94);
   border: 1px solid rgba(255, 255, 255, 0.75);
   backdrop-filter: blur(10px);
-  color: #344054;
+  color: #d1c7df;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -4684,18 +4684,18 @@ html.telegram-mini-app .pinterest-masonry--mini-app-two-col:not(.pinterest-mason
 }
 
 .pinterest-action-btn:hover {
-  background: #ffffff;
+  background: var(--card);
   transform: scale(1.04);
 }
 
 .pinterest-action-btn.active {
   color: #f6b51e;
-  background: #fff6df;
+  background: #352a20;
   border-color: #f6d66b;
 }
 
 html.telegram-mini-app .pinterest-action-btn.active {
-  color: #b45309;
+  color: #e8b86d;
   background: var(--yellow-soft);
   border-color: #f6d66b;
 }
@@ -4706,15 +4706,15 @@ html.telegram-mini-app .pinterest-action-btn.active {
 
 .pinterest-content {
   padding: 12px 12px 14px;
-  background: #ffffff;
+  background: var(--card);
 }
 
 .pinterest-excerpt {
   margin: 0;
   font-size: 14px;
   line-height: 20px;
-  font-weight: 600;
-  color: #344054;
+  font-weight: 500;
+  color: #d1c7df;
   display: -webkit-box;
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
@@ -4731,10 +4731,10 @@ html.telegram-mini-app .pinterest-action-btn.active {
   padding: 10px 12px;
   border-radius: 12px;
   border: 1px solid var(--border-soft);
-  background: #ffffff;
+  background: var(--card);
   color: var(--text-soft);
   font-size: 14px;
-  font-weight: 650;
+  font-weight: 500;
   cursor: pointer;
 }
 
@@ -4760,22 +4760,22 @@ html.telegram-mini-app .pinterest-action-btn.active {
   padding: 10px 12px;
   border-radius: 12px;
   border: 1px solid var(--border-soft);
-  background: #ffffff;
+  background: var(--card);
   color: var(--text-soft);
   font-size: 14px;
-  font-weight: 650;
+  font-weight: 500;
   cursor: pointer;
   text-align: left;
 }
 
 .publication-template-section-toggle--telegram {
-  border-color: #c7ddff;
-  background: #f5f9ff;
+  border-color: #3c5277;
+  background: #1c2235;
 }
 
 .publication-template-section-toggle--pinterest {
-  border-color: #fecaca;
-  background: #fff5f5;
+  border-color: #70404e;
+  background: #301e2b;
 }
 
 .publication-template-section {
@@ -4783,20 +4783,20 @@ html.telegram-mini-app .pinterest-action-btn.active {
   padding: 12px;
   border-radius: 12px;
   border: 1px solid var(--border-soft);
-  background: #ffffff;
+  background: var(--card);
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
 
 .publication-template-section--telegram {
-  border-color: #c7ddff;
-  background: #fafcff;
+  border-color: #3c5277;
+  background: #1a1726;
 }
 
 .publication-template-section--pinterest {
-  border-color: #fecaca;
-  background: #fffcfc;
+  border-color: #70404e;
+  background: #231822;
 }
 
 .publication-template-section-head {
@@ -4809,7 +4809,7 @@ html.telegram-mini-app .pinterest-action-btn.active {
 .publication-template-section-title {
   margin: 0;
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 500;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--muted);
@@ -4826,7 +4826,7 @@ html.telegram-mini-app .pinterest-action-btn.active {
   border-radius: 999px;
   font-size: 11px;
   line-height: 26px;
-  font-weight: 700;
+  font-weight: 500;
   display: inline-flex;
   align-items: center;
   white-space: nowrap;
@@ -4848,8 +4848,8 @@ html.telegram-mini-app .pinterest-action-btn.active {
   height: 22px;
   padding: 0 8px;
   border-radius: 999px;
-  background: #f2f4f7;
-  color: #667085;
+  background: #231d32;
+  color: #aea0bf;
   font-size: 11px;
   line-height: 22px;
   white-space: nowrap;
@@ -4861,8 +4861,8 @@ html.telegram-mini-app .pinterest-action-btn.active {
   height: 22px;
   padding: 0 8px;
   border-radius: 999px;
-  background: #f2f4f7;
-  color: #667085;
+  background: #231d32;
+  color: #aea0bf;
   font-size: 11px;
   line-height: 22px;
   white-space: nowrap;
@@ -4871,7 +4871,7 @@ html.telegram-mini-app .pinterest-action-btn.active {
 .pinterest-end {
   margin-top: 20px;
   font-size: 13px;
-  color: #98a2b3;
+  color: #998aa9;
   text-align: center;
 }
 
@@ -4891,7 +4891,7 @@ html.telegram-mini-app .pinterest-action-btn.active {
   display: block;
   text-align: center;
   font-size: 13px;
-  color: #98a2b3;
+  color: #998aa9;
 }
 
 .pinterest-card-skeleton {
@@ -4900,13 +4900,13 @@ html.telegram-mini-app .pinterest-action-btn.active {
 
 .pinterest-skeleton-media {
   width: 100%;
-  background: #f2f4f7;
+  background: #231d32;
 }
 
 .pinterest-skeleton-line {
   height: 12px;
   border-radius: 999px;
-  background: #f2f4f7;
+  background: #231d32;
 }
 
 .pinterest-skeleton-line--wide {
@@ -4988,10 +4988,10 @@ html.telegram-mini-app .pinterest-action-btn.active {
   padding: 0 10px;
   border-radius: 10px;
   border: 1px solid var(--border);
-  background: #ffffff;
+  background: var(--card);
   color: var(--text-soft);
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 500;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -5026,10 +5026,10 @@ html.telegram-mini-app .pinterest-action-btn.active {
   padding: 0 12px;
   border-radius: 10px;
   border: 1px solid var(--border);
-  background: #ffffff;
+  background: var(--card);
   color: var(--text-soft);
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 500;
   cursor: pointer;
 }
 
@@ -5047,9 +5047,9 @@ html.telegram-mini-app .pinterest-action-btn.active {
 .pinterest-publish-block {
   margin-top: 14px;
   padding: 16px;
-  border: 1px solid #e5e9f2;
+  border: 1px solid #393046;
   border-radius: 16px;
-  background: #f9fafc;
+  background: #1b1628;
 }
 
 .pinterest-publish-header {
@@ -5061,14 +5061,14 @@ html.telegram-mini-app .pinterest-action-btn.active {
 .pinterest-publish-title {
   margin: 0;
   font-size: 15px;
-  font-weight: 750;
-  color: #101828;
+  font-weight: 500;
+  color: #f0eaf8;
 }
 
 .pinterest-publish-subtext {
   margin: 0;
   font-size: 13px;
-  color: #667085;
+  color: #aea0bf;
 }
 
 .pinterest-publish-fields {
@@ -5085,18 +5085,18 @@ html.telegram-mini-app .pinterest-action-btn.active {
 
 .pinterest-publish-label {
   font-size: 13px;
-  font-weight: 700;
-  color: #344054;
+  font-weight: 500;
+  color: #d1c7df;
   margin-bottom: 6px;
 }
 
 .pinterest-publish-input,
 .pinterest-publish-textarea {
   width: 100%;
-  background: #ffffff;
-  border: 1px solid #e5e9f2;
+  background: var(--card);
+  border: 1px solid #393046;
   font-size: 14px;
-  color: #101828;
+  color: #f0eaf8;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
@@ -5117,14 +5117,14 @@ html.telegram-mini-app .pinterest-action-btn.active {
 .pinterest-publish-input:focus,
 .pinterest-publish-textarea:focus {
   outline: none;
-  border-color: #6d5dfc;
+  border-color: #a78bfa;
   box-shadow: 0 0 0 3px rgba(109, 93, 252, 0.12);
 }
 
 .pinterest-publish-hint {
   margin: 6px 0 0;
   font-size: 12px;
-  color: #667085;
+  color: #aea0bf;
 }
 
 .pinterest-publish-error {
@@ -5137,28 +5137,28 @@ html.telegram-mini-app .pinterest-action-btn.active {
   margin-top: 14px;
   padding: 14px;
   border-radius: 14px;
-  background: #f8f9fd;
-  border: 1px solid #edf0f6;
+  background: #100d19;
+  border: 1px solid #2d2539;
 }
 
 .pinterest-publish-preview-title {
   margin: 0;
   font-size: 14px;
-  font-weight: 800;
-  color: #101828;
+  font-weight: 500;
+  color: #f0eaf8;
 }
 
 .pinterest-publish-preview-description {
   margin: 6px 0 0;
   font-size: 13px;
   line-height: 20px;
-  color: #475467;
+  color: #b9accb;
   white-space: pre-line;
 }
 
 .pinterest-publish-preview-link {
   margin: 8px 0 0;
   font-size: 13px;
-  color: #6d5dfc;
+  color: #a78bfa;
   word-break: break-all;
 }

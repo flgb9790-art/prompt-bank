@@ -85,7 +85,7 @@ export function Sidebar({
           <span className="categories-label">Категории</span>
           <button
             type="button"
-            className="grid h-7 w-7 place-items-center rounded-lg text-[var(--muted)] transition hover:bg-[#f2f4f7]"
+            className="grid h-7 w-7 place-items-center rounded-lg text-[var(--muted)] transition hover:bg-[var(--card-soft)]"
             onClick={() => onNavigate("/categories")}
             aria-label="Все категории"
           >
@@ -145,7 +145,7 @@ export function Sidebar({
 
       <div className="sidebar-footer mt-auto shrink-0 pt-4">
         {isAuthenticated ? (
-          <button type="button" onClick={() => onNavigate("/settings")} className="settings-btn flex h-12 w-full items-center gap-3 rounded-[14px] border border-[var(--border)] bg-white px-4 text-[15px] text-[var(--text-soft)]">
+          <button type="button" onClick={() => onNavigate("/settings")} className="settings-btn flex h-12 w-full items-center gap-3 rounded-[14px] border border-[var(--border)] bg-[var(--card)] px-4 text-[15px] text-[var(--text-soft)]">
             <Settings size={18} />
             Настройки
           </button>

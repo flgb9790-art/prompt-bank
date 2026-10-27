@@ -69,8 +69,8 @@ export default defineConfig(({ mode }) => {
       manifest: {
         name: "Prompt Bank",
         short_name: "Prompt Bank",
-        theme_color: "#f8f9fd",
-        background_color: "#f8f9fd",
+        theme_color: "#100d19",
+        background_color: "#100d19",
         display: "standalone",
         start_url: "/",
         icons: [

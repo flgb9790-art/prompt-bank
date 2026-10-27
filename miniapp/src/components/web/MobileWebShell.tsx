@@ -37,7 +37,7 @@ export function MobileWebShell({
     <div className="mobile-web-shell flex min-h-dvh flex-col lg:hidden">
       <header className="mobile-web-header px-4 pt-[18px]">
         <div className="flex items-center justify-between gap-3">
-          <BrandLogo size={36} textClassName="text-[22px] font-[760] text-[var(--text)]" />
+          <BrandLogo size={36} textClassName="text-[22px] font-medium text-[var(--text)]" />
           {headerRight}
         </div>
         {currentPath === "/prompts" || currentPath === "/" ? (
