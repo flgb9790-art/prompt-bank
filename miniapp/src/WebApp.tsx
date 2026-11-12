@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowUpRight, SearchX, Sparkles, X } from "lucide-react";
+import { ArrowUpRight, Search, SearchX, SlidersHorizontal, X } from "lucide-react";
 import { api, ApiError, invalidateReferenceCaches, confirmPinterestPublication, setAuthTelegramId } from "./api";
 import type { Category, MeResponse, Prompt, PromptCreatePayload, TagStat, TelegramUser, CreatePromptResponse } from "./types";
 import { SettingsScreen } from "./components/settings/SettingsScreen";
@@ -22,7 +22,6 @@ import {
 } from "./utils/favoritesCache";
 import { AuthRequiredModal } from "./components/web/AuthRequiredModal";
 import { PromptGrid } from "./components/web/PromptGrid";
-import { Sidebar } from "./components/web/Sidebar";
 import { SortSelect } from "./components/web/SortSelect";
 import { TelegramAuthModal } from "./components/web/TelegramAuthModal";
 import { Topbar } from "./components/web/Topbar";
@@ -41,8 +40,7 @@ import {
 import { mergePromptUpdate } from "./utils/mergePrompt";
 import { normalizeTagName } from "./utils/tagFilter";
 import type { GetPromptsParams } from "./api";
-import { useLoadMoreOnScroll } from "./hooks/useLoadMoreOnScroll";
-import { prefetchPromptsPage, takePrefetchedPromptsPage } from "./utils/promptsPrefetch";
+import { prefetchPromptsPage, takePrefetchedPromptsPage, clearPromptsPrefetch } from "./utils/promptsPrefetch";
 import { mergePromptPages } from "./utils/mergePromptPages";
 import { useWebSeo } from "./hooks/useWebSeo";
 import {
@@ -53,12 +51,10 @@ import {
   withPromptDetails
 } from "./utils/promptContent";
 import {
-  PINTEREST_PAGE_SIZE,
   WEB_PINTEREST_PAGE_SIZE_DESKTOP,
   WEB_PINTEREST_PAGE_SIZE_MOBILE,
   readViewMode,
   saveViewMode,
-  computePagedHasMore,
   type ViewMode
 } from "./utils/viewMode";
 import { persistPublicationTemplatesFromPrompt } from "./utils/publicationTemplatesStorage";
@@ -79,14 +75,13 @@ const storageKey = "prompt-bank-web-auth";
 const CATEGORIES_CACHE_KEY = "prompt-bank-categories";
 const TAGS_CACHE_KEY = "prompt-bank-tags";
 const PROMPTS_PER_PAGE = 12;
-const PROMPTS_FETCH_LIMIT = 40;
-const FAVORITES_FETCH_LIMIT = 40;
 const SEARCH_DEBOUNCE_MS = 350;
 const telegramAuthUrl = (import.meta.env.VITE_TELEGRAM_AUTH_URL as string | undefined)?.trim();
 const telegramBotUsernameFromEnv = (import.meta.env.VITE_TELEGRAM_BOT_USERNAME as string | undefined)?.trim();
 
 function getRoutePath(pathname: string): RoutePath {
   if (parsePromptIdFromPathname(pathname)) return "/";
+  if (["/prompts", "/categories", "/tags", "/recent"].includes(pathname)) return "/";
   const allowed: RoutePath[] = ["/", "/prompts", "/favorites", "/categories", "/tags", "/recent", "/settings", "/copied", "/viewed", "/privacy"];
   return allowed.includes(pathname as RoutePath) ? (pathname as RoutePath) : "/";
 }
@@ -116,10 +111,8 @@ export function WebApp() {
   const [loading, setLoading] = useState(true);
   const [promptsLoading, setPromptsLoading] = useState(false);
   const promptListRequestRef = useRef(0);
-  const [loadingMoreRemote, setLoadingMoreRemote] = useState(false);
   const [favoritePrompts, setFavoritePrompts] = useState<Prompt[]>([]);
   const [favoritesTotal, setFavoritesTotal] = useState(() => favoritesTotalFromCache());
-  const [loadingMoreFavorites, setLoadingMoreFavorites] = useState(false);
   const [favoritesLoading, setFavoritesLoading] = useState(false);
   const [error, setError] = useState("");
   const [toast, setToast] = useState("");
@@ -137,7 +130,7 @@ export function WebApp() {
   const [me, setMe] = useState<MeResponse | null>(null);
   const [page, setPage] = useState(1);
   const isDesktopLayout = useMediaMinWidth(1024);
-  const webPinterestPageSize = isDesktopLayout ? WEB_PINTEREST_PAGE_SIZE_DESKTOP : WEB_PINTEREST_PAGE_SIZE_MOBILE;
+  const webPinterestPageSize = path === "/" && viewMode !== "pinterest" ? PROMPTS_PER_PAGE : isDesktopLayout ? WEB_PINTEREST_PAGE_SIZE_DESKTOP : WEB_PINTEREST_PAGE_SIZE_MOBILE;
 
   function scrollWebToTop() {
     document.querySelector<HTMLElement>(".prompt-scroll-root")?.scrollTo({ top: 0, behavior: "smooth" });
@@ -153,10 +146,7 @@ export function WebApp() {
   const deepLinkHandledRef = useRef(false);
   const filterLoadReadyRef = useRef(false);
   const openPromptRequestRef = useRef(0);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [lastPromptBatchSize, setLastPromptBatchSize] = useState(0);
-  const [lastFavoriteBatchSize, setLastFavoriteBatchSize] = useState(0);
-  const loadMoreOffsetRef = useRef<number | null>(null);
+
 
   useEffect(() => {
     document.documentElement.classList.add("web-mode");
@@ -243,23 +233,13 @@ export function WebApp() {
     }
   }
 
-  const listViewMode: ViewMode = path === "/prompts" ? viewMode : "pinterest";
-  const useWebPinterestPagination = listViewMode === "pinterest";
-
-  const hasMoreRemote = useWebPinterestPagination
-    ? false
-    : prompts.length < promptsTotal;
-  const hasMoreFavorites = useWebPinterestPagination
-    ? false
-    : favoritePrompts.length < favoritesTotal;
-
   function handleViewModeChange(next: ViewMode) {
     setViewMode(next);
     saveViewMode(next);
   }
 
   function getFetchLimit() {
-    return useWebPinterestPagination ? webPinterestPageSize : PROMPTS_FETCH_LIMIT;
+    return webPinterestPageSize;
   }
 
   function buildPromptsQuery(offset: number): GetPromptsParams {
@@ -275,64 +255,25 @@ export function WebApp() {
     };
   }
 
-  function scheduleWebPrefetch(loadedCount: number, total: number) {
-    if (loadedCount >= total) return;
-    runDeferred(() => prefetchPromptsPage(buildPromptsQuery(loadedCount)));
-  }
-
-  const loadMoreRef = useLoadMoreOnScroll({
-    enabled: listViewMode !== "pinterest" && !loading && prompts.length > 0,
-    loading: loadingMoreRemote || promptsLoading,
-    hasMore: hasMoreRemote,
-    onLoadMore: () => void loadMoreRemotePrompts(),
-    scrollRootSelector: ".prompt-scroll-root",
-    itemCount: prompts.length
-  });
-
-  async function loadMoreRemotePrompts() {
-    if (loadingMoreRemote || !hasMoreRemote) return;
-    const offset = prompts.length;
-    const listRequest = promptListRequestRef.current;
-    if (loadMoreOffsetRef.current === offset) return;
-
-    loadMoreOffsetRef.current = offset;
-    setLoadingMoreRemote(true);
-    const query = buildPromptsQuery(offset);
-    try {
-      const cached = await takePrefetchedPromptsPage(query);
-      const promptsData = cached ?? (await api.getPrompts(query));
-      if (listRequest !== promptListRequestRef.current) return;
-      const mapped = mapPromptsFromApi(promptsData.items);
-      setLastPromptBatchSize(mapped.length);
-      setPrompts((prev) => {
-        const merged = mergePromptPages(prev, mapped);
-        scheduleWebPrefetch(merged.length, promptsData.total);
-        return merged;
-      });
-      setPromptsTotal(promptsData.total);
-    } catch (err) {
-      console.error(err);
-      setToast("Не удалось загрузить ещё промпты");
-    } finally {
-      loadMoreOffsetRef.current = null;
-      setLoadingMoreRemote(false);
-    }
+  function scheduleWebPrefetch(total: number) {
+    const nextOffset = page * webPinterestPageSize;
+    if (nextOffset >= total) return;
+    runDeferred(() => { void prefetchPromptsPage(buildPromptsQuery(nextOffset)).catch(() => undefined); });
   }
 
   async function loadPrompts() {
     const requestId = ++promptListRequestRef.current;
-    loadMoreOffsetRef.current = null;
     setPromptsLoading(true);
     setError("");
     try {
-      const offset = useWebPinterestPagination ? (page - 1) * webPinterestPageSize : 0;
-      const promptsData = await api.getPrompts(buildPromptsQuery(offset));
+      const offset = (page - 1) * webPinterestPageSize;
+      const query = buildPromptsQuery(offset);
+      const promptsData = await takePrefetchedPromptsPage(query) ?? await api.getPrompts(query);
       if (requestId !== promptListRequestRef.current) return;
       const mapped = applyFavoriteIdsToList(mapPromptsFromApi(promptsData.items), favoriteIdsRef.current);
       setPrompts(mapped);
       setPromptsTotal(promptsData.total);
-      setLastPromptBatchSize(mapped.length);
-      scheduleWebPrefetch(mapped.length, promptsData.total);
+      scheduleWebPrefetch(promptsData.total);
     } catch (err) {
       if (requestId !== promptListRequestRef.current) return;
       setError("Не удалось загрузить промпты.");
@@ -463,12 +404,11 @@ export function WebApp() {
   async function refreshWebFavorites(showSpinner: boolean) {
     if (!isAuthenticated) return;
     if (showSpinner) setFavoritesLoading(true);
-    const limit = useWebPinterestPagination ? webPinterestPageSize : PINTEREST_PAGE_SIZE;
-    const offset = useWebPinterestPagination ? (page - 1) * webPinterestPageSize : 0;
+    const limit = webPinterestPageSize;
+    const offset = (page - 1) * webPinterestPageSize;
     try {
       const data = await api.getPrompts({ favorite: true, limit, offset, lite: true, sort });
       const mapped = mapPromptsFromApi(data.items);
-      setLastFavoriteBatchSize(mapped.length);
       if (page === 1) {
         applyWebFavoritesHydration(mapped, data.total);
       } else {
@@ -645,6 +585,7 @@ export function WebApp() {
   }
 
   function navigate(nextPath: RoutePath, options?: { keepTag?: boolean }) {
+    nextPath = getRoutePath(nextPath);
     if (window.location.pathname !== nextPath) {
       const url = new URL(window.location.href);
       url.pathname = nextPath;
@@ -730,7 +671,7 @@ export function WebApp() {
     }
     try {
       await api.deletePrompt(id);
-      invalidateReferenceCaches();
+      invalidateReferenceCaches(); clearPromptsPrefetch();
       closePromptModal();
       setPrompts((prev) => prev.filter((item) => item.id !== id));
       setFavoritePrompts((prev) => prev.filter((item) => item.id !== id));
@@ -812,7 +753,7 @@ export function WebApp() {
         }
       }
       persistPublicationTemplatesFromPrompt(created);
-      invalidateReferenceCaches();
+      invalidateReferenceCaches(); clearPromptsPrefetch();
       upsertPromptInList(created);
       setPromptsTotal((prev) => prev + 1);
       setToast(
@@ -915,6 +856,7 @@ export function WebApp() {
   }
 
   function logout() {
+    clearPromptsPrefetch();
     setUser(null);
     setDbUserId(null);
     setIsAdmin(false);
@@ -958,7 +900,7 @@ export function WebApp() {
       </section>;
     }
 
-    const displayView = path === "/prompts" ? viewMode : "pinterest";
+    const displayView = path === "/" ? viewMode : "pinterest";
 
     if (displayView === "pinterest") {
       const total = isFavorites ? favoritesTotal : promptsTotal;
@@ -988,98 +930,52 @@ export function WebApp() {
       );
     }
 
-    const listTotalPages = Math.max(1, Math.ceil(list.length / PROMPTS_PER_PAGE));
-    const listPage = Math.min(page, listTotalPages);
-    const start = (listPage - 1) * PROMPTS_PER_PAGE;
-    const pageItems = list.slice(start, start + PROMPTS_PER_PAGE);
-
-    return (
-      <>
-        <PromptGrid
-          prompts={pageItems}
-          view={displayView}
-          onOpenPrompt={openPrompt}
-          onCopyPrompt={handleCopy}
-          onToggleFavorite={handleToggleFavorite}
-          onTagClick={handleSelectTag}
-        />
-        <Pagination
-          page={listPage}
-          totalPages={listTotalPages}
-          totalItems={list.length}
-          pageSize={PROMPTS_PER_PAGE}
-          onPageChange={handlePageChange}
-        />
-        {hasMoreRemote ? (
-          <div ref={loadMoreRef} className="mt-4 flex min-h-10 items-center justify-center">
-            {loadingMoreRemote ? (
-              <span className="text-sm text-[var(--muted)]">Загрузка...</span>
-            ) : (
-              <span className="text-xs text-[var(--muted)]">
-                {prompts.length} из {promptsTotal}
-              </span>
-            )}
-          </div>
-        ) : null}
-      </>
-    );
+    const total = isFavorites ? favoritesTotal : promptsTotal;
+    return <><PromptGrid prompts={list} view={displayView} onOpenPrompt={openPrompt} onCopyPrompt={handleCopy} onToggleFavorite={handleToggleFavorite} onTagClick={handleSelectTag}/><Pagination page={page} totalPages={Math.max(1, Math.ceil(total / webPinterestPageSize))} totalItems={total} pageSize={webPinterestPageSize} onPageChange={handlePageChange}/></>;
   }
+
+  function focusLibrarySearch() {
+    navigate("/");
+    requestAnimationFrame(() => document.getElementById("library-search")?.focus());
+  }
+  useEffect(() => {
+    function onShortcut(event: KeyboardEvent) {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault(); focusLibrarySearch();
+      }
+    }
+    window.addEventListener("keydown", onShortcut);
+    return () => window.removeEventListener("keydown", onShortcut);
+  }, []);
 
   const content = (
     <>
       {path === "/" ? <>
-        <section className="library-intro">
-          <span className="library-eyebrow"><Sparkles size={14} aria-hidden /> БИБЛИОТЕКА ИДЕЙ</span>
-          <h1>Меньше поиска.<br /><span>Больше вдохновения.</span></h1>
-          <p>Готовые промпты с примерами результата. Выберите, скопируйте и создайте что-то своё.</p>
-          <button type="button" className="library-intro-link" onClick={() => navigate("/prompts")}>Открыть каталог <ArrowUpRight size={17} /></button>
-          <div className="library-intro-decoration" aria-hidden><Sparkles size={72} strokeWidth={1.1} /></div>
+        <section className="studio-intro">
+          <div>
+            <h1>От идеи <span>к результату.</span></h1>
+            <p className="studio-description">Промпты, с которых хочется начать. Найдите свой — и попробуйте.</p>
+          </div>
+
         </section>
-        <div className="library-section-heading"><h2>{search ? "Результаты поиска" : "Новые в коллекции"}</h2><span>{promptsLoading ? "Ищем…" : `${promptsTotal} промптов`}</span></div>
+        <section className="studio-discovery" aria-label="Поиск и фильтры">
+          <div className="studio-search"><Search size={20} strokeWidth={1.5}/><input id="library-search" type="search" aria-label="Поиск промптов" value={search} placeholder="Что хотите создать?" onChange={event=>setSearch(event.target.value)}/>{search ? <button className="studio-icon" aria-label="Очистить поиск" onClick={()=>setSearch("")}><X size={16}/></button> : <kbd>⌘ / Ctrl K</kbd>}</div>
+          <div className="studio-toolbar">
+            <div className="studio-results" role="status">{promptsLoading ? "Ищем…" : <><span>{promptsTotal}</span> {search || activeCategory || activeTag ? "найдено" : "промптов для ваших идей"}</>}</div>
+            <div className="studio-tools">
+              <details className="studio-filter-menu" onKeyDown={event=>{if(event.key === "Escape"){event.currentTarget.open=false;event.currentTarget.querySelector("summary")?.focus();}}}><summary><SlidersHorizontal size={15}/>Фильтры{(activeCategory || activeTag) && <i/>}</summary><div className="studio-filter-panel">
+                <label htmlFor="library-category">Категория</label><select id="library-category" className="form-select" value={activeCategory || ""} onChange={event=>setActiveCategory(event.target.value || undefined)}><option value="">Все категории</option>{categoriesWithPrompts.map(category=><option key={category.id} value={category.slug}>{category.name}</option>)}</select>
+                <label htmlFor="library-tag">Ключевое слово</label><select id="library-tag" className="form-select" value={activeTag || ""} onChange={event=>setActiveTag(event.target.value || undefined)}><option value="">Любое слово</option>{tagsWithPrompts.map(tag=><option key={tag.id} value={normalizeTagName(tag.name)}>{tag.name}</option>)}</select>
+                {(activeCategory || activeTag) && <button className="studio-text-button" onClick={()=>{setActiveCategory(undefined);setActiveTag(undefined);}}>Сбросить фильтры</button>}
+              </div></details>
+              <SortSelect value={sort} onChange={setSort}/>
+              <ViewModeSwitcher value={viewMode} onChange={handleViewModeChange}/>
+            </div>
+          </div>
+          {(activeCategory || activeTag) && <div className="studio-applied-filters">{activeCategory && <button onClick={()=>setActiveCategory(undefined)}>{categories.find(category=>category.slug===activeCategory)?.name}<X size={13}/></button>}{activeTag && <button onClick={()=>setActiveTag(undefined)}>{activeTag}<X size={13}/></button>}</div>}
+        </section>
         {renderPromptList(prompts)}
       </> : null}
-
-      {path === "/prompts" ? (
-        <div>
-          {activeTag ? (
-            <div className="mb-3">
-              <h2 className="text-base font-semibold text-[var(--text)]">
-                Тег: {activeTag}
-                <span className="ml-2 text-sm font-normal text-[var(--muted)]">({promptsTotal})</span>
-              </h2>
-            </div>
-          ) : null}
-          <div className="catalog-toolbar">
-            <div><h1 className="section-title">{activeTag ? "Промпты по тегу" : "Все промпты"}</h1><p className="catalog-count" role="status">{promptsLoading ? "Обновляем подборку…" : `${promptsTotal} промптов в подборке`}</p></div>
-            <div className="catalog-controls">
-              <SortSelect value={sort} onChange={setSort} />
-              <ViewModeSwitcher value={viewMode} onChange={handleViewModeChange} />
-            </div>
-          </div>
-          <div className="catalog-filters mt-3 flex flex-wrap gap-2" role="group" aria-label="Категории промптов">
-            <button aria-pressed={!activeCategory} className={`chip ${!activeCategory ? "active" : ""}`} onClick={() => setActiveCategory(undefined)} type="button">
-              Все
-            </button>
-            {categoriesWithPrompts.map((category) => (
-              <button
-                key={category.id}
-                aria-pressed={activeCategory === category.slug}
-                className={`chip ${activeCategory === category.slug ? "active" : ""}`}
-                onClick={() => setActiveCategory(category.slug)}
-                type="button"
-              >
-                {category.name}
-              </button>
-            ))}
-            {activeTag ? (
-              <button className="chip active" onClick={() => setActiveTag(undefined)} type="button">
-                {activeTag} ×
-              </button>
-            ) : null}
-          </div>
-          {renderPromptList(prompts)}
-        </div>
-      ) : null}
 
       {path === "/favorites" ? (
         isAuthenticated ? (
@@ -1101,38 +997,6 @@ export function WebApp() {
           </div>
         )
       ) : null}
-
-      {path === "/categories" ? (
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {categoriesWithPrompts.map((category) => (
-            <div key={category.id} className="surface-card p-4">
-              <p className="text-sm text-[var(--text-soft)]">{category.icon ?? "📂"} {category.name}</p>
-              <p className="mt-2 text-2xl font-semibold text-[var(--text)]">{category.promptCount ?? 0}</p>
-            </div>
-          ))}
-        </div>
-      ) : null}
-
-      {path === "/tags" ? (
-        <div className="flex flex-wrap gap-2">
-          {tagsWithPrompts.length ? (
-            tagsWithPrompts.map((tag) => (
-              <button
-                key={tag.id}
-                type="button"
-                className={`chip ${activeTag === normalizeTagName(tag.name) ? "active" : ""}`}
-                onClick={() => handleSelectTag(tag.name)}
-              >
-                {tag.name} ({tag.count})
-              </button>
-            ))
-          ) : (
-            <p className="text-sm text-[var(--muted)]">Пока нет тегов с опубликованными промптами.</p>
-          )}
-        </div>
-      ) : null}
-
-      {path === "/recent" ? renderPromptList(prompts) : null}
 
       {path === "/settings" ? (
         <SettingsScreen
@@ -1179,7 +1043,7 @@ export function WebApp() {
   const body = error ? (
     <div className="library-empty" role="alert"><SearchX size={28} /><h2>Не удалось загрузить данные</h2><p>Проверьте соединение и попробуйте ещё раз.</p><button type="button" className="btn-primary" onClick={() => window.location.reload()}>Повторить загрузку</button></div>
   ) : (
-    <div className="library-content" aria-busy={promptsLoading}>{content}</div>
+    <div className="library-content" aria-busy={promptsLoading}>{path === "/favorites" && <div className="studio-page-title"><p className="studio-eyebrow">ВАША КОЛЛЕКЦИЯ</p><h1>Избранное</h1><p>То, к чему хочется вернуться.</p></div>}{content}<footer className="studio-footer"><span>Prompt Bank · Место для следующей идеи</span><div><a href="https://t.me/prmpt_bank" target="_blank" rel="noreferrer">Telegram <ArrowUpRight size={12}/></a><button onClick={()=>navigate("/privacy")}>Конфиденциальность</button></div></footer></div>
   );
 
   const modals = (
@@ -1260,35 +1124,7 @@ export function WebApp() {
     <>
       {isDesktopLayout ? (
         <div className="h-full">
-          <WebLayout
-            sidebarOpen={sidebarOpen}
-            onSidebarClose={() => setSidebarOpen(false)}
-            sidebar={
-              <Sidebar
-                currentPath={path}
-                categories={categories}
-                activeCategory={activeCategory}
-                isAuthenticated={isAuthenticated}
-                onNavigate={(route) => {
-                  navigate(route);
-                  setSidebarOpen(false);
-                }}
-                onSelectCategory={setActiveCategory}
-                onLogin={loginTelegram}
-              />
-            }
-            topbar={
-              <Topbar
-                search={search}
-                onSearchChange={setSearch}
-                isAuthenticated={isAuthenticated}
-                canCreate={isAdmin}
-                onCreatePrompt={handleCreateClick}
-                onLoginTelegram={loginTelegram}
-                onMenuClick={() => setSidebarOpen(true)}
-              />
-            }
-          >
+          <WebLayout topbar={<Topbar currentPath={path} onNavigate={navigate} isAuthenticated={isAuthenticated} canCreate={isAdmin} onCreatePrompt={handleCreateClick} onLoginTelegram={loginTelegram} onFocusSearch={focusLibrarySearch}/>}>
             {body}
           </WebLayout>
         </div>

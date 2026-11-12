@@ -16,6 +16,10 @@ export function promptsQueryKey(params: GetPromptsParams): string {
 
 const inflight = new Map<string, Promise<PromptListResponse>>();
 
+export function clearPromptsPrefetch() {
+  inflight.clear();
+}
+
 export function prefetchPromptsPage(params: GetPromptsParams) {
   const key = promptsQueryKey(params);
   if (!inflight.has(key)) {

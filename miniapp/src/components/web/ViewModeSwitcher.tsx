@@ -34,8 +34,8 @@ export function ViewModeSwitcher({ value, onChange, className = "", hidePinteres
       {!hidePinterest ? (
         <button
           type="button"
-          title="Pinterest"
-          aria-label="Pinterest"
+          title="Галерея примеров"
+          aria-label="Галерея примеров"
           aria-pressed={value === "pinterest"}
           className={`view-mode-switcher-btn ${value === "pinterest" ? "active" : ""}`}
           onClick={() => onChange("pinterest")}

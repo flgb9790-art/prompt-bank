@@ -7,6 +7,7 @@ import { registerWebPwa } from "./utils/pwa";
 import { maybeRedirectTelegramBrowserToMiniApp, migrateLegacyPromptQueryToPath } from "./utils/promptShare";
 import "./styles.css";
 import "./usability.css";
+import "./studio.css";
 import { applyReadingSize } from "./utils/readingPreferences";
 
 export { hideAppSplash };

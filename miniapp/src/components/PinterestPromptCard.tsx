@@ -139,7 +139,7 @@ export const PinterestPromptCard = memo(function PinterestPromptCard({
           </button>
         </div>
       </div>
-      <div className="pinterest-card-caption"><h3>{label}</h3><span>Открыть промпт <span aria-hidden>↗</span></span></div>
+      <div className="pinterest-card-caption"><h3>{label}</h3><span>{prompt.category.name}</span></div>
     </article>
   );
 });

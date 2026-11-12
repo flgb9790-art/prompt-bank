@@ -56,7 +56,7 @@ export function PromptGrid({
         <VirtualPromptList
           prompts={prompts}
           variant="list"
-          scrollSelector=".web-app-main"
+          scrollSelector=".prompt-scroll-root"
           estimateSize={128}
           onOpenPrompt={onOpenPrompt}
           onToggleFavorite={onToggleFavorite}
@@ -72,7 +72,7 @@ export function PromptGrid({
       <div className="hidden md:block">
         <VirtualPromptGrid
           prompts={prompts}
-          scrollSelector=".web-app-main"
+          scrollSelector=".prompt-scroll-root"
           onOpenPrompt={onOpenPrompt}
           onToggleFavorite={onToggleFavorite}
           onCopyPrompt={onCopyPrompt}
@@ -83,7 +83,7 @@ export function PromptGrid({
         <VirtualPromptList
           prompts={prompts}
           variant="mobile"
-          scrollSelector=".web-app-main"
+          scrollSelector=".prompt-scroll-root"
           onOpenPrompt={onOpenPrompt}
           onToggleFavorite={onToggleFavorite}
           onCopyPrompt={onCopyPrompt}
