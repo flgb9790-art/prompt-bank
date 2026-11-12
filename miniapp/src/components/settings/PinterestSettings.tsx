@@ -9,8 +9,10 @@ export function PinterestSettings() {
   const [message, setMessage] = useState("");
   async function load() {
     const next = await api.pinterestStatus(); setStatus(next);
-    if (next.connected) {
+    if (next.connected && !next.needsReconnect) {
       const result = await api.pinterestBoards(); setBoards(result.items); setBookmark(result.bookmark);
+    } else {
+      setBoards([]); setBookmark(null);
     }
   }
   useEffect(() => { void load().catch(error => setMessage(error.message)); }, []);
@@ -22,9 +24,9 @@ export function PinterestSettings() {
   return <section className="settings-card settings-card--full reading-settings">
     <h2 className="settings-card-title">Публикация в Pinterest</h2>
     <p className="settings-help">Общий аккаунт публикации Prompt Bank. Настройки доступны только администраторам. Каждый пин создаётся после отдельного подтверждения.</p>
-    <p className="settings-help" role="status">{!status ? "Проверяем подключение…" : status.connected ? "Pinterest подключён" : status.legacyConfigured ? "Работает прежнее подключение сервера. Подключите аккаунт через Pinterest для демонстрации." : "Pinterest не подключён"}</p>
-    {status?.needsReconnect && <p className="settings-help">Срок доступа истёк. Подключите аккаунт заново.</p>}
-    {status?.connected && <>
+    <p className="settings-help" role="status">{!status ? "Проверяем подключение…" : status.needsReconnect ? "Pinterest нужно подключить заново" : status.connected ? "Pinterest подключён" : status.legacyConfigured ? "Работает прежнее подключение сервера. Подключите аккаунт через Pinterest для демонстрации." : "Pinterest не подключён"}</p>
+    {status?.needsReconnect && <p className="settings-help">{status.missingScopes?.length ? "Для публикации не хватает разрешений. Нажмите Подключить заново и подтвердите доступ на Pinterest." : "Срок доступа истёк. Подключите аккаунт заново."}</p>}
+    {status?.connected && !status.needsReconnect && <>
       <label className="settings-help" htmlFor="pinterest-board">Доска назначения</label>
       <select id="pinterest-board" className="form-select mt-3 w-full" value={status.boardId || ""} disabled={busy}
         onChange={event => void run(async () => { setStatus(await api.selectPinterestBoard(event.target.value)); setMessage("Доска сохранена"); })}>
@@ -39,10 +41,10 @@ export function PinterestSettings() {
       })}>Загрузить ещё доски</button>}
     </>}
     <div className="mt-4 flex flex-wrap gap-2">
-      {!status?.connected && <button className="btn-secondary" disabled={busy} onClick={() => void run(load)}>Проверить подключение</button>}
+      {(!status?.connected || status.needsReconnect) && <button className="btn-secondary" disabled={busy} onClick={() => void run(load)}>Проверить подключение</button>}
       <button className="btn-primary" disabled={busy || !status?.configured} onClick={() => void run(async () => {
         const {url} = await api.connectPinterest(); window.location.assign(url);
-      })}>{status?.connected ? "Подключить заново" : "Подключить Pinterest"}</button>
+      })}>{status?.connected || status?.needsReconnect ? "Подключить заново" : "Подключить Pinterest"}</button>
       {(status?.connected || status?.legacyConfigured) && <button className="btn-secondary" disabled={busy} onClick={() => {
         if (!window.confirm("Отключить Pinterest от Prompt Bank? Сохранённые токены будут удалены, опубликованные пины останутся.")) return;
         void run(async () => { setStatus(await api.disconnectPinterest()); setBoards([]); setBookmark(null); setMessage("Pinterest отключён. При необходимости отзовите доступ также в настройках Pinterest."); });

@@ -1,4 +1,5 @@
 import { config } from "../config";
+import { PINTEREST_REQUIRED_SCOPES } from "../utils/pinterestScopes";
 
 export function buildPinterestAuthUrl(state: string): string {
   if (!config.pinterestClientId || !config.pinterestClientSecret || !config.pinterestRedirectUri) {
@@ -6,7 +7,7 @@ export function buildPinterestAuthUrl(state: string): string {
   }
   return `https://www.pinterest.com/oauth/?${new URLSearchParams({
     client_id: config.pinterestClientId, redirect_uri: config.pinterestRedirectUri,
-    response_type: "code", scope: "boards:read,pins:write", state
+    response_type: "code", scope: PINTEREST_REQUIRED_SCOPES.join(","), state
   })}`;
 }
 function escapeHtml(value: string) {

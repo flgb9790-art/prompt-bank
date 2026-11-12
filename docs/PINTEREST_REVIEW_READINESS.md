@@ -22,6 +22,7 @@
 PINTEREST_CLIENT_ID=<App ID из Pinterest Developers>
 PINTEREST_CLIENT_SECRET=<App secret>
 PINTEREST_REDIRECT_URI=https://prompt-bank.one/api/pinterest/callback
+PINTEREST_API_BASE_URL=https://api.pinterest.com/v5
 PINTEREST_TOKEN_ENCRYPTION_KEY=<64 случайных hex-символа>
 WEBAPP_URL=https://prompt-bank.one
 PUBLIC_SITE_URL=https://prompt-bank.one
@@ -39,8 +40,21 @@ ADMIN_TELEGRAM_IDS=<Telegram ID администратора>
 callback, устанавливает там проверочный cookie и только затем перенаправляет на Pinterest.
 Этот домен должен обслуживаться тем же backend; frontend-домен без Express API не подходит.
 
-Запрашиваются только `boards:read,pins:write`; создание досок и чтение пинов приложению не нужны.
+Запрашиваются `boards:read,boards:write,pins:read,pins:write`. Все четыре разрешения необходимы
+для `POST /pins` по [официальной OpenAPI Pinterest](https://github.com/pinterest/api-description/blob/main/v5/openapi.yaml#L15498-L15503).
+Приложение использует доступ для получения досок, выбора назначения и создания пина после подтверждения.
 Создайте доску заранее в Pinterest. Подключение для записи видео выполняйте в обычном браузере.
+
+Обмен OAuth-кода и обновление токена используют production `https://api.pinterest.com/v5/oauth/token`.
+Для этих токенов задайте `PINTEREST_API_BASE_URL=https://api.pinterest.com/v5`.
+Sandbox (`api-sandbox.pinterest.com`) требует отдельного Sandbox-токена: production OAuth-токен
+с ним несовместим. Не переключайте текущую OAuth-интеграцию на Sandbox ради Trial-статуса.
+
+После обновления старые подключения с двумя разрешениями нужно переподключить: Настройки →
+«Подключить заново» → подтвердить четыре разрешения на Pinterest → повторно выбрать доску.
+Обычное обновление токена не добавляет разрешения. Затем проверьте итоговые поля и подтвердите
+публикацию Pinterest. Сохранённую ссылку на существующий Telegram-пост используйте повторно;
+материал в Telegram заново не отправляйте.
 
 Сгенерировать ключ локально:
 
@@ -96,7 +110,7 @@ npm run build
 ## Ручная проверка перед записью
 
 1. Войти через Telegram под администратором. Проверить, что у обычного посетителя нет блока Pinterest.
-2. Настройки → Подключить Pinterest → разрешить доступ на официальной странице → возврат «Подключён».
+2. Настройки → Подключить Pinterest → подтвердить четыре разрешения на официальной странице → возврат «Подключён».
    Не показывать переменные Railway, токены, секреты или приватные уведомления на записи.
 3. Выбрать доску. Проверить отключение и повторное подключение без вывода токенов.
 4. Проверить доступность `https://prompt-bank.one/privacy` без входа и указать её в заявке.
@@ -125,8 +139,9 @@ npm run build
 Одних мокапов и обзора дизайна недостаточно; одобрение не гарантируется.
 
 Официальные источники:
-- [Access tiers и требования к видео](https://developer.pinterest.com/docs/key-concepts/access-tiers/)
-- [OAuth Pinterest](https://developer.pinterest.com/docs/getting-started/set-up-authentication-and-authorization/)
+- [Access tiers и требования к видео](https://developers.pinterest.com/docs/key-concepts/access-tiers/)
+- [OAuth Pinterest](https://developers.pinterest.com/docs/getting-started/set-up-authentication-and-authorization/)
+- [Sandbox и разделение токенов](https://developers.pinterest.com/docs/developer-tools/sandbox/)
 - [Developer guidelines](https://policy.pinterest.com/en/developer-guidelines)
 - [Проверка Telegram Mini App](https://core.telegram.org/bots/webapps#validating-data-received-via-the-mini-app)
 - [Проверка Login Widget](https://core.telegram.org/widgets/login#checking-authorization)

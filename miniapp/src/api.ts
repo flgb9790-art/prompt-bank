@@ -384,6 +384,7 @@ export function resolveCardMediaUrl(url: string, type: "image" | "video") {
 
 export type PinterestStatus = {
   connected: boolean; legacyConfigured: boolean; configured: boolean; needsReconnect: boolean;
+  missingScopes?: string[];
   boardId: string | null; boardName: string | null;
 };
 

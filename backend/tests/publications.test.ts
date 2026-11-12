@@ -8,6 +8,7 @@ import { config } from "../src/config";
 import { parseTelegramPostLink, buildTelegramPostLink } from "../src/utils/telegramPostLink";
 import { sendPromptToTelegram, splitTelegramText } from "../src/services/telegramPublisher.service";
 import { buildPinterestPin, sendPromptToPinterest, preparePinterestPublication, previewPinterestPublication } from "../src/services/pinterestPublisher.service";
+import { encryptToken } from "../src/services/pinterestConnection.service";
 import { PromptService } from "../src/services/prompt.service";
 import express from "express";
 import adminRouter from "../src/routes/admin.routes";
@@ -161,6 +162,22 @@ test("changed or missing board confirmation never creates a pin", async () => {
   assert.equal((await sendPromptToPinterest(1, undefined, prompt.telegramPostUrl, "different-board")).status, "failed");
   assert.equal((await sendPromptToPinterest(1, undefined, prompt.telegramPostUrl)).status, "failed");
   assert.equal(sequence.filter(item => item === "pinterest").length, 0);
+});
+
+test("an old OAuth grant cannot preview or publish a Pin, and never resends Telegram", async () => {
+  prompt.telegramPostUrl = "https://t.me/sample_channel/100";
+  prompt.telegramPublished = true;
+  prompt.coverMediaUrl = "https://cdn.example.com/image.jpg"; prompt.coverMediaType = "image";
+  config.pinterestTokenEncryptionKey = "ab".repeat(32);
+  Object.assign(prisma.pinterestConnection, {findUnique:async () => ({id:"publisher",accessTokenEncrypted:encryptToken("partial-token"),
+    scope:"boards:read,pins:write",boardId:"board",boardName:"Ideas"})});
+  await assert.rejects(previewPinterestPublication(1),/boards:write, pins:read.*Подключите аккаунт заново/);
+  const result = await sendPromptToPinterest(1,undefined,prompt.telegramPostUrl,"board");
+  assert.equal(result.status,"failed");
+  assert.match(result.error!,/Подключите аккаунт заново/);
+  assert.equal(requests.length,0);
+  assert.equal(prompt.telegramPostUrl,"https://t.me/sample_channel/100");
+  assert.equal(prompt.telegramPublished,true);
 });
 
 test("templates use the saved post URL, never a channel fallback", () => {
