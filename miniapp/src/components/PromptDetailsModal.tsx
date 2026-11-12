@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight, Copy, Share2, Star, X } from "lucide-react";
+import { ArrowLeft, ArrowDown, ChevronLeft, ChevronRight, Copy, Maximize2, Share2, Star, X } from "lucide-react";
 import { useDialogFocus } from "../hooks/useDialogFocus";
 import { getPromptLabel } from "../utils/promptTitle";
 import { resolveCardMediaUrl, resolveMediaUrl } from "../api";
@@ -210,6 +210,7 @@ export function PromptDetailsModal({
   const pinterestPinUrl = buildPinterestPinUrl(prompt?.pinterestPublication?.pinterestPinId);
 
   const galleryItems = useMemo(() => (prompt ? buildGalleryItems(prompt) : []), [prompt]);
+  const thumbnailsRef = useRef<HTMLDivElement>(null);
   const isFavorite = usePromptFavorite(
     prompt ? { id: prompt.id, isFavorite: prompt.isFavorite } : { id: 0, isFavorite: false }
   );
@@ -224,13 +225,23 @@ export function PromptDetailsModal({
       setGalleryIndex(0);
     }
   }, [galleryItems.length, galleryIndex]);
+
+  useEffect(() => {
+    const rail = thumbnailsRef.current;
+    const thumbnail = rail?.children[galleryIndex] as HTMLElement | undefined;
+    if (!rail || !thumbnail) return;
+    const offset = thumbnail.getBoundingClientRect().left - rail.getBoundingClientRect().left;
+    if (offset < 0) rail.scrollLeft += offset - 3;
+    else if (offset + thumbnail.offsetWidth > rail.clientWidth) {
+      rail.scrollLeft += offset + thumbnail.offsetWidth - rail.clientWidth + 3;
+    }
+  }, [galleryIndex, galleryItems.length]);
   const isTelegramMiniApp = isTelegramMiniAppContext();
   const webModal = desktopMode && !isTelegramMiniApp;
   const wideLayout = useMediaMinWidth(1024, webModal);
   const fullscreenLayout = webModal && wideLayout;
   const compactGallery = isTelegramMiniApp || !wideLayout;
-  const fitGalleryFrame = webModal;
-  const showGalleryNav = !compactGallery && galleryItems.length > 1;
+  const showGalleryNav = galleryItems.length > 1;
 
   const goGalleryPrev = useCallback(() => {
     setGalleryIndex((prev) => (prev > 0 ? prev - 1 : galleryItems.length - 1));
@@ -240,7 +251,7 @@ export function PromptDetailsModal({
     setGalleryIndex((prev) => (prev < galleryItems.length - 1 ? prev + 1 : 0));
   }, [galleryItems.length]);
 
-  const gallerySwipe = useHorizontalSwipe(goGalleryNext, goGalleryPrev, compactGallery && galleryItems.length > 1);
+  const gallerySwipe = useHorizontalSwipe(goGalleryNext, goGalleryPrev, galleryItems.length > 1);
 
   function resetEditState(current: Prompt) {
     setContent(current.content ?? current.contentExcerpt ?? "");
@@ -291,7 +302,7 @@ export function PromptDetailsModal({
   return (
     <>
       <div
-        className={`modal-overlay fixed inset-0 z-[100] flex justify-center p-4 ${
+        className={`modal-overlay reader-overlay fixed inset-0 z-[100] flex justify-center p-4 ${
           fullscreenLayout ? "modal-overlay--prompt-fullscreen items-stretch" : wideLayout ? "items-center" : "items-end"
         }${webModal && !wideLayout ? " modal-overlay--prompt-web-mobile" : ""}${lightboxOpen ? " modal-overlay--behind-lightbox" : ""}`}
         aria-hidden={lightboxOpen}
@@ -302,7 +313,7 @@ export function PromptDetailsModal({
           aria-modal="true"
           aria-labelledby="prompt-dialog-title"
           tabIndex={-1}
-          className={`modal-panel fade-up p-5 ${
+          className={`modal-panel prompt-reader fade-up p-5 ${
             fullscreenLayout
               ? "modal-panel--prompt-fullscreen"
               : webModal
@@ -311,23 +322,31 @@ export function PromptDetailsModal({
           }`}
           onClick={(event) => event.stopPropagation()}
         >
-          <div className="prompt-details-modal-header mb-4 flex shrink-0 items-center justify-between gap-3">
-            <h2 id="prompt-dialog-title" className="text-lg font-semibold text-[var(--text)]">Промпт</h2>
-            <div className="flex items-center gap-1">
-              {!isEditing ? <button type="button" disabled={loadingDetails} className="btn-primary prompt-header-copy" onClick={() => onCopy(prompt)}><Copy size={16} />Копировать</button> : null}
-              <button type="button" onClick={handleShareLink} className="btn-ghost-icon h-9 w-9" aria-label="Поделиться">
+          <div className="reader-header">
+            <button type="button" className="reader-back" onClick={onClose} aria-label="Вернуться к списку промптов">
+              <ArrowLeft size={18} /><span>К списку</span>
+            </button>
+            <h2 id="prompt-dialog-title" className="sr-only">{isEditing ? "Редактирование промпта" : getPromptLabel(prompt)}</h2>
+            <div className="reader-header-actions">
+              {!isEditing ? <>
+                <button type="button" disabled={loadingDetails} className="btn-primary reader-copy" onClick={() => onCopy(prompt)}><Copy size={15} /><span>Копировать</span></button>
+                <button type="button" className={`btn-ghost-icon reader-favorite${isFavorite ? " is-active" : ""}`} onClick={() => onToggleFavorite(prompt.id)} aria-label={isFavorite ? "Убрать из избранного" : "В избранное"} aria-pressed={isFavorite}>
+                  <Star size={17} fill={isFavorite ? "currentColor" : "none"} />
+                </button>
+              </> : null}
+              <button type="button" onClick={handleShareLink} className="btn-ghost-icon" aria-label="Скопировать ссылку на промпт">
                 <Share2 size={16} />
               </button>
-              <button type="button" onClick={onClose} className="btn-ghost-icon h-9 w-9" aria-label="Закрыть">
+              <button type="button" onClick={onClose} className="btn-ghost-icon reader-close" aria-label="Закрыть">
                 <X size={16} />
               </button>
             </div>
           </div>
-          {shareError ? <p className="mb-3 shrink-0 text-xs text-[var(--red)]">{shareError}</p> : null}
+          {shareError ? <p role="alert" className="reader-share-error">{shareError}</p> : null}
 
-          <div className={fullscreenLayout ? "prompt-details-modal-body min-h-0 flex-1 overflow-y-auto" : undefined}>
+          <div className="reader-body">
           {isEditing ? (
-            <div className="space-y-3">
+            <div className="reader-edit space-y-3">
               <select value={categoryId} onChange={(event) => setCategoryId(Number(event.target.value))} className="form-select">
                 {categories.map((category) => (
                   <option key={category.id} value={category.id}>
@@ -399,20 +418,31 @@ export function PromptDetailsModal({
           ) : isShellPrompt ? (
             <PromptDetailsLoadingPanel wideLayout={wideLayout} />
           ) : (
-            <div className={wideLayout ? "prompt-details-layout prompt-details-layout--desktop" : "flex flex-col gap-4"}>
-              <div>
+            <div className={`reader-layout${wideLayout ? " reader-layout--wide" : ""}`}>
+              <div className="reader-visual">
                 {loadingDetails && !galleryItems.length ? (
                   <div className="prompt-details-skeleton-gallery" aria-hidden />
                 ) : galleryItems.length ? (
-                  <div className={`prompt-gallery ${compactGallery ? "prompt-gallery--mobile" : "prompt-gallery--desktop"}`}>
-                    {compactGallery ? <button type="button" className="jump-to-prompt" onClick={() => textRef.current?.scrollIntoView({ behavior: "auto", block: "start" })}>Перейти к тексту ↓</button> : null}
+                  <div className="reader-gallery" role="region" aria-label="Примеры результата"
+                    onKeyDown={(event) => {
+                      if (lightboxOpen || !showGalleryNav || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+                      if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+                        event.preventDefault();
+                        if (event.key === "ArrowLeft") goGalleryPrev();
+                        else goGalleryNext();
+                      }
+                    }}>
+                    <div className="reader-section-heading">
+                      <span>Результат</span>
+                      <span className="reader-gallery-counter" aria-live="polite" aria-atomic="true">{safeGalleryIndex + 1} / {galleryItems.length}</span>
+                    </div>
                     <div
-                      className="prompt-gallery-main"
+                      className="reader-gallery-stage"
                       onTouchStart={gallerySwipe.onTouchStart}
                       onTouchEnd={gallerySwipe.onTouchEnd}
                     >
                       {showGalleryNav ? (
-                        <button type="button" className="prompt-gallery-nav" onClick={goGalleryPrev} aria-label="Предыдущее">
+                        <button type="button" className="reader-gallery-arrow reader-gallery-arrow--prev" onClick={goGalleryPrev} aria-label="Предыдущее изображение">
                           <ChevronLeft size={18} />
                         </button>
                       ) : null}
@@ -422,24 +452,25 @@ export function PromptDetailsModal({
                           url={currentGallery.url}
                           type={currentGallery.type}
                           framed={false}
-                          fit={fitGalleryFrame ? undefined : "contain"}
-                          className={`prompt-gallery-preview${fitGalleryFrame ? " prompt-gallery-preview--fit" : ""}`}
+                          fit="contain"
+                          className="reader-media"
                           onClick={() => setLightboxOpen(true)}
                         />
                       ) : null}
                       {showGalleryNav ? (
-                        <button type="button" className="prompt-gallery-nav" onClick={goGalleryNext} aria-label="Следующее">
+                        <button type="button" className="reader-gallery-arrow reader-gallery-arrow--next" onClick={goGalleryNext} aria-label="Следующее изображение">
                           <ChevronRight size={18} />
                         </button>
                       ) : null}
+                      <span className="reader-zoom-hint" aria-hidden="true"><Maximize2 size={14} />Увеличить</span>
                     </div>
                     {galleryItems.length > 1 ? (
-                      <div className="prompt-gallery-thumbs">
+                      <div ref={thumbnailsRef} className="reader-thumbnails" aria-label="Выбор примера">
                         {galleryItems.map((item, index) => (
                           <button
                             key={`${item.url}-${index}`}
                             type="button"
-                            className={`prompt-gallery-thumb ${index === safeGalleryIndex ? "active" : ""}`}
+                            className={`reader-thumbnail ${index === safeGalleryIndex ? "is-active" : ""}`}
                             aria-label={`Показать пример ${index + 1}`}
                             aria-pressed={index === safeGalleryIndex}
                             onClick={() => setGalleryIndex(index)}
@@ -464,34 +495,20 @@ export function PromptDetailsModal({
                         ))}
                       </div>
                     ) : null}
+                    {compactGallery ? <button type="button" className="reader-jump" onClick={() => textRef.current?.scrollIntoView({ behavior: "auto", block: "start" })}>К тексту промпта <ArrowDown size={14} /></button> : null}
                   </div>
                 ) : (
                   <p className="text-xs text-[var(--muted)]">Изображения не добавлены.</p>
                 )}
               </div>
 
-              <div ref={textRef} className={`prompt-reading-panel${webModal ? " prompt-details-meta" : ""}`}>
+              <div ref={textRef} className="prompt-reading-panel reader-content">
                 <span className={`category-badge ${badgeClass}`}>{prompt.category.name}</span>
                 <h3 className="prompt-reading-title">{getPromptLabel(prompt)}</h3>
-                {prompt.keywords.length ? <details className="prompt-tag-disclosure"><summary>Теги · {prompt.keywords.length}</summary>
-                <div className={`mt-3 flex flex-wrap gap-1.5${webModal ? " prompt-details-tags" : ""}`}>
-                  {prompt.keywords.map((item) => (
-                    <TagPill
-                      key={item.keyword.id}
-                      name={item.keyword.name}
-                      variant="accent"
-                      onClick={
-                        onTagClick
-                          ? (name) => {
-                              onClose();
-                              onTagClick(name);
-                            }
-                          : undefined
-                      }
-                    />
-                  ))}
+                <section className="reader-text-card" aria-label="Текст промпта">
+                <div className="reader-section-heading reader-text-heading"><span>Текст промпта</span>
+                  {!loadingDetails ? <span>{normalizePromptContent(promptBody).length.toLocaleString("ru-RU")} знаков</span> : null}
                 </div>
-                </details> : null}
                 {loadingDetails ? (
                   <div className="mt-4 space-y-3" role="status" aria-live="polite">
                     <div className="prompt-details-loading-head">
@@ -508,62 +525,40 @@ export function PromptDetailsModal({
                 ) : (
                   <PromptContentText
                     content={promptBody}
-                    className={`${webModal ? "mt-3" : "mt-4"} text-sm leading-relaxed text-[var(--text-soft)]`}
+                    className="reader-prompt-text"
                   />
                 )}
-                <div className={webModal ? "prompt-details-actions" : "action-button-row mt-5"}>
-                  <button
-                    type="button"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      void onCopy(prompt);
-                    }}
-                    className={
-                      webModal
-                        ? `prompt-detail-action-btn prompt-detail-action-btn--primary${loadingDetails ? " is-loading" : ""}`
-                        : "btn-primary justify-center"
-                    }
-                  >
-                    Скопировать
-                  </button>
-                  <button
-                    type="button"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      onToggleFavorite(prompt.id);
-                    }}
-                    className={
-                      webModal
-                        ? `prompt-detail-action-btn${isFavorite ? " prompt-detail-action-btn--favorite favorite-lit" : ""}`
-                        : `btn-secondary justify-center${isFavorite ? " btn-secondary--favorite favorite-lit" : ""}`
-                    }
-                    aria-pressed={isFavorite}
-                  >
-                    <Star size={18} strokeWidth={2.2} fill={isFavorite ? "currentColor" : "none"} />
-                    {isFavorite ? "В избранном" : "В избранное"}
-                  </button>
-                  {canManage && webModal ? (
-                    <>
+                </section>
+                {prompt.keywords.length ? <details className="prompt-tag-disclosure reader-tags"><summary>Теги · {prompt.keywords.length}</summary>
+                  <div className="mt-3 flex flex-wrap gap-1.5">
+                    {prompt.keywords.map((item) => (
+                      <TagPill key={item.keyword.id} name={item.keyword.name} variant="accent"
+                        onClick={onTagClick ? (name) => { onClose(); onTagClick(name); } : undefined} />
+                    ))}
+                  </div>
+                </details> : null}
+                {canManage ? (
+                    <div className="reader-admin-actions">
                       <button
                         type="button"
                         onClick={() => {
                           resetEditState(prompt);
                           setIsEditing(true);
                         }}
-                        className="prompt-detail-action-btn"
+                        className="btn-secondary"
+                        disabled={loadingDetails}
                       >
                         Редактировать
                       </button>
                       <button
                         type="button"
                         onClick={() => onDelete(prompt.id)}
-                        className="prompt-detail-action-btn prompt-detail-action-btn--danger"
+                        className="btn-secondary text-[var(--red)]"
                       >
                         Удалить
                       </button>
-                    </>
+                    </div>
                   ) : null}
-                </div>
                 {canManage ? (
                   <div
                     className={
@@ -680,23 +675,6 @@ export function PromptDetailsModal({
                         </button>
                       ) : null}
                     </div>
-                    {!webModal ? (
-                      <div className="action-button-row">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            resetEditState(prompt);
-                            setIsEditing(true);
-                          }}
-                          className="btn-secondary"
-                        >
-                          Редактировать
-                        </button>
-                        <button type="button" onClick={() => onDelete(prompt.id)} className="btn-secondary text-[var(--red)]">
-                          Удалить
-                        </button>
-                      </div>
-                    ) : null}
                   </div>
                 ) : null}
               </div>

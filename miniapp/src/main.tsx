@@ -8,6 +8,7 @@ import { maybeRedirectTelegramBrowserToMiniApp, migrateLegacyPromptQueryToPath }
 import "./styles.css";
 import "./usability.css";
 import "./studio.css";
+import "./prompt-reader.css";
 import { applyReadingSize } from "./utils/readingPreferences";
 
 export { hideAppSplash };

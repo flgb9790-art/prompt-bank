@@ -3,6 +3,7 @@ export type MiniAppViewMode = "grid" | "list";
 
 export const VIEW_MODE_STORAGE_KEY = "promptBankViewMode";
 export const PINTEREST_PAGE_SIZE = 12;
+export const WEB_PROMPTS_PAGE_SIZE = 20;
 export const WEB_PINTEREST_PAGE_SIZE_DESKTOP = 18;
 export const WEB_PINTEREST_PAGE_SIZE_MOBILE = 10;
 export const MINI_APP_PAGE_SIZE = 12;

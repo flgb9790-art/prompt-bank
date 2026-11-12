@@ -51,6 +51,7 @@ import {
   withPromptDetails
 } from "./utils/promptContent";
 import {
+  WEB_PROMPTS_PAGE_SIZE,
   WEB_PINTEREST_PAGE_SIZE_DESKTOP,
   WEB_PINTEREST_PAGE_SIZE_MOBILE,
   readViewMode,
@@ -74,7 +75,6 @@ type RoutePath = "/" | "/prompts" | "/favorites" | "/categories" | "/tags" | "/r
 const storageKey = "prompt-bank-web-auth";
 const CATEGORIES_CACHE_KEY = "prompt-bank-categories";
 const TAGS_CACHE_KEY = "prompt-bank-tags";
-const PROMPTS_PER_PAGE = 12;
 const SEARCH_DEBOUNCE_MS = 350;
 const telegramAuthUrl = (import.meta.env.VITE_TELEGRAM_AUTH_URL as string | undefined)?.trim();
 const telegramBotUsernameFromEnv = (import.meta.env.VITE_TELEGRAM_BOT_USERNAME as string | undefined)?.trim();
@@ -130,7 +130,8 @@ export function WebApp() {
   const [me, setMe] = useState<MeResponse | null>(null);
   const [page, setPage] = useState(1);
   const isDesktopLayout = useMediaMinWidth(1024);
-  const webPinterestPageSize = path === "/" && viewMode !== "pinterest" ? PROMPTS_PER_PAGE : isDesktopLayout ? WEB_PINTEREST_PAGE_SIZE_DESKTOP : WEB_PINTEREST_PAGE_SIZE_MOBILE;
+  const favoritesPageSize = isDesktopLayout ? WEB_PINTEREST_PAGE_SIZE_DESKTOP : WEB_PINTEREST_PAGE_SIZE_MOBILE;
+  const webPageSize = path === "/favorites" ? favoritesPageSize : WEB_PROMPTS_PAGE_SIZE;
 
   function scrollWebToTop() {
     document.querySelector<HTMLElement>(".prompt-scroll-root")?.scrollTo({ top: 0, behavior: "smooth" });
@@ -238,14 +239,10 @@ export function WebApp() {
     saveViewMode(next);
   }
 
-  function getFetchLimit() {
-    return webPinterestPageSize;
-  }
-
   function buildPromptsQuery(offset: number): GetPromptsParams {
     const query = search.trim();
     return {
-      limit: getFetchLimit(),
+      limit: WEB_PROMPTS_PAGE_SIZE,
       offset,
       search: query || undefined,
       category: activeCategory,
@@ -256,7 +253,7 @@ export function WebApp() {
   }
 
   function scheduleWebPrefetch(total: number) {
-    const nextOffset = page * webPinterestPageSize;
+    const nextOffset = page * WEB_PROMPTS_PAGE_SIZE;
     if (nextOffset >= total) return;
     runDeferred(() => { void prefetchPromptsPage(buildPromptsQuery(nextOffset)).catch(() => undefined); });
   }
@@ -266,7 +263,7 @@ export function WebApp() {
     setPromptsLoading(true);
     setError("");
     try {
-      const offset = (page - 1) * webPinterestPageSize;
+      const offset = (page - 1) * WEB_PROMPTS_PAGE_SIZE;
       const query = buildPromptsQuery(offset);
       const promptsData = await takePrefetchedPromptsPage(query) ?? await api.getPrompts(query);
       if (requestId !== promptListRequestRef.current) return;
@@ -375,7 +372,7 @@ export function WebApp() {
   useEffect(() => {
     if (!appBootstrapped) return;
     setPage(1);
-  }, [appBootstrapped, activeCategory, activeTag, search, sort, path, viewMode, isDesktopLayout]);
+  }, [appBootstrapped, activeCategory, activeTag, search, sort, path, webPageSize]);
 
   useEffect(() => {
     if (!appBootstrapped) return;
@@ -386,7 +383,7 @@ export function WebApp() {
     if (path === "/" || path === "/prompts" || path === "/recent") {
       void loadPrompts();
     }
-  }, [appBootstrapped, page, webPinterestPageSize, path, viewMode]);
+  }, [appBootstrapped, page, webPageSize, path]);
 
   useEffect(() => {
     if (!appBootstrapped || !isAuthenticated || path !== "/favorites") return;
@@ -404,8 +401,8 @@ export function WebApp() {
   async function refreshWebFavorites(showSpinner: boolean) {
     if (!isAuthenticated) return;
     if (showSpinner) setFavoritesLoading(true);
-    const limit = webPinterestPageSize;
-    const offset = (page - 1) * webPinterestPageSize;
+    const limit = favoritesPageSize;
+    const offset = (page - 1) * favoritesPageSize;
     try {
       const data = await api.getPrompts({ favorite: true, limit, offset, lite: true, sort });
       const mapped = mapPromptsFromApi(data.items);
@@ -904,7 +901,7 @@ export function WebApp() {
 
     if (displayView === "pinterest") {
       const total = isFavorites ? favoritesTotal : promptsTotal;
-      const totalPages = Math.max(1, Math.ceil(total / webPinterestPageSize));
+      const totalPages = Math.max(1, Math.ceil(total / webPageSize));
       const currentPage = Math.min(page, totalPages);
 
       return (
@@ -913,7 +910,7 @@ export function WebApp() {
             prompts={list}
             view="pinterest"
             pinterestLoading={isFavorites ? favoritesLoading : promptsLoading}
-            pinterestPageSize={webPinterestPageSize}
+            pinterestPageSize={webPageSize}
             onOpenPrompt={openPrompt}
             onCopyPrompt={handleCopy}
             onToggleFavorite={handleToggleFavorite}
@@ -923,7 +920,7 @@ export function WebApp() {
             page={currentPage}
             totalPages={totalPages}
             totalItems={total}
-            pageSize={webPinterestPageSize}
+            pageSize={webPageSize}
             onPageChange={handlePageChange}
           />
         </>
@@ -931,7 +928,7 @@ export function WebApp() {
     }
 
     const total = isFavorites ? favoritesTotal : promptsTotal;
-    return <><PromptGrid prompts={list} view={displayView} onOpenPrompt={openPrompt} onCopyPrompt={handleCopy} onToggleFavorite={handleToggleFavorite} onTagClick={handleSelectTag}/><Pagination page={page} totalPages={Math.max(1, Math.ceil(total / webPinterestPageSize))} totalItems={total} pageSize={webPinterestPageSize} onPageChange={handlePageChange}/></>;
+    return <><PromptGrid prompts={list} view={displayView} onOpenPrompt={openPrompt} onCopyPrompt={handleCopy} onToggleFavorite={handleToggleFavorite} onTagClick={handleSelectTag}/><Pagination page={page} totalPages={Math.max(1, Math.ceil(total / webPageSize))} totalItems={total} pageSize={webPageSize} onPageChange={handlePageChange}/></>;
   }
 
   function focusLibrarySearch() {
