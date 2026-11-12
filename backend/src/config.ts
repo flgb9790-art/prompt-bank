@@ -94,6 +94,10 @@ export const config = {
     webAppUrl
   ),
   publicBackendUrl,
+  // Existing Telegram messages can still open these deployed frontend URLs.
+  legacyMiniappOrigins: isProduction
+    ? [PRODUCTION_BACKEND_URL, PRODUCTION_MINIAPP_PROXY_URL]
+    : [],
   seedDemoData: process.env.SEED_DEMO_DATA === "true",
   adminTelegramIds: (process.env.ADMIN_TELEGRAM_IDS ?? "")
     .split(",")

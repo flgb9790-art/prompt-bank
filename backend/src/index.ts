@@ -4,6 +4,7 @@ import express from "express";
 import fs from "fs";
 import path from "path";
 import { config, logResolvedPublicUrls, uploadsDir } from "./config";
+import { createApiCorsOptions } from "./cors";
 import { prisma } from "./db";
 import promptsRouter from "./routes/prompts.routes";
 import categoriesRouter from "./routes/categories.routes";
@@ -30,11 +31,13 @@ import { ensureLocalThumbnail } from "./services/localThumbnail.service";
 const app = express();
 
 app.use(compression());
-app.use(cors({
-  origin: [config.webAppUrl, config.publicSiteUrl, config.publicBackendUrl,
-    ...(process.env.NODE_ENV !== "production" ? ["http://localhost:5173", "http://127.0.0.1:5173"] : [])],
-  credentials: true
-}));
+app.use(cors(createApiCorsOptions([
+  config.webAppUrl,
+  config.publicSiteUrl,
+  config.publicBackendUrl,
+  config.miniappProxyUrl,
+  ...config.legacyMiniappOrigins
+], process.env.NODE_ENV !== "production")));
 app.use(express.json({ limit: "3mb" }));
 app.use("/api", (_req, res, next) => { res.setHeader("Cache-Control", "no-store"); next(); });
 

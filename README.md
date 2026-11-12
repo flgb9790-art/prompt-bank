@@ -61,9 +61,9 @@ npm run dev
 
 Кратко:
 
-- `https://prompt-bank.one` — Mini App и кнопка меню в Telegram  
-- `https://api.prompt-bank.one` — API и медиа `/uploads`  
-- Не подставляйте URL API в `WEBAPP_URL` — Telegram вернёт `wrong type of the web page content`
+- `https://prompt-bank.one` — Mini App, веб, API `/api` и медиа `/uploads`. Backend проксирует страницы в сервис miniapp.
+- `https://api.prompt-bank.one` — прежний адрес frontend; старые кнопки Telegram остаются рабочими благодаря точному списку CORS.
+- `WEBAPP_URL`, `PUBLIC_BACKEND_URL` и `BACKEND_URL` указывают на `https://prompt-bank.one`. Не меняйте существующие DNS-записи по старой схеме разделения доменов.
 
 ## 8) Как использовать через ngrok для Telegram Mini App
 

@@ -1,13 +1,13 @@
 # Домен prompt-bank.one
 
-Рекомендуемая схема (два поддомена на Railway):
+Текущая рабочая схема Railway:
 
 | Назначение | URL | Сервис Railway |
 |------------|-----|----------------|
-| Mini App + веб | `https://prompt-bank.one` | **miniapp** |
-| API + медиа `/uploads` | `https://api.prompt-bank.one` | **backend** |
+| Mini App + веб, API + медиа `/uploads` | `https://prompt-bank.one` | **backend** (HTML проксируется в miniapp) |
+| Прежний адрес frontend | `https://api.prompt-bank.one` | **miniapp** (`diplomatic-communication`) |
 
-Старые `*.up.railway.app` можно оставить как запасные, но в переменных окружения и BotFather используйте домен выше.
+В переменных окружения и BotFather используйте `https://prompt-bank.one`. Старые сообщения Telegram могут содержать `api.prompt-bank.one` или адрес frontend `diplomatic-communication-production-6b54.up.railway.app`; backend разрешает эти точные origin в CORS, включая запросы с Telegram initData. Не заменяйте список на `*`: проверка подписи и права на изменение данных обязательны независимо от адреса страницы.
 
 ---
 
@@ -15,10 +15,10 @@
 
 В панели DNS (где куплен `prompt-bank.one`) добавьте записи **как показывает Railway** для каждого сервиса:
 
-1. Railway → сервис **miniapp** → **Settings** → **Networking** → **Custom Domain** → `prompt-bank.one`  
+1. Railway → сервис **backend** → **Settings** → **Networking** → **Custom Domain** → `prompt-bank.one`
    Скопируйте тип записи (обычно `CNAME` на `….up.railway.app`).
 
-2. Railway → сервис **backend** → **Networking** → **Custom Domain** → `api.prompt-bank.one`  
+2. Railway → сервис **miniapp** → **Networking** → **Custom Domain** → `api.prompt-bank.one`
    Добавьте вторую запись (поддомен `api`).
 
 Дождитесь статуса **Active** / зелёной галочки в Railway (5–30 минут).
@@ -27,7 +27,7 @@
 
 ```bash
 curl -I https://prompt-bank.one
-curl https://api.prompt-bank.one/api/health
+curl https://prompt-bank.one/api/health
 ```
 
 Ожидается: HTML/200 на сайте и `{"ok":true}` на health.
@@ -44,9 +44,10 @@ NODE_ENV=production
 WEBAPP_URL=https://prompt-bank.one
 PUBLIC_SITE_URL=https://prompt-bank.one
 
-PUBLIC_BACKEND_URL=https://api.prompt-bank.one
-BACKEND_URL=https://api.prompt-bank.one
-MEDIA_PUBLIC_URL=https://api.prompt-bank.one
+PUBLIC_BACKEND_URL=https://prompt-bank.one
+BACKEND_URL=https://prompt-bank.one
+MEDIA_PUBLIC_URL=https://prompt-bank.one
+MINIAPP_PROXY_URL=https://diplomatic-communication-production-6b54.up.railway.app
 
 BOT_TOKEN=<токен из BotFather>
 TELEGRAM_BOT_TOKEN=<тот же или отдельный бот для канала>
@@ -66,7 +67,7 @@ UPLOADS_DIR=/data/uploads
 
 ```text
 [config] WEBAPP_URL (mini app): https://prompt-bank.one
-[config] PUBLIC_BACKEND_URL (media API): https://api.prompt-bank.one
+[config] PUBLIC_BACKEND_URL (media API): https://prompt-bank.one
 ```
 
 ---
@@ -74,20 +75,20 @@ UPLOADS_DIR=/data/uploads
 ## 3. Переменные Railway — сервис **miniapp**
 
 ```env
-BACKEND_URL=https://api.prompt-bank.one
+BACKEND_URL=https://prompt-bank.one
 ```
 
 Опционально на этапе сборки (если не задаёте только при старте):
 
 ```env
-VITE_BACKEND_URL=https://api.prompt-bank.one
+VITE_BACKEND_URL=https://prompt-bank.one
 VITE_TELEGRAM_BOT_USERNAME=prmtb_bot
 VITE_TELEGRAM_CHANNEL_URL=https://t.me/<ваш_канал>
 ```
 
 После сохранения: **Redeploy** miniapp.
 
-Проверка в браузере: откройте `https://prompt-bank.one`, в DevTools → Network запросы к API идут на `https://api.prompt-bank.one/api/...`.
+Проверка в браузере: откройте `https://prompt-bank.one`, в DevTools → Network запросы к API идут на `https://prompt-bank.one/api/...`. Дополнительно проверьте старый frontend: `https://api.prompt-bank.one/?tgWebAppVersion=8.0` — список промптов должен загружаться и там.
 
 ---
 
