@@ -86,7 +86,7 @@ router.post("/prompts/:id/publish-pinterest", async (req, res, next) => {
       return res.status(404).json({ message: "Prompt not found" });
     }
 
-    const result = await sendPromptToPinterest(promptId, undefined, req.body?.destinationLink, req.body?.boardId);
+    const result = await sendPromptToPinterest(promptId, undefined, req.body?.destinationLink, req.body?.boardId, req.body?.apiBaseUrl);
     res.json({
       status: result.status,
       error: result.status === "failed" ? result.error : undefined,

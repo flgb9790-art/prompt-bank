@@ -3,7 +3,7 @@ import { clearPromptShareUrl, parsePromptIdFromLocation, setPromptShareUrl } fro
 import { mergePromptUpdate } from "./utils/mergePrompt";
 import { normalizeTagName } from "./utils/tagFilter";
 import { countCategoriesWithPromptCount, countCategoriesWithPrompts } from "./utils/stats";
-import { api, invalidateReferenceCaches, confirmPinterestPublication, setAuthTelegramId } from "./api";
+import { api, invalidateReferenceCaches, confirmPinterestPublication, setAuthTelegramId, type PinterestPublicationConfirmation } from "./api";
 import type { Category, MeResponse, Prompt, PromptCreatePayload, TelegramUser, CreatePromptResponse } from "./types";
 import { SettingsScreen } from "./components/settings/SettingsScreen";
 import { PromptHistoryScreen } from "./components/history/PromptHistoryScreen";
@@ -666,17 +666,17 @@ function MiniAppApp() {
       return;
     }
     let created = withPromptDetails(await api.createPrompt(payload)) as CreatePromptResponse;
-    let confirmedBoard: string | null = null;
+    let confirmation: PinterestPublicationConfirmation | null = null;
     if (created.pinterestPublicationStatus === "awaiting_confirmation" && created.telegramPostUrl) {
-      try { confirmedBoard = await confirmPinterestPublication(created); }
+      try { confirmation = await confirmPinterestPublication(created); }
       catch (error) {
         created.pinterestPublicationStatus = "failed";
         created.pinterestPublicationError = error instanceof Error ? error.message : "Проверьте подключение Pinterest в настройках.";
       }
     }
-    if (confirmedBoard && created.telegramPostUrl) {
+    if (confirmation && created.telegramPostUrl) {
       try {
-        const result = await api.publishPromptToPinterest(created.id, created.telegramPostUrl, confirmedBoard);
+        const result = await api.publishPromptToPinterest(created.id, created.telegramPostUrl, confirmation);
         created = { ...withPromptDetails(await api.getPrompt(created.id, true)),
           telegramPublicationStatus: created.telegramPublicationStatus,
           pinterestPublicationStatus: result.status, pinterestPublicationError: result.error };
@@ -735,9 +735,9 @@ function MiniAppApp() {
         setToastMessage("Пин не создан: сохраните ссылку на Telegram-пост или сначала опубликуйте промпт в Telegram.");
         return;
       }
-      const confirmedBoard = await confirmPinterestPublication(preview);
-      if (!confirmedBoard) return;
-      const result = await api.publishPromptToPinterest(promptId, preview.telegramPostUrl, confirmedBoard);
+      const confirmation = await confirmPinterestPublication(preview);
+      if (!confirmation) return;
+      const result = await api.publishPromptToPinterest(promptId, preview.telegramPostUrl, confirmation);
       const fresh = withPromptDetails(await api.getPrompt(promptId, true));
       persistPublicationTemplatesFromPrompt(fresh);
       setPrompts((prev) => prev.map((item) => (item.id === promptId ? mergePromptUpdate(item, fresh) : item)));

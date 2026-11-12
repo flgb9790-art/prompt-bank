@@ -24,8 +24,10 @@ export function PinterestSettings() {
   return <section className="settings-card settings-card--full reading-settings">
     <h2 className="settings-card-title">Публикация в Pinterest</h2>
     <p className="settings-help">Общий аккаунт публикации Prompt Bank. Настройки доступны только администраторам. Каждый пин создаётся после отдельного подтверждения.</p>
+    {status?.environment === "sandbox" && <p className="settings-help">Режим Sandbox: тестовые пины видны только владельцу аккаунта Pinterest.</p>}
+    {status?.environment === "production" && <p className="settings-help">Режим Production.</p>}
     <p className="settings-help" role="status">{!status ? "Проверяем подключение…" : status.needsReconnect ? "Pinterest нужно подключить заново" : status.connected ? "Pinterest подключён" : status.legacyConfigured ? "Работает прежнее подключение сервера. Подключите аккаунт через Pinterest для демонстрации." : "Pinterest не подключён"}</p>
-    {status?.needsReconnect && <p className="settings-help">{status.missingScopes?.length ? "Для публикации не хватает разрешений. Нажмите Подключить заново и подтвердите доступ на Pinterest." : "Срок доступа истёк. Подключите аккаунт заново."}</p>}
+    {status?.needsReconnect && <p className="settings-help">{status.environmentMismatch ? "Среда Pinterest изменилась. Нажмите Подключить заново и подтвердите доступ для выбранной среды." : status.missingScopes?.length ? "Для публикации не хватает разрешений. Нажмите Подключить заново и подтвердите доступ на Pinterest." : "Срок доступа истёк. Подключите аккаунт заново."}</p>}
     {status?.connected && !status.needsReconnect && <>
       <label className="settings-help" htmlFor="pinterest-board">Доска назначения</label>
       <select id="pinterest-board" className="form-select mt-3 w-full" value={status.boardId || ""} disabled={busy}
@@ -34,7 +36,7 @@ export function PinterestSettings() {
         {status.boardId && !boards.some(board => board.id === status.boardId) && <option value={status.boardId}>{status.boardName}</option>}
         {boards.map(board => <option key={board.id} value={board.id}>{board.name}</option>)}
       </select>
-      {!boards.length && <p className="settings-help">Если досок нет, создайте доску в Pinterest и обновите список.</p>}
+      {!boards.length && <p className="settings-help">{bookmark ? "Есть ещё страницы досок. Нажмите «Загрузить ещё доски», даже если текущая страница пустая." : status.environment === "sandbox" ? "Выберите существующую доску Sandbox или создайте тестовую доску через Sandbox API, затем обновите список." : "Если досок нет, создайте доску в Pinterest и обновите список."}</p>}
       <button className="btn-secondary mt-3" disabled={busy} onClick={() => void run(load)}>Обновить доски</button>
       {bookmark && <button className="btn-secondary mt-3" disabled={busy} onClick={() => void run(async () => {
         const result = await api.pinterestBoards(bookmark); setBoards(previous => [...previous, ...result.items]); setBookmark(result.bookmark);

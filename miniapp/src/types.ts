@@ -88,6 +88,7 @@ export type PinterestPublication = {
   destinationLink: string;
   mediaType?: string | null;
   mediaUrl?: string | null;
+  apiBaseUrl?: string;
   createdAt: string;
   publishedAt?: string | null;
   updatedAt: string;

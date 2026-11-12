@@ -49,7 +49,8 @@ beforeEach(() => {
   Object.assign(config, {
     telegramBotToken: "test-token", telegramChannelId: "-1001234567890",
     telegramChannelUrl: "https://t.me/sample_channel", telegramBotUsername: "sample_bot",
-    pinterestAccessToken: "test-pin-token", pinterestBoardId: "board", adminTelegramIds: ["42"]
+    pinterestAccessToken: "test-pin-token", pinterestBoardId: "board", adminTelegramIds: ["42"],
+    pinterestApiBaseUrl:"https://api.pinterest.com/v5"
   });
   Object.assign(prisma.prompt, {
     findUnique: async () => prompt,
@@ -170,7 +171,7 @@ test("an old OAuth grant cannot preview or publish a Pin, and never resends Tele
   prompt.coverMediaUrl = "https://cdn.example.com/image.jpg"; prompt.coverMediaType = "image";
   config.pinterestTokenEncryptionKey = "ab".repeat(32);
   Object.assign(prisma.pinterestConnection, {findUnique:async () => ({id:"publisher",accessTokenEncrypted:encryptToken("partial-token"),
-    scope:"boards:read,pins:write",boardId:"board",boardName:"Ideas"})});
+    scope:"boards:read,pins:write",apiBaseUrl:"https://api.pinterest.com/v5",boardId:"board",boardName:"Ideas"})});
   await assert.rejects(previewPinterestPublication(1),/boards:write, pins:read.*Подключите аккаунт заново/);
   const result = await sendPromptToPinterest(1,undefined,prompt.telegramPostUrl,"board");
   assert.equal(result.status,"failed");
@@ -178,6 +179,44 @@ test("an old OAuth grant cannot preview or publish a Pin, and never resends Tele
   assert.equal(requests.length,0);
   assert.equal(prompt.telegramPostUrl,"https://t.me/sample_channel/100");
   assert.equal(prompt.telegramPublished,true);
+});
+
+test("Sandbox publication requires environment confirmation and records the actual API without resending Telegram", async () => {
+  const apiBaseUrl = "https://api-sandbox.pinterest.com/v5";
+  prompt.telegramPostUrl = "https://t.me/sample_channel/100"; prompt.telegramPublished = true;
+  prompt.coverMediaUrl = "https://cdn.example.com/image.jpg"; prompt.coverMediaType = "image";
+  config.pinterestApiBaseUrl = apiBaseUrl; config.pinterestTokenEncryptionKey = "ab".repeat(32);
+  Object.assign(prisma.pinterestConnection,{findUnique:async () => ({id:"publisher",accessTokenEncrypted:encryptToken("sandbox-access"),
+    scope:"boards:read,boards:write,pins:read,pins:write",apiBaseUrl,boardId:"board",boardName:"Test board"})});
+  const preview = await previewPinterestPublication(1);
+  assert.equal(preview.apiBaseUrl,apiBaseUrl);
+  assert.equal((await sendPromptToPinterest(1,undefined,prompt.telegramPostUrl,"board")).status,"failed");
+  assert.equal(requests.length,0);
+  await withLocalApp(async base => {
+    const response = await realFetch(`${base}/admin/prompts/1/publish-pinterest`,{method:"POST",headers:{"Content-Type":"application/json",...signedHeaders()},
+      body:JSON.stringify({destinationLink:preview.destinationLink,boardId:preview.boardId,apiBaseUrl:preview.apiBaseUrl})});
+    assert.equal(response.status,200);
+    const result = await response.json();
+    assert.equal(result.status,"published");
+    assert.equal(result.pinterestPublication.apiBaseUrl,apiBaseUrl);
+  });
+  assert.equal(requests.length,1);
+  assert.equal(requests[0].url,`${apiBaseUrl}/pins`);
+  assert.equal(requests[0].body.link,prompt.telegramPostUrl);
+  assert.equal(sequence.filter(item => item === "telegram").length,0);
+});
+
+test("changing environment after preview cannot turn an approved Sandbox Pin into a production Pin", async () => {
+  const sandboxApiBaseUrl = "https://api-sandbox.pinterest.com/v5";
+  prompt.telegramPostUrl = "https://t.me/sample_channel/100";
+  prompt.coverMediaUrl = "https://cdn.example.com/image.jpg"; prompt.coverMediaType = "image";
+  config.pinterestApiBaseUrl = sandboxApiBaseUrl;
+  const preview = await previewPinterestPublication(1);
+  config.pinterestApiBaseUrl = "https://api.pinterest.com/v5";
+  const result = await sendPromptToPinterest(1,undefined,preview.destinationLink,preview.boardId,preview.apiBaseUrl);
+  assert.equal(result.status,"failed");
+  assert.match(result.error!,/Среда Pinterest изменилась/);
+  assert.equal(requests.length,0);
 });
 
 test("templates use the saved post URL, never a channel fallback", () => {

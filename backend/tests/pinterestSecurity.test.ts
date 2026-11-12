@@ -10,7 +10,7 @@ import { prisma } from "../src/db";
 import { readTelegramId, verifyTelegramIdentity } from "../src/auth";
 import router from "../src/routes/pinterest.routes";
 import { signedHeaders } from "./telegramTestIdentity";
-import { encryptToken, decryptToken, getPinterestCredentials, connectionStatus, saveConnection } from "../src/services/pinterestConnection.service";
+import { encryptToken, decryptToken, getPinterestCredentials, connectionStatus, saveConnection, requestToken } from "../src/services/pinterestConnection.service";
 import { buildPinterestAuthUrl } from "../src/services/pinterestOAuth.service";
 
 const realFetch = global.fetch;
@@ -20,12 +20,14 @@ let connection: any = null;
 let calls: string[] = [];
 let afterTokenRequest: (() => void) | undefined;
 const fullScope = "boards:read,boards:write,pins:read,pins:write";
+const productionApiBaseUrl = "https://api.pinterest.com/v5";
+const sandboxApiBaseUrl = "https://api-sandbox.pinterest.com/v5";
 let tokenScope: string | undefined;
 beforeEach(() => {
   Object.assign(config, { botToken: "test-bot", telegramBotToken: "test-bot", adminTelegramIds: ["42"],
     pinterestTokenEncryptionKey: "ab".repeat(32), pinterestClientId: "client", pinterestClientSecret: "secret",
     pinterestRedirectUri: "https://backend.example/api/pinterest/callback", webAppUrl: "https://app.example",
-    pinterestAccessToken: "legacy-token", pinterestBoardId: "100" });
+    pinterestAccessToken: "legacy-token", pinterestBoardId: "100", pinterestApiBaseUrl: productionApiBaseUrl });
   states = new Map(); connection = null; calls = []; afterTokenRequest = undefined; tokenScope = fullScope;
   Object.assign(prisma.pinterestOAuthState, {
     findUnique: async ({where}: any) => states.get(where.stateHash) || null,
@@ -143,7 +145,7 @@ test("OAuth callback rejects the old two-scope grant with a reconnect instructio
 
 test("old or unknown stored scopes require reconnect before any API request or token refresh", async () => {
   connection = {id:"publisher",accessTokenEncrypted:encryptToken("access"),refreshTokenEncrypted:encryptToken("refresh"),
-    scope:"boards:read,pins:write",expiresAt:new Date(0),boardId:"100",boardName:"Ideas"};
+    scope:"boards:read,pins:write",apiBaseUrl:productionApiBaseUrl,expiresAt:new Date(0),boardId:"100",boardName:"Ideas"};
   await app(async base => {
     const response = await realFetch(`${base}/api/pinterest/status`,{headers:signedHeaders()});
     const status = await response.json();
@@ -223,7 +225,7 @@ test("disconnect deletes credentials, cancels pending OAuth, and blocks environm
   });
 });
 test("expired access refreshes once and never resurrects a disconnected connection", async () => {
-  connection = {id:"publisher",accessTokenEncrypted:encryptToken("old"),refreshTokenEncrypted:encryptToken("refresh"),scope:fullScope,expiresAt:new Date(0),boardId:"100",boardName:"Ideas"};
+  connection = {id:"publisher",accessTokenEncrypted:encryptToken("old"),refreshTokenEncrypted:encryptToken("refresh"),scope:fullScope,apiBaseUrl:productionApiBaseUrl,expiresAt:new Date(0),boardId:"100",boardName:"Ideas"};
   const result = await Promise.all([getPinterestCredentials(),getPinterestCredentials()]);
   assert.equal(calls.length,1); assert.equal(result[0].accessToken,"new-private-access");
   connection.expiresAt = new Date(0);
@@ -234,7 +236,7 @@ test("expired access refreshes once and never resurrects a disconnected connecti
 
 test("refresh preserves omitted scopes and marks reduced permissions for reconnect without replacing credentials", async () => {
   connection = {id:"publisher",accessTokenEncrypted:encryptToken("old"),refreshTokenEncrypted:encryptToken("refresh"),
-    scope:fullScope,expiresAt:new Date(0),boardId:"100",boardName:"Ideas"};
+    scope:fullScope,apiBaseUrl:productionApiBaseUrl,expiresAt:new Date(0),boardId:"100",boardName:"Ideas"};
   tokenScope = undefined;
   assert.equal((await getPinterestCredentials()).accessToken,"new-private-access");
   assert.equal(connection.scope,fullScope);
@@ -252,7 +254,7 @@ test("refresh preserves omitted scopes and marks reduced permissions for reconne
 
 test("a reduced-scope refresh cannot mark a newer OAuth connection as requiring reconnect", async () => {
   connection = {id:"publisher",accessTokenEncrypted:encryptToken("old"),refreshTokenEncrypted:encryptToken("refresh"),
-    scope:fullScope,expiresAt:new Date(0),boardId:"100",boardName:"Ideas"};
+    scope:fullScope,apiBaseUrl:productionApiBaseUrl,expiresAt:new Date(0),boardId:"100",boardName:"Ideas"};
   tokenScope = "boards:read,pins:write";
   afterTokenRequest = () => {
     connection = {...connection,accessTokenEncrypted:encryptToken("newer-connection"),scope:fullScope,expiresAt:new Date(Date.now()+3600000)};
@@ -263,7 +265,7 @@ test("a reduced-scope refresh cannot mark a newer OAuth connection as requiring 
   assert.equal((await getPinterestCredentials()).accessToken,"newer-connection");
 });
 test("board listing strips private fields and board selection is checked with Pinterest", async () => {
-  connection = {id:"publisher",accessTokenEncrypted:encryptToken("access"),scope:fullScope,boardId:null};
+  connection = {id:"publisher",accessTokenEncrypted:encryptToken("access"),scope:fullScope,apiBaseUrl:productionApiBaseUrl,boardId:null};
   await app(async base => {
     const list = await realFetch(`${base}/api/pinterest/boards`,{headers:signedHeaders()});
     assert.deepEqual(await list.json(),{items:[{id:"100",name:"Ideas"}],bookmark:null});
@@ -271,6 +273,65 @@ test("board listing strips private fields and board selection is checked with Pi
     assert.equal(selected.status,200); assert.equal(connection.boardName,"Ideas");
     assert.ok(calls.some(url=>url.endsWith("/boards/100")));
   });
+});
+
+test("Sandbox OAuth, board selection and refresh all use the same Sandbox API", async () => {
+  config.pinterestApiBaseUrl = sandboxApiBaseUrl;
+  await app(async base => {
+    const {state,cookie} = await start(base);
+    const response = await realFetch(`${base}/api/pinterest/callback?state=${state}&code=sandbox-code`,{headers:{cookie},redirect:"manual"});
+    assert.equal(response.status,303);
+    assert.equal(connection.apiBaseUrl,sandboxApiBaseUrl);
+    assert.equal(calls[0],`${sandboxApiBaseUrl}/oauth/token`);
+    const selected = await realFetch(`${base}/api/pinterest/board`,{method:"PUT",headers:{...signedHeaders(),"Content-Type":"application/json"},body:JSON.stringify({boardId:"100"})});
+    assert.equal(selected.status,200);
+    const status = await selected.json();
+    assert.equal(status.environment,"sandbox");
+    assert.equal(status.environmentMismatch,false);
+    assert.equal(status.needsReconnect,false);
+    connection.expiresAt = new Date(0);
+    assert.equal((await getPinterestCredentials()).apiBaseUrl,sandboxApiBaseUrl);
+    assert.equal(calls.filter(url => url.endsWith("/oauth/token")).length,2);
+    assert.ok(calls.every(url => url.startsWith(`${sandboxApiBaseUrl}/`)));
+  });
+});
+
+test("changing environment never sends or refreshes a token from the other environment", async () => {
+  for (const [saved,current] of [[productionApiBaseUrl,sandboxApiBaseUrl],[sandboxApiBaseUrl,productionApiBaseUrl]]) {
+    connection = {id:"publisher",accessTokenEncrypted:encryptToken("access"),refreshTokenEncrypted:encryptToken("refresh"),
+      scope:fullScope,apiBaseUrl:saved,expiresAt:new Date(0),boardId:"100",boardName:"Ideas"};
+    config.pinterestApiBaseUrl = current;
+    const status = await connectionStatus();
+    assert.equal(status.environmentMismatch,true);
+    assert.equal(status.needsReconnect,true);
+    assert.equal(status.environment,current === sandboxApiBaseUrl ? "sandbox" : "production");
+    await assert.rejects(getPinterestCredentials(),/Среда Pinterest изменилась/);
+    assert.equal(calls.length,0);
+    assert.equal(connection.apiBaseUrl,saved);
+  }
+});
+
+test("OAuth never sends client credentials to an unofficial API host", async () => {
+  config.pinterestApiBaseUrl = "https://untrusted.example/v5";
+  assert.throws(()=>buildPinterestAuthUrl("state"),/официальный адрес/);
+  await assert.rejects(requestToken(new URLSearchParams({grant_type:"authorization_code",code:"example"})),/официальный адрес/);
+  assert.equal(calls.length,0);
+});
+
+test("environment migration is additive, repeatable and preserves the recorded environment", async () => {
+  const db = new PGlite();
+  try {
+    await db.exec(readFileSync("prisma/patches/20261027_pinterest_connection.sql","utf8"));
+    await db.exec('INSERT INTO "PinterestConnection" (id,"ownerTelegramId","accessTokenEncrypted") VALUES (\'publisher\',\'42\',\'keep-access\'); CREATE TABLE "PinterestPublication" (id INTEGER PRIMARY KEY, status TEXT); INSERT INTO "PinterestPublication" VALUES (1,\'published\')');
+    const sql = readFileSync("prisma/patches/20261112_pinterest_api_environment.sql","utf8");
+    await db.exec(sql); await db.exec(sql);
+    assert.deepEqual((await db.query('SELECT "accessTokenEncrypted", "apiBaseUrl" FROM "PinterestConnection"')).rows,[{accessTokenEncrypted:"keep-access",apiBaseUrl:productionApiBaseUrl}]);
+    assert.deepEqual((await db.query('SELECT * FROM "PinterestPublication"')).rows,[{id:1,status:"published",apiBaseUrl:productionApiBaseUrl}]);
+    await db.exec(`UPDATE "PinterestConnection" SET "apiBaseUrl" = '${sandboxApiBaseUrl}'; UPDATE "PinterestPublication" SET "apiBaseUrl" = '${sandboxApiBaseUrl}'`);
+    await db.exec(sql);
+    assert.equal((await db.query('SELECT "apiBaseUrl" FROM "PinterestConnection"')).rows[0].apiBaseUrl,sandboxApiBaseUrl);
+    assert.equal((await db.query('SELECT "apiBaseUrl" FROM "PinterestPublication"')).rows[0].apiBaseUrl,sandboxApiBaseUrl);
+  } finally { await db.close(); }
 });
 test("PostgreSQL connection patch is additive and idempotent", async () => {
   const db = new PGlite();

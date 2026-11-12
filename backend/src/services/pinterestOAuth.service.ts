@@ -1,10 +1,12 @@
 import { config } from "../config";
 import { PINTEREST_REQUIRED_SCOPES } from "../utils/pinterestScopes";
+import { getPinterestEnvironment } from "../utils/pinterestEnvironment";
 
 export function buildPinterestAuthUrl(state: string): string {
   if (!config.pinterestClientId || !config.pinterestClientSecret || !config.pinterestRedirectUri) {
     throw new Error("Pinterest OAuth не настроен на сервере.");
   }
+  getPinterestEnvironment(config.pinterestApiBaseUrl);
   return `https://www.pinterest.com/oauth/?${new URLSearchParams({
     client_id: config.pinterestClientId, redirect_uri: config.pinterestRedirectUri,
     response_type: "code", scope: PINTEREST_REQUIRED_SCOPES.join(","), state

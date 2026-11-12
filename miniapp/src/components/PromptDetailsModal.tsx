@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, ArrowDown, ChevronLeft, ChevronRight, Copy, Maximize2, Share2, Star, X } from "lucide-react";
 import { useDialogFocus } from "../hooks/useDialogFocus";
 import { getPromptLabel } from "../utils/promptTitle";
-import { resolveCardMediaUrl, resolveMediaUrl } from "../api";
+import { isPinterestSandboxApiBaseUrl, resolveCardMediaUrl, resolveMediaUrl } from "../api";
 import { useHorizontalSwipe } from "../hooks/useHorizontalSwipe";
 import { useMediaMinWidth } from "../hooks/useMediaMinWidth";
 import { isTelegramMiniAppContext } from "../telegram";
@@ -208,6 +208,7 @@ export function PromptDetailsModal({
     setLinkError("");
   }, [prompt?.id, prompt?.telegramPostUrl]);
   const pinterestPinUrl = buildPinterestPinUrl(prompt?.pinterestPublication?.pinterestPinId);
+  const isPublishedSandboxPin = prompt?.pinterestPublication?.status === "published" && isPinterestSandboxApiBaseUrl(prompt.pinterestPublication.apiBaseUrl);
 
   const galleryItems = useMemo(() => (prompt ? buildGalleryItems(prompt) : []), [prompt]);
   const thumbnailsRef = useRef<HTMLDivElement>(null);
@@ -632,10 +633,11 @@ export function PromptDetailsModal({
                         Изменение ссылки относится к будущим публикациям. Существующий пин не изменяется.
                       </p> : null}
                       <p className="text-sm font-medium text-[var(--text)]">
-                        {pinterestPublicationStatusLabel(
+                        {isPublishedSandboxPin && !pinterestPublishing ? "Тестовый пин Sandbox" : pinterestPublicationStatusLabel(
                           pinterestPublishing ? "pending" : prompt.pinterestPublication?.status
                         )}
                       </p>
+                      {isPublishedSandboxPin && !pinterestPublishing ? <p className="mt-2 text-xs text-[var(--muted)]">Виден только владельцу аккаунта Pinterest.</p> : null}
                       {prompt.pinterestPublication?.status === "failed" && prompt.pinterestPublication.error ? (
                         <p className="mt-2 text-xs text-[var(--red)]" title={prompt.pinterestPublication.error}>
                           {prompt.pinterestPublication.error}

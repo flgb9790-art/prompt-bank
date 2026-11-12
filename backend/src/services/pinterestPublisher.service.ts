@@ -5,6 +5,7 @@ import { getPinterestCredentials } from "./pinterestConnection.service";
 import { PromptService } from "./prompt.service";
 import { resolvePublicMediaUrl } from "./telegramPublisher.service";
 import { derivePromptTitle } from "../utils/promptTitle";
+import { getPinterestEnvironment } from "../utils/pinterestEnvironment";
 import {
   type PublicationTemplateVars,
   resolvePinterestDescriptionTemplate,
@@ -144,7 +145,7 @@ async function createPinterestPin(payload: {
   imageUrl: string;
   credentials: Awaited<ReturnType<typeof getPinterestCredentials>>;
 }): Promise<PinterestPinResult> {
-  const { accessToken: token, boardId } = payload.credentials;
+  const { accessToken: token, boardId, apiBaseUrl } = payload.credentials;
   if (!token) {
     throw new Error("PINTEREST_ACCESS_TOKEN не указан");
   }
@@ -152,7 +153,7 @@ async function createPinterestPin(payload: {
     throw new Error("PINTEREST_BOARD_ID не указан");
   }
 
-  const response = await fetch(`${config.pinterestApiBaseUrl}/pins`, {
+  const response = await fetch(`${apiBaseUrl}/pins`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
@@ -214,12 +215,13 @@ function resolvePublicationOverrides(
 }
 
 export async function preparePinterestPublication(promptId: number, overrides?: PinterestPinOverrides) {
+  const { apiBaseUrl } = getPinterestEnvironment(config.pinterestApiBaseUrl);
   const prompt = await prisma.prompt.findUniqueOrThrow({
     where: { id: promptId }, include: { category: true, examples: true }
   });
   const content = buildPinterestPin(prompt, overrides);
   const publication = await prisma.pinterestPublication.create({
-    data: { promptId, status: "awaiting_confirmation", ...content }
+    data: { promptId, status: "awaiting_confirmation", apiBaseUrl, ...content }
   });
   PromptService.invalidateDetailCache(promptId);
   return publication;
@@ -234,10 +236,11 @@ export async function previewPinterestPublication(promptId: number) {
   const credentials = await getPinterestCredentials();
   if (!credentials.accessToken || !credentials.boardId) throw new Error("Подключите Pinterest и выберите доску в настройках.");
   const media = selectPinterestMedia(prompt);
-  return { ...content, imageUrl: media.url, boardId: credentials.boardId, boardName: credentials.boardName };
+  return { ...content, imageUrl: media.url, boardId: credentials.boardId, boardName: credentials.boardName, apiBaseUrl: credentials.apiBaseUrl };
 }
 
-export async function sendPromptToPinterest(promptId: number, overrides?: PinterestPinOverrides, confirmedDestination?: string, confirmedBoardId?: string) {
+export async function sendPromptToPinterest(promptId: number, overrides?: PinterestPinOverrides, confirmedDestination?: string, confirmedBoardId?: string, confirmedApiBaseUrl = "https://api.pinterest.com/v5") {
+  const { apiBaseUrl } = getPinterestEnvironment(config.pinterestApiBaseUrl);
   const prompt = await prisma.prompt.findUnique({
     where: { id: promptId },
     include: {
@@ -264,6 +267,7 @@ export async function sendPromptToPinterest(promptId: number, overrides?: Pinter
     const publication = await prisma.pinterestPublication.create({
       data: {
         promptId,
+        apiBaseUrl,
         status: "failed",
         error: message,
         title: (effectiveOverrides?.title?.trim() || prompt.title).slice(0, PINTEREST_TITLE_MAX) || "Prompt",
@@ -283,6 +287,7 @@ export async function sendPromptToPinterest(promptId: number, overrides?: Pinter
     const publication = await prisma.pinterestPublication.create({
       data: {
         promptId,
+        apiBaseUrl,
         status: "failed",
         error: message,
         title: pinContent.title,
@@ -303,6 +308,7 @@ export async function sendPromptToPinterest(promptId: number, overrides?: Pinter
   const publication = await prisma.pinterestPublication.create({
     data: {
       promptId,
+      apiBaseUrl,
       status: "pending",
       title: pinContent.title,
       description: pinContent.description,
@@ -314,6 +320,9 @@ export async function sendPromptToPinterest(promptId: number, overrides?: Pinter
 
   try {
     const credentials = await getPinterestCredentials();
+    if (confirmedApiBaseUrl !== credentials.apiBaseUrl) {
+      throw new Error("Среда Pinterest изменилась или не подтверждена. Проверьте Sandbox/production и подтвердите публикацию ещё раз.");
+    }
     if (!confirmedBoardId || confirmedBoardId !== credentials.boardId) {
       throw new Error("Доска Pinterest изменилась или не подтверждена. Проверьте настройки и подтвердите публикацию ещё раз.");
     }
@@ -333,6 +342,7 @@ export async function sendPromptToPinterest(promptId: number, overrides?: Pinter
         where: { id: publication.id },
         data: {
           status: "published",
+          apiBaseUrl: credentials.apiBaseUrl,
           pinterestPinId: result.id,
           pinterestBoardId: credentials.boardId,
           publishedUrl,

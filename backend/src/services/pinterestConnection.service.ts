@@ -2,6 +2,7 @@ import { createCipheriv, createDecipheriv, randomBytes, createHash } from "node:
 import { prisma } from "../db";
 import { config } from "../config";
 import { missingPinterestScopes, requirePinterestScopes } from "../utils/pinterestScopes";
+import { getPinterestEnvironment, requirePinterestEnvironment } from "../utils/pinterestEnvironment";
 
 export const CONNECTION_ID = "publisher";
 export const digest = (value: string) => createHash("sha256").update(value).digest("hex");
@@ -26,7 +27,8 @@ export function decryptToken(value: string): string {
 
 export type TokenResponse = { access_token: string; refresh_token?: string; expires_in?: number; scope?: string };
 export async function requestToken(body: URLSearchParams): Promise<TokenResponse> {
-  const response = await fetch("https://api.pinterest.com/v5/oauth/token", {
+  const { apiBaseUrl } = getPinterestEnvironment(config.pinterestApiBaseUrl);
+  const response = await fetch(`${apiBaseUrl}/oauth/token`, {
     method: "POST", signal: AbortSignal.timeout(20000),
     headers: { Authorization: `Basic ${Buffer.from(`${config.pinterestClientId}:${config.pinterestClientSecret}`).toString("base64")}`,
       "Content-Type": "application/x-www-form-urlencoded" }, body: body.toString()
@@ -44,11 +46,12 @@ export async function requestToken(body: URLSearchParams): Promise<TokenResponse
 
 export async function saveConnection(ownerTelegramId: string, token: TokenResponse, stateHash: string) {
   requirePinterestScopes(token.scope);
+  const { apiBaseUrl } = getPinterestEnvironment(config.pinterestApiBaseUrl);
   const data = {
     ownerTelegramId, accessTokenEncrypted: encryptToken(token.access_token),
     refreshTokenEncrypted: token.refresh_token ? encryptToken(token.refresh_token) : null,
     expiresAt: token.expires_in ? new Date(Date.now() + token.expires_in * 1000) : null,
-    scope: token.scope || null, boardId: null, boardName: null
+    scope: token.scope || null, apiBaseUrl, boardId: null, boardName: null
   };
   await prisma.$transaction(async tx => {
     const consumed = await tx.pinterestOAuthState.deleteMany({ where: { stateHash, ownerTelegramId, expiresAt: { gt: new Date() } } });
@@ -59,8 +62,10 @@ export async function saveConnection(ownerTelegramId: string, token: TokenRespon
 
 let refreshing: Promise<void> | undefined;
 async function refreshConnection() {
+  const { apiBaseUrl } = getPinterestEnvironment(config.pinterestApiBaseUrl);
   const row = await prisma.pinterestConnection.findUnique({ where: { id: CONNECTION_ID } });
   if (!row?.refreshTokenEncrypted) throw new Error("Срок подключения Pinterest истёк. Подключите аккаунт заново.");
+  requirePinterestEnvironment(row.apiBaseUrl, apiBaseUrl);
   const token = await requestToken(new URLSearchParams({ grant_type: "refresh_token", refresh_token: decryptToken(row.refreshTokenEncrypted) }));
   const scope = token.scope ?? row.scope;
   if (missingPinterestScopes(scope).length) {
@@ -80,11 +85,13 @@ async function refreshConnection() {
   });
   if (!result.count) throw new Error("Подключение Pinterest изменилось. Повторите действие.");
 }
-export async function getPinterestCredentials(): Promise<{ accessToken: string; boardId: string; boardName: string }> {
+export async function getPinterestCredentials(): Promise<{ accessToken: string; boardId: string; boardName: string; apiBaseUrl: string }> {
+  const { apiBaseUrl } = getPinterestEnvironment(config.pinterestApiBaseUrl);
   let row = await prisma.pinterestConnection.findUnique({ where: { id: CONNECTION_ID } });
   // Existing operator-managed installation remains available until explicitly connected/disconnected.
-  if (!row) return { accessToken: config.pinterestAccessToken, boardId: config.pinterestBoardId, boardName: config.pinterestBoardId };
+  if (!row) return { accessToken: config.pinterestAccessToken, boardId: config.pinterestBoardId, boardName: config.pinterestBoardId, apiBaseUrl };
   if (!row.accessTokenEncrypted) throw new Error("Pinterest отключён. Подключите аккаунт в настройках.");
+  requirePinterestEnvironment(row.apiBaseUrl, apiBaseUrl);
   // Refresh cannot add permissions to an older OAuth grant.
   requirePinterestScopes(row.scope);
   if (row.expiresAt && row.expiresAt.getTime() < Date.now() + 60000) {
@@ -93,13 +100,15 @@ export async function getPinterestCredentials(): Promise<{ accessToken: string; 
     row = await prisma.pinterestConnection.findUniqueOrThrow({ where: { id: CONNECTION_ID } });
   }
   if (!row.accessTokenEncrypted) throw new Error("Pinterest отключён.");
-  return { accessToken: decryptToken(row.accessTokenEncrypted), boardId: row.boardId || "", boardName: row.boardName || "" };
+  requirePinterestEnvironment(row.apiBaseUrl, apiBaseUrl);
+  requirePinterestScopes(row.scope);
+  return { accessToken: decryptToken(row.accessTokenEncrypted), boardId: row.boardId || "", boardName: row.boardName || "", apiBaseUrl };
 }
 
 export async function pinterestGet(path: string) {
-  const { accessToken } = await getPinterestCredentials();
+  const { accessToken, apiBaseUrl } = await getPinterestCredentials();
   if (!accessToken) throw new Error("Подключите Pinterest в настройках.");
-  const response = await fetch(`${config.pinterestApiBaseUrl}${path}`, {
+  const response = await fetch(`${apiBaseUrl}${path}`, {
     headers: { Authorization: `Bearer ${accessToken}` }, signal: AbortSignal.timeout(20000)
   });
   if (!response.ok) throw new Error("Не удалось получить доски Pinterest. Проверьте подключение и разрешения.");
@@ -107,13 +116,15 @@ export async function pinterestGet(path: string) {
 }
 
 export async function connectionStatus() {
+  const environment = getPinterestEnvironment(config.pinterestApiBaseUrl);
   const row = await prisma.pinterestConnection.findUnique({ where: { id: CONNECTION_ID } });
   const missingScopes = row?.accessTokenEncrypted ? missingPinterestScopes(row.scope) : [];
+  const environmentMismatch = Boolean(row?.accessTokenEncrypted && row.apiBaseUrl !== environment.apiBaseUrl);
   return { connected: Boolean(row?.accessTokenEncrypted),
     legacyConfigured: !row && Boolean(config.pinterestAccessToken),
     configured: Boolean(config.pinterestClientId && config.pinterestClientSecret && config.pinterestRedirectUri && /^[a-f0-9]{64}$/i.test(config.pinterestTokenEncryptionKey)),
     boardId: row ? row.boardId : config.pinterestBoardId || null,
     boardName: row ? row.boardName : config.pinterestBoardId || null,
-    missingScopes,
-    needsReconnect: missingScopes.length > 0 || Boolean(row?.accessTokenEncrypted && row.expiresAt && row.expiresAt.getTime() < Date.now() && !row.refreshTokenEncrypted) };
+    missingScopes, environment: environment.name, environmentMismatch,
+    needsReconnect: environmentMismatch || missingScopes.length > 0 || Boolean(row?.accessTokenEncrypted && row.expiresAt && row.expiresAt.getTime() < Date.now() && !row.refreshTokenEncrypted) };
 }

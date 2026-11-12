@@ -200,9 +200,9 @@ export const api = {
       method: "PATCH", body: JSON.stringify({ telegramPostUrl })
     }).then((prompt) => { promptCache.set(promptId, prompt); return prompt; });
   },
-  publishPromptToPinterest(promptId: number, destinationLink: string, boardId: string) {
+  publishPromptToPinterest(promptId: number, destinationLink: string, confirmation: PinterestPublicationConfirmation) {
     return request<PublishPinterestResponse>(`/api/admin/prompts/${promptId}/publish-pinterest`, {
-      method: "POST", body: JSON.stringify({ destinationLink, boardId })
+      method: "POST", body: JSON.stringify({ destinationLink, boardId: confirmation.boardId, apiBaseUrl: confirmation.apiBaseUrl })
     }).then((result) => {
       const cached = promptCache.get(promptId);
       if (cached && result.pinterestPublication) {
@@ -385,10 +385,20 @@ export function resolveCardMediaUrl(url: string, type: "image" | "video") {
 export type PinterestStatus = {
   connected: boolean; legacyConfigured: boolean; configured: boolean; needsReconnect: boolean;
   missingScopes?: string[];
+  environment?: "production" | "sandbox";
+  environmentMismatch?: boolean;
   boardId: string | null; boardName: string | null;
 };
 
-export async function confirmPinterestPublication(prompt: Prompt): Promise<string | null> {
-  const preview = await request<{title: string; description: string; destinationLink: string; boardId: string; boardName: string}>(`/api/admin/prompts/${prompt.id}/pinterest-preview`);
-  return window.confirm(`Создать пин в Pinterest?\n\nНазвание: ${preview.title}\nОписание: ${preview.description}\nДоска: ${preview.boardName || preview.boardId}\nСсылка назначения: ${preview.destinationLink}`) ? preview.boardId : null;
+export function isPinterestSandboxApiBaseUrl(apiBaseUrl?: string | null): boolean {
+  return apiBaseUrl?.trim().replace(/\/+$/, "") === "https://api-sandbox.pinterest.com/v5";
+}
+
+export type PinterestPublicationConfirmation = { boardId: string; apiBaseUrl: string };
+
+export async function confirmPinterestPublication(prompt: Prompt): Promise<PinterestPublicationConfirmation | null> {
+  const preview = await request<{title: string; description: string; destinationLink: string; boardId: string; boardName: string; apiBaseUrl?: string}>(`/api/admin/prompts/${prompt.id}/pinterest-preview`);
+  const apiBaseUrl = preview.apiBaseUrl ?? "https://api.pinterest.com/v5";
+  const environmentNote = isPinterestSandboxApiBaseUrl(apiBaseUrl) ? "\nSandbox: тестовая публикация" : "\nСреда: Production";
+  return window.confirm(`Создать пин в Pinterest?${environmentNote}\n\nНазвание: ${preview.title}\nОписание: ${preview.description}\nДоска: ${preview.boardName || preview.boardId}\nСсылка назначения: ${preview.destinationLink}`) ? { boardId: preview.boardId, apiBaseUrl } : null;
 }

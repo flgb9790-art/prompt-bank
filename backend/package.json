@@ -7,6 +7,7 @@
     "test:cors": "tsx --test tests/cors.test.ts",
     "test:security": "tsx --test tests/pinterestSecurity.test.ts",
     "prisma:patch-pinterest": "prisma db execute --schema prisma/schema.prisma --file prisma/patches/20261027_pinterest_connection.sql",
+    "prisma:patch-pinterest-environment": "prisma db execute --schema prisma/schema.prisma --file prisma/patches/20261112_pinterest_api_environment.sql",
     "test:publications": "tsx --test tests/publications.test.ts",
     "test:media": "tsx --test tests/localThumbnail.test.ts",
     "test:titles": "tsx --test tests/promptTitle.test.ts",
