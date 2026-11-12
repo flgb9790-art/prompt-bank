@@ -7,6 +7,7 @@ type Props = {
   showTelegramPublish?: boolean;
   onSave: (payload: PromptCreatePayload) => Promise<void>;
   onCancel: () => void;
+  onBusyChange?: (busy: boolean) => void;
   successPromptId?: number;
   onOpenPrompt: () => void;
   onAddMore: () => void;
@@ -19,6 +20,7 @@ export function AddPromptPage({
   showTelegramPublish = false,
   onSave,
   onCancel,
+  onBusyChange,
   successPromptId,
   onOpenPrompt,
   onAddMore,
@@ -43,5 +45,5 @@ export function AddPromptPage({
     );
   }
 
-  return <PromptForm categories={categories} user={user} showTelegramPublish={showTelegramPublish} onSubmit={onSave} onCancel={onCancel} />;
+  return <PromptForm categories={categories} user={user} showTelegramPublish={showTelegramPublish} onSubmit={onSave} onCancel={onCancel} onBusyChange={onBusyChange} />;
 }

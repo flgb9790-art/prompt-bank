@@ -9,6 +9,7 @@ import "./styles.css";
 import "./usability.css";
 import "./studio.css";
 import "./prompt-reader.css";
+import "./prompt-composer.css";
 import { applyReadingSize } from "./utils/readingPreferences";
 
 export { hideAppSplash };

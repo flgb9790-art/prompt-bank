@@ -2,6 +2,8 @@ import type { ClipboardEvent } from "react";
 import { plainTextFromClipboard } from "../utils/promptContentFormat";
 
 type Props = {
+  id?: string;
+  describedBy?: string;
   value: string;
   onChange: (value: string) => void;
   rows?: number;
@@ -11,6 +13,8 @@ type Props = {
 };
 
 export function PromptContentTextarea({
+  id,
+  describedBy,
   value,
   onChange,
   rows = 8,
@@ -38,6 +42,8 @@ export function PromptContentTextarea({
 
   return (
     <textarea
+      id={id}
+      aria-describedby={describedBy}
       required={required}
       rows={rows}
       value={value}

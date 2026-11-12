@@ -200,6 +200,12 @@ function MiniAppApp() {
   const tabRef = useRef<TabKey>(tab);
   const [selectedPrompt, setSelectedPrompt] = useState<Prompt>();
   const [createdPromptId, setCreatedPromptId] = useState<number>();
+  const [composerBusy, setComposerBusy] = useState(false);
+  const composerBusyRef = useRef(false);
+  const handleComposerBusyChange = useCallback((busy: boolean) => {
+    composerBusyRef.current = busy;
+    setComposerBusy(busy);
+  }, []);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchPrompts, setSearchPrompts] = useState<Prompt[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
@@ -681,6 +687,7 @@ function MiniAppApp() {
     }
     persistPublicationTemplatesFromPrompt(created);
     invalidateReferenceCaches();
+    handleComposerBusyChange(false);
     setCreatedPromptId(created.id);
     setPrompts((prev) => [created, ...prev]);
     setRecentPrompts((prev) => [created, ...prev].slice(0, HOME_RECENT_LIMIT));
@@ -870,6 +877,10 @@ function MiniAppApp() {
   }
 
   function handleTabChange(nextTab: TabKey) {
+    if (tab === "add" && !createdPromptId && (composerBusy || composerBusyRef.current) && nextTab !== "add") {
+      setToastMessage("Дождитесь окончания загрузки файлов или сохранения промпта");
+      return;
+    }
     setProfileScreen(null);
     setActiveTag(undefined);
     if (nextTab !== "search") {
@@ -1068,6 +1079,7 @@ function MiniAppApp() {
           showTelegramPublish={isAdmin}
           onSave={handleSavePrompt}
           onCancel={() => handleTabChange("home")}
+          onBusyChange={handleComposerBusyChange}
           successPromptId={createdPromptId}
           onOpenPrompt={() => {
             const created = prompts.find((item) => item.id === createdPromptId);

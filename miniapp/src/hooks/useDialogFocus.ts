@@ -17,7 +17,7 @@ export function useDialogFocus(ref: RefObject<HTMLElement | null>, open: boolean
       }
       if (event.key !== "Tab") return;
       const items = Array.from(panel.querySelectorAll<HTMLElement>('button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), summary, [tabindex="0"]'))
-        .filter((element) => element.getClientRects().length > 0);
+        .filter((element) => !element.matches(":disabled") && element.getClientRects().length > 0);
       const first = items[0], last = items[items.length - 1];
       if (!first) { event.preventDefault(); panel.focus(); }
       else if (event.shiftKey && (document.activeElement === first || document.activeElement === panel)) { event.preventDefault(); last?.focus(); }

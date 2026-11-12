@@ -1,4 +1,5 @@
-import { ImageIcon, Star, Trash2 } from "lucide-react";
+import { useRef } from "react";
+import { Film, Star, Trash2 } from "lucide-react";
 import { resolveMediaUrl } from "../api";
 import type { MediaType } from "../types";
 import { MediaUploader } from "./MediaUploader";
@@ -14,6 +15,9 @@ type Props = {
   items: PromptMediaItem[];
   onChange: (items: PromptMediaItem[]) => void;
   label?: string;
+  presentation?: "compact" | "dropzone";
+  disabled?: boolean;
+  onUploadingChange?: (busy: boolean) => void;
 };
 
 export function splitPromptMediaItems(items: PromptMediaItem[]) {
@@ -62,29 +66,45 @@ export function diffPromptMediaOnEdit(
   };
 }
 
-export function PromptMediaGalleryEditor({ items, onChange, label = "Фотографии" }: Props) {
+export function PromptMediaGalleryEditor({
+  items, onChange, label = "Фото и видео", presentation = "compact", disabled = false, onUploadingChange
+}: Props) {
+  const itemsRef = useRef(items);
+  const onChangeRef = useRef(onChange);
+  itemsRef.current = items;
+  onChangeRef.current = onChange;
+
+  function commit(next: PromptMediaItem[]) {
+    itemsRef.current = next;
+    onChangeRef.current(next);
+  }
+
   function removeAt(index: number) {
-    onChange(items.filter((_, idx) => idx !== index));
+    if (disabled) return;
+    commit(itemsRef.current.filter((_, idx) => idx !== index));
   }
 
   function makePreview(index: number) {
-    if (index <= 0) return;
-    const next = [...items];
+    if (disabled || index <= 0 || index >= itemsRef.current.length) return;
+    const next = [...itemsRef.current];
     const [picked] = next.splice(index, 1);
     next.unshift(picked);
-    onChange(next);
+    commit(next);
   }
 
   return (
     <div className="prompt-form-media-block">
-      <p className="mb-1 text-sm font-medium text-[var(--text)]">{label}</p>
-      <p className="mb-2 text-xs text-[var(--muted)]">Первая фотография — превью в карточках. Можно добавить несколько файлов.</p>
-      <div className="edit-media-toolbar">
+      {label ? <p className="mb-1 text-sm font-medium text-[var(--text)]">{label}</p> : null}
+      <p className="mb-2 text-xs text-[var(--muted)]">Первый файл — обложка карточки. Нажмите звезду на другом примере, чтобы сменить её.</p>
+      <div className={presentation === "dropzone" ? "composer-media-upload" : "edit-media-toolbar"}>
         <MediaUploader
           compact
-          label="Добавить фото"
+          presentation={presentation}
+          disabled={disabled}
+          onUploadingChange={onUploadingChange}
+          label="Добавить фото или видео"
           multiple
-          onUploaded={(uploaded) => onChange([...items, ...uploaded])}
+          onUploaded={(uploaded) => commit([...itemsRef.current, ...uploaded])}
         />
         {items.length ? <span className="text-xs text-[var(--muted)]">Всего: {items.length}</span> : null}
       </div>
@@ -105,7 +125,8 @@ export function PromptMediaGalleryEditor({ items, onChange, label = "Фотог�
                     type="button"
                     className="prompt-media-icon-btn"
                     title="Сделать превью"
-                    aria-label="Сделать превью"
+                    aria-label={`Сделать пример ${index + 1} обложкой`}
+                    disabled={disabled}
                     onClick={() => makePreview(index)}
                   >
                     <Star size={14} />
@@ -115,7 +136,8 @@ export function PromptMediaGalleryEditor({ items, onChange, label = "Фотог�
                   type="button"
                   className="prompt-media-icon-btn prompt-media-icon-btn--danger"
                   title="Удалить"
-                  aria-label="Удалить"
+                  aria-label={`Удалить пример ${index + 1}`}
+                  disabled={disabled}
                   onClick={() => removeAt(index)}
                 >
                   <Trash2 size={14} />
@@ -123,14 +145,14 @@ export function PromptMediaGalleryEditor({ items, onChange, label = "Фотог�
               </div>
               {item.type === "video" ? (
                 <span className="prompt-media-type-badge">
-                  <ImageIcon size={10} aria-hidden />
+                  <Film size={10} aria-hidden />
                 </span>
               ) : null}
             </div>
           ))}
         </div>
       ) : (
-        <p className="mt-2 text-xs text-[var(--muted)]">Фотографии не добавлены.</p>
+        presentation === "dropzone" ? null : <p className="mt-2 text-xs text-[var(--muted)]">Файлы пока не добавлены.</p>
       )}
     </div>
   );

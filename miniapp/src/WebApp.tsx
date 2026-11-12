@@ -8,6 +8,7 @@ import { PromptHistoryScreen } from "./components/history/PromptHistoryScreen";
 import { recordPromptCopy, trackPromptView } from "./utils/promptTracking";
 import { BrandSplash } from "./components/BrandSplash";
 import { PromptDetailsModal, type PromptEditPayload } from "./components/PromptDetailsModal";
+import { useDialogFocus } from "./hooks/useDialogFocus";
 const PromptForm = lazy(() => import("./components/PromptForm").then((module) => ({ default: module.PromptForm })));
 import { runDeferred } from "./utils/deferredPrefetch";
 import { hideAppSplash } from "./utils/appSplash";
@@ -121,6 +122,8 @@ export function WebApp() {
   favoriteIdsRef.current = favoriteIds;
   const [selectedPrompt, setSelectedPrompt] = useState<Prompt>();
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [composerBusy, setComposerBusy] = useState(false);
+  const composerDialogRef = useRef<HTMLDivElement>(null);
   const [authRequiredOpen, setAuthRequiredOpen] = useState(false);
   const [telegramAuthModalOpen, setTelegramAuthModalOpen] = useState(false);
   const [user, setUser] = useState<TelegramUser | null>(parseSavedUser());
@@ -142,6 +145,8 @@ export function WebApp() {
     scrollWebToTop();
   }
   const isAuthenticated = Boolean(user);
+  function closeComposer() { if (!composerBusy) setIsAddModalOpen(false); }
+  useDialogFocus(composerDialogRef, isAddModalOpen && isAuthenticated && isAdmin, closeComposer);
   const bootstrappedRef = useRef(false);
   const [appBootstrapped, setAppBootstrapped] = useState(false);
   const deepLinkHandledRef = useRef(false);
@@ -765,8 +770,9 @@ export function WebApp() {
       void Promise.all([api.getTags().then(setTags), api.getCategories().then(setCategories)]).catch(console.error);
     } catch (err) {
       if (!handleUnauthorized(err)) {
-        setToast("Ошибка загрузки");
+        setToast("Не удалось сохранить промпт");
       }
+      throw err;
     }
   }
 
@@ -937,7 +943,7 @@ export function WebApp() {
   }
   useEffect(() => {
     function onShortcut(event: KeyboardEvent) {
-      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k" && !document.querySelector('[role="dialog"][aria-modal="true"]')) {
         event.preventDefault(); focusLibrarySearch();
       }
     }
@@ -1064,12 +1070,13 @@ export function WebApp() {
       />
       {isAddModalOpen && isAuthenticated && isAdmin ? (
         <div className="modal-overlay modal-overlay--add-prompt-fullscreen fixed inset-0 z-[75] flex items-stretch justify-center">
-          <div className="modal-panel modal-panel--add-prompt-fullscreen fade-up flex h-full w-full flex-col">
+          <div ref={composerDialogRef} role="dialog" aria-modal="true" aria-labelledby="composer-dialog-title" tabIndex={-1} className="modal-panel modal-panel--add-prompt-fullscreen composer-modal fade-up flex h-full w-full flex-col">
             <div className="prompt-form-modal-header flex shrink-0 items-center justify-between gap-3">
-              <h3 className="text-lg font-semibold text-[var(--text)]">Новый промпт</h3>
+              <div><p className="composer-modal-eyebrow">Библиотека / Добавление</p><h2 id="composer-dialog-title">Новый промпт</h2></div>
               <button
                 type="button"
-                onClick={() => setIsAddModalOpen(false)}
+                onClick={closeComposer}
+                disabled={composerBusy}
                 className="btn-ghost-icon h-9 w-9"
                 aria-label="Закрыть"
               >
@@ -1084,7 +1091,8 @@ export function WebApp() {
                   showTelegramPublish={isAdmin}
                   layout="webFullscreen"
                   onSubmit={handleSavePrompt}
-                  onCancel={() => setIsAddModalOpen(false)}
+                  onCancel={closeComposer}
+                  onBusyChange={setComposerBusy}
                 />
               </Suspense>
             </div>
