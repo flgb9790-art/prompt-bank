@@ -15,7 +15,9 @@ import {
   readCreativeContext,
   creativeResearchTopics,
   characterImagePrompt,
+  studioExclusions,
 } from "./ideaStudio.creative";
+import { compactStudioHistory } from "./ideaStudio.novelty";
 import {
   readStudioReference,
   storeStudioReference,
@@ -29,6 +31,7 @@ import {
   generateStudioTexts,
   generateStudioImage,
   researchStudioIdeas,
+  reviewStudioNovelty,
 } from "./ideaStudio.openai";
 import {
   StudioError,
@@ -47,6 +50,7 @@ export const studioDependencies = {
   generateStudioTexts,
   generateStudioImage,
   researchStudioIdeas,
+  reviewStudioNovelty,
   persistMediaBuffer,
   sendPromptToTelegram,
 };
@@ -532,6 +536,19 @@ async function createDraftImage(id: string, owner: string, lease: Lease, origin:
     throw error;
   }
 }
+async function loadStudioHistory(exclude?: {id:string; promptId:number|null}) {
+  const [drafts, prompts] = await Promise.all([
+    prisma.ideaStudioDraft.findMany({
+      ...(exclude ? {where:{id:{not:exclude.id}}} : {}),
+      orderBy:{createdAt:"desc"}, select:{title:true,concept:true,content:true},
+    }),
+    prisma.prompt.findMany({
+      ...(exclude?.promptId ? {where:{id:{not:exclude.promptId}}} : {}),
+      orderBy:{createdAt:"desc"}, select:{title:true,content:true},
+    }),
+  ]);
+  return [...drafts,...prompts.map(prompt => ({...prompt,concept:ideaComparisonText(prompt.content)}))];
+}
 async function processGeneration(job: IdeaStudioJob, lease: Lease) {
   const { batchId } = job.payload as { batchId: string };
   const batch = await prisma.ideaStudioBatch.findUniqueOrThrow({
@@ -549,26 +566,8 @@ async function processGeneration(job: IdeaStudioJob, lease: Lease) {
     where: { id: batchId },
     data: { status: "generating", error: null },
   });
-  const [draftHistory, promptHistory] = await Promise.all([
-    prisma.ideaStudioDraft.findMany({
-      take: 150,
-      orderBy: { createdAt: "desc" },
-      select: { title: true, concept: true, content: true },
-    }),
-    prisma.prompt.findMany({
-      take: 100,
-      orderBy: { createdAt: "desc" },
-      select: { title: true, content: true },
-    }),
-  ]);
-  const previous = [
-    ...draftHistory,
-    ...promptHistory.map((p) => ({
-      title: p.title,
-      concept: ideaComparisonText(p.content),
-      content: p.content,
-    })),
-  ];
+  const previous = await loadStudioHistory();
+  const compactHistory = compactStudioHistory(previous);
   let research = "";
   let researchNotice: string | null = null;
   // Origin comes from the server-created schedule key, never from request body flags.
@@ -576,7 +575,7 @@ async function processGeneration(job: IdeaStudioJob, lease: Lease) {
   const creativeContext = readCreativeContext(batch.creativeContext);
   if (batch.useWebSearch) {
     const result = await studioDependencies.researchStudioIdeas(
-      creativeResearchTopics(batch.topics, creativeContext),
+      creativeResearchTopics(batch.topics, creativeContext, {recentScenes:compactHistory.slice(0,30),explorationSeed:batch.id}),
       () => reserveStudioUsage("text", new Date(), textOrigin),
       lease.signal,
     );
@@ -594,11 +593,7 @@ async function processGeneration(job: IdeaStudioJob, lease: Lease) {
       topics: batch.topics,
       language: batch.language,
       sourcePrompt: batch.sourcePrompt,
-      previous: previous.map(p => ({
-        title: p.title,
-        concept: ideaComparisonText(p.concept).slice(0,800),
-        content: ideaComparisonText(p.content || "").slice(0,1600),
-      })),
+      previous: compactHistory.slice(0,100),
       research,
       creativeContext,
       shotSeed: batch.id,
@@ -615,16 +610,21 @@ async function processGeneration(job: IdeaStudioJob, lease: Lease) {
         )
       : raw?.ideas,
   };
-  const ideas = validateGeneratedIdeas(
+  const candidates = validateGeneratedIdeas(
     prepared,
     batch.count,
     batch.language,
     previous,
     { skipDuplicates: true },
   );
+  const ideas = await studioDependencies.reviewStudioNovelty({
+    candidates, previous, exclusions:studioExclusions(creativeContext?.profile.exclusions),
+  }, () => reserveStudioUsage("text", new Date(), textOrigin), lease.signal);
+  lease.check();
+  if (!ideas.length) throw new StudioError("Подборка повторяет прежние сюжеты или попадает под исключения. Изображения не создавались. Уточните темы; платного повтора автоматически не будет.", 502);
   const duplicateCount = batch.count - ideas.length;
   const generationNotice = [researchNotice, duplicateCount
-    ? `Сохранено ${ideas.length} новых идей из ${batch.count}. Повторов пропущено: ${duplicateCount}; дополнительные платные запросы не выполнялись.`
+    ? `Сохранено ${ideas.length} новых идей из ${batch.count}. Повторов и исключений пропущено: ${duplicateCount}; платная перегенерация не выполнялась.`
     : null].filter(Boolean).join(" ") || null;
   await prisma.$transaction(
     ideas.map((idea) =>
@@ -687,14 +687,20 @@ async function processRewrite(job: IdeaStudioJob, lease: Lease) {
     where: { id: draftId },
     include: { batch: true },
   });
+  const previous = await loadStudioHistory(draft);
+  // Current exclusions apply to a manual rewrite; character/reference snapshots stay fixed.
+  const settings = await studioSettings();
+  const context = readCreativeContext(draft.batch.creativeContext);
+  const exclusions = creativeProfile(settings.creativeProfile).exclusions;
+  const creativeContext = context ? {...context,profile:{...context.profile,exclusions}} : undefined;
   const raw = await studioDependencies.generateStudioTexts(
     {
       count: 1,
       topics: instructions,
       language: draft.batch.language,
       sourcePrompt: draft.content,
-      previous: [],
-      creativeContext: readCreativeContext(draft.batch.creativeContext),
+      previous: compactStudioHistory(previous).slice(0,100),
+      creativeContext,
     },
     () => reserveStudioUsage("text", new Date(), "manual"),
     lease.signal,
@@ -706,13 +712,16 @@ async function processRewrite(job: IdeaStudioJob, lease: Lease) {
       ? raw.ideas.map((idea: any) =>
           composeReusableIdea(
             idea,
-            readCreativeContext(draft.batch.creativeContext),
+            creativeContext,
             draft.batch.language,
           ),
         )
       : raw?.ideas,
   };
-  const [idea] = validateGeneratedIdeas(prepared, 1, draft.batch.language, []);
+  const candidates = validateGeneratedIdeas(prepared, 1, draft.batch.language, previous);
+  const [idea] = await studioDependencies.reviewStudioNovelty({candidates,previous,exclusions:studioExclusions(exclusions)}, () => reserveStudioUsage("text",new Date(),"manual"),lease.signal);
+  lease.check();
+  if (!idea) throw new StudioError("Переработанная идея повторяет другой сюжет или попадает под исключения. Исходный черновик сохранён.",502);
   await prisma.ideaStudioDraft.update({
     where: { id: draftId },
     data: {

@@ -8,6 +8,7 @@ export type StudioCreativeProfile = {
   holidays: boolean;
   region: string;
   hemisphere: "north" | "south";
+  exclusions?: string;
 };
 export type IdeaStudioSettings = {
   creativeProfile: StudioCreativeProfile;

@@ -212,6 +212,17 @@ export function StudioCreativeProfile({
                 </label>
               ))}
           </fieldset>
+          <label className="idea-field">
+            Исключения: что не предлагать
+            <textarea rows={4} maxLength={3000} disabled={busy}
+              aria-label="Исключения: что не предлагать" aria-describedby="idea-exclusions-help"
+              value={value.exclusions || ""}
+              onChange={e => onChange({...value, exclusions: e.target.value})}
+              placeholder={"Кафе и кофе\nРабота за ноутбуком\nЯхты и шампанское"}
+            />
+            <span id="idea-exclusions-help" className="idea-help">Каждый нежелательный сюжет — с новой строки, до 30. Учитываем также близкие формулировки. Исключения действуют при поиске и проверке новых идей.</span>
+          </label>
+          <p className="idea-help">Новые идеи сравниваются с историей студии и библиотеки, включая отклонённые. Смена одежды или ракурса сама по себе не считается новым сюжетом.</p>
           <div className="idea-calendar-options">
             <label className="idea-check">
               <input

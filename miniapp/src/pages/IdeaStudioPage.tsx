@@ -959,11 +959,14 @@ export function IdeaStudioPage({
           {confirmation === "generate" ? (
             <div className="idea-confirm-body">
               <p>
-                Будет создано {settings.dailyCount} идей и {settings.dailyCount}{" "}
+                Запросим {settings.dailyCount} идей и подготовим до {settings.dailyCount}{" "}
                 изображений через платный OpenAI API.
                 {settings.useWebSearch
                   ? " Также будет выполнен поиск вдохновения."
                   : ""}
+              </p>
+              <p className="idea-help">
+                Перед созданием изображений проверим сюжеты по смыслу и исключениям. Это дополнительные текстовые запросы OpenAI; их число зависит от размера истории. Повторы пропускаются без автоматической платной перегенерации.
               </p>
               <p className="idea-help">
                 {data.limits.manualImageUnlimited

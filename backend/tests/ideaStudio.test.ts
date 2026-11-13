@@ -21,6 +21,7 @@ import {
   allowStudioPublicationRetry,
   enqueueStudioDraftAction,
   getStudioOverview,
+  saveStudioSettings,
 } from "../src/services/ideaStudio.service";
 import {
   localStudioClock,
@@ -235,6 +236,7 @@ beforeEach(async () => {
     textCalls++;
     return { ideas: [idea] };
   };
+  studioDependencies.reviewStudioNovelty = async input => input.candidates;
   studioDependencies.generateStudioImage = async (_prompt, _owner, reserve) => {
     await reserve();
     imageCalls++;
@@ -705,6 +707,80 @@ test("a fully repetitive batch never calls image generation or retries the paid 
   assert.equal(tables.ideaStudioBatch.find(row=>row.id===batch.id).status,"failed");
   assert.match(tables.ideaStudioBatch.find(row=>row.id===batch.id).error,/Все предложенные сцены/);
   assert.equal(imageCalls,1);assert.equal(textCalls,2);assert.equal(telegramCalls,0);
+});
+
+test("exclusions persist, snapshot into a batch and reach research and semantic review",async()=>{
+  const overview=await getStudioOverview();
+  const exclusions="Кафе и кофе\nНоутбуки";
+  await saveStudioSettings({...overview.settings,creativeProfile:{...overview.settings.creativeProfile,exclusions}},"42");
+  assert.equal((await getStudioOverview()).settings.creativeProfile.exclusions,exclusions);
+  let researched=false,reviewed=false;
+  studioDependencies.researchStudioIdeas=async(topics,reserve)=>{
+    await reserve();const brief=JSON.parse(topics);
+    assert.deepEqual(brief.exclusions,["Кафе и кофе","Ноутбуки"]);
+    assert.equal(brief.explorationSeed,batch.id);researched=true;
+    return {text:"New directions",sources:[{title:"Source",url:"https://example.test/"}]};
+  };
+  studioDependencies.reviewStudioNovelty=async(input,reserve)=>{
+    await reserve();assert.ok(researched);assert.equal(imageCalls,0);
+    assert.deepEqual(input.exclusions,["Кафе и кофе","Ноутбуки"]);reviewed=true;
+    return input.candidates;
+  };
+  const batch=await enqueueStudioBatch({count:1,useWebSearch:true},"42");
+  tables.ideaStudioSettings[0].creativeProfile.exclusions="Other rules for later batches";
+  await processNextStudioJob();
+  assert.ok(reviewed);assert.equal(imageCalls,1);assert.equal(telegramCalls,0);
+});
+
+test("semantic filtering precedes images and retains only genuinely new candidates",async()=>{
+  const rows=distinctScenes();
+  studioDependencies.generateStudioTexts=async(_input,reserve)=>{await reserve();return {ideas:rows};};
+  studioDependencies.reviewStudioNovelty=async(input,reserve)=>{
+    assert.equal(imageCalls,0);await reserve();return [input.candidates[1]];
+  };
+  const batch=await enqueueStudioBatch({count:3,useWebSearch:false},"42");
+  await processNextStudioJob();
+  const stored=tables.ideaStudioBatch.find(row=>row.id===batch.id);
+  assert.equal(stored.status,"ready");assert.equal(stored.count,1);
+  assert.equal(imageCalls,1);assert.equal(tables.ideaStudioDraft[0].title,rows[1].title);
+  assert.match(stored.error,/Повторов и исключений пропущено: 2/);
+});
+
+test("all rejected and old library records participate beyond the former history limits",async()=>{
+  for(let i=0;i<180;i++) tables.ideaStudioDraft.push({id:`history-${i}`,title:`Old scene ${i}`,concept:`Archive story ${i}`,content:`Archival scene number ${i} with unrelated equipment and surroundings`,rejected:true});
+  for(let i=0;i<130;i++) tables.prompt.push({id:10000+i,title:`Library scene ${i}`,content:`Library narrative ${i} among unrelated objects and places`});
+  studioDependencies.reviewStudioNovelty=async input=>{
+    assert.equal(input.previous.length,310);
+    assert.ok(input.previous.some(row=>row.title==="Old scene 179"));
+    assert.ok(input.previous.some(row=>row.title==="Library scene 129"));
+    return [];
+  };
+  const batch=await enqueueStudioBatch({count:1,useWebSearch:false},"42");
+  await processNextStudioJob();
+  assert.equal(tables.ideaStudioBatch.find(row=>row.id===batch.id).status,"failed");
+  assert.equal(imageCalls,0);assert.equal(telegramCalls,0);
+});
+
+test("a failed novelty check stops before images without an automatic paid retry",async()=>{
+  let reviews=0;
+  studioDependencies.reviewStudioNovelty=async(_input,reserve)=>{reviews++;await reserve();throw Error("mock provider timeout");};
+  const batch=await enqueueStudioBatch({count:1,useWebSearch:false},"42");
+  await processNextStudioJob();await processNextStudioJob();
+  assert.equal(tables.ideaStudioBatch.find(row=>row.id===batch.id).status,"failed");
+  assert.equal(reviews,1);assert.equal(textCalls,1);assert.equal(imageCalls,0);
+});
+
+test("manual rewrite excludes its own draft but respects current exclusions",async()=>{
+  const draft=await makeDraft();
+  tables.ideaStudioSettings[0].creativeProfile.exclusions="Яхты";
+  const original=draft.content;
+  studioDependencies.reviewStudioNovelty=async input=>{
+    assert.equal(input.previous.length,0);assert.deepEqual(input.exclusions,["Яхты"]);return [];
+  };
+  await enqueueStudioDraftAction(draft.id,"rewrite","42","Change the setting to another place");
+  await processNextStudioJob();
+  assert.equal(draft.content,original);assert.equal(draft.revision,0);assert.equal(imageCalls,1);
+  assert.equal(tables.ideaStudioJob.at(-1)!.status,"failed");
 });
 test("generation rejects repeat concepts and wrong-language titles", () => {
   assert.ok(similarIdea(idea.concept, idea.concept));

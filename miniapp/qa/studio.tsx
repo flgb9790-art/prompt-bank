@@ -67,6 +67,7 @@ const settings = {
     holidays: true,
     region: "Беларусь, Европа",
     hemisphere: "north" as const,
+    exclusions: "",
   },
   dailyEnabled: false,
   dailyCount: 10,

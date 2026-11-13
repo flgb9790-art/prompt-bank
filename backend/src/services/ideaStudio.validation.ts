@@ -107,7 +107,13 @@ export function ideaComparisonText(text: string) {
   const scene = sections.get("scene") || sections.get("сцена");
   if (scene) return [scene, sections.get("pose and expression") || sections.get("поза и выражение")].filter(Boolean).join("\n");
   // Identity instructions are shared across unrelated prompts and are not an idea.
-  return text.split(/\n\s*\n/).filter(paragraph => !/^(?:Use (?:the person in the uploaded photograph|my reference photo|the (?:attached|uploaded|reference) (?:photo|image))|Используй (?:человека из приложенной фотографии|мо[её] (?:фото|референс)|(?:приложенное|загруженное) фото))/iu.test(paragraph.trim())).join("\n\n").trim();
+  return text.split(/\n\s*\n/).flatMap(paragraph => {
+    if (!/^(?:Use (?:the person in the uploaded photograph|my reference photo|the (?:attached|uploaded|reference) (?:photo|image))|Используй (?:человека из приложенной фотографии|мо[её] (?:фото|референс)|(?:приложенное|загруженное) фото))/iu.test(paragraph.trim())) return [paragraph];
+    // Older prompts often join the identity preamble and actual scene into one
+    // paragraph. Keep the creative task instead of losing the entire scene.
+    const scene = paragraph.match(/\b(?:Create|Capture|Photograph|Generate|Depict|Imagine)\b[\s\S]*|(?:Создай(?:те)?|Сфотографируй|Изобрази|Сними)\s[\s\S]*/iu)?.[0];
+    return scene ? [scene] : [];
+  }).join("\n\n").trim();
 }
 export function similarIdea(a: string, b: string) {
   if (!a.trim() || !b.trim()) return false;
@@ -119,7 +125,7 @@ export function similarIdea(a: string, b: string) {
     bb = tokens(right);
   const overlap = [...aa].filter((x) => bb.has(x)).length;
   return (
-    aa.size >= 5 && bb.size >= 5 && overlap / Math.max(aa.size, bb.size) >= 0.85
+    aa.size >= 5 && bb.size >= 5 && overlap / Math.max(aa.size, bb.size) >= 0.72
   );
 }
 export type GeneratedIdea = {
