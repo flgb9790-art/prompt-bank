@@ -87,12 +87,29 @@ export async function getStudioReference(batchId?: string, identity = false) {
 export async function reserveStudioUsage(
   kind: "text" | "image",
   date = new Date(),
+  origin: "manual" | "scheduled" = "scheduled",
 ) {
   const id = `${date.toISOString().slice(0, 10)}:${kind}`;
-  const limit =
-    kind === "image"
-      ? config.studioDailyImageLimit
-      : config.studioDailyTextLimit;
+  if (kind === "text") {
+    await prisma.$transaction(async tx => {
+      if (origin === "scheduled") {
+        const scheduledId = `${id}:scheduled`;
+        await tx.ideaStudioUsage.upsert({where:{id:scheduledId},create:{id:scheduledId},update:{}});
+        const reserved = await tx.ideaStudioUsage.updateMany({
+          where:{id:scheduledId,requests:{lt:config.studioDailyTextLimit}},
+          data:{requests:{increment:1}},
+        });
+        if (!reserved.count) throw new StudioError(
+          `Достигнут дневной лимит автоматических текстовых запросов (${config.studioDailyTextLimit}). Он обновится в 00:00 UTC. Ручные запросы доступны без этого лимита.`, 429,
+        );
+      }
+      await tx.ideaStudioUsage.upsert({
+        where:{id},create:{id,requests:1},update:{requests:{increment:1}},
+      });
+    });
+    return;
+  }
+  const limit = config.studioDailyImageLimit;
   await prisma.ideaStudioUsage.upsert({
     where: { id },
     create: { id },
@@ -104,7 +121,7 @@ export async function reserveStudioUsage(
   });
   if (!result.count)
     throw new StudioError(
-      `Достигнут дневной лимит ${kind === "image" ? "изображений" : "текстовых запросов"} (${limit}). Он обновится в 00:00 UTC.`,
+      `Достигнут дневной лимит изображений (${limit}). Он обновится в 00:00 UTC.`,
       429,
     );
 }
@@ -131,7 +148,7 @@ export async function getStudioOverview(batchId?: string) {
       },
     }),
     prisma.ideaStudioUsage.findMany({
-      where: { id: { in: [`${day}:text`, `${day}:image`] } },
+      where: { id: { in: [`${day}:text`, `${day}:image`, `${day}:text:scheduled`] } },
     }),
   ]);
   const currentId = batchId || batches[0]?.id;
@@ -180,11 +197,13 @@ export async function getStudioOverview(batchId?: string) {
     limits: {
       image: config.studioDailyImageLimit,
       text: config.studioDailyTextLimit,
+      manualTextUnlimited: true,
       resetTimeZone: "UTC",
     },
     usage: {
       image: usage.find((x) => x.id.endsWith(":image"))?.requests || 0,
       text: usage.find((x) => x.id.endsWith(":text"))?.requests || 0,
+      scheduledText: usage.find((x) => x.id.endsWith(":text:scheduled"))?.requests || 0,
     },
     batches: batches.map(({ referenceImageKey, ...batch }) => ({
       ...batch,
@@ -563,11 +582,13 @@ async function processGeneration(job: IdeaStudioJob, lease: Lease) {
   ];
   let research = "";
   let researchNotice: string | null = null;
+  // Origin comes from the server-created schedule key, never from request body flags.
+  const textOrigin = batch.dailyKey ? "scheduled" : "manual";
   const creativeContext = readCreativeContext(batch.creativeContext);
   if (batch.useWebSearch) {
     const result = await studioDependencies.researchStudioIdeas(
       creativeResearchTopics(batch.topics, creativeContext),
-      () => reserveStudioUsage("text"),
+      () => reserveStudioUsage("text", new Date(), textOrigin),
       lease.signal,
     );
     lease.check();
@@ -593,7 +614,7 @@ async function processGeneration(job: IdeaStudioJob, lease: Lease) {
       creativeContext,
       shotSeed: batch.id,
     },
-    () => reserveStudioUsage("text"),
+    () => reserveStudioUsage("text", new Date(), textOrigin),
     lease.signal,
   );
   lease.check();
@@ -686,7 +707,7 @@ async function processRewrite(job: IdeaStudioJob, lease: Lease) {
       previous: [],
       creativeContext: readCreativeContext(draft.batch.creativeContext),
     },
-    () => reserveStudioUsage("text"),
+    () => reserveStudioUsage("text", new Date(), "manual"),
     lease.signal,
   );
   lease.check();

@@ -85,8 +85,8 @@ const data: IdeaStudioOverview = {
     imageQuality: "low",
   },
   settings,
-  limits: { image: 10, text: 12, resetTimeZone: "UTC" },
-  usage: { image: 6, text: 2 },
+  limits: { image: 10, text: 12, resetTimeZone: "UTC", manualTextUnlimited: true },
+  usage: { image: 6, text: 2, scheduledText: 0 },
   batches: [
     {
       hasReference: false,

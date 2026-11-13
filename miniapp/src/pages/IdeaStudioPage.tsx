@@ -594,8 +594,11 @@ export function IdeaStudioPage({
         </span>
         <span>
           Сегодня: {data.usage.image}/{data.limits.image} изображений ·{" "}
-          {data.usage.text}/{data.limits.text} текстовых запросов{" "}
-          <span title="Неудачные и прерванные вызовы тоже учитываются; сброс в 00:00 UTC.">
+          {data.usage.text}{!data.limits.manualTextUnlimited && `/${data.limits.text}`} текстовых запросов
+          {data.limits.manualTextUnlimited && " · вручную без дневного лимита"}{" "}
+          <span title={data.limits.manualTextUnlimited
+            ? `Неудачные и прерванные вызовы тоже учитываются. Вручную текст без дневного лимита; для расписания: ${data.usage.scheduledText || 0}/${data.limits.text}. Сброс счётчиков в 00:00 UTC.`
+            : "Неудачные и прерванные вызовы тоже учитываются; сброс в 00:00 UTC."}>
             ⓘ
           </span>
         </span>

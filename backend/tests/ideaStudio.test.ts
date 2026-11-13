@@ -428,6 +428,54 @@ test("quota is reserved atomically before calls, including failed attempts", asy
   assert.equal(results.filter((r) => r.status === "fulfilled").length, 2);
   assert.equal(tables.ideaStudioUsage[0].requests, 2);
 });
+test("manual text generation and search continue beyond twelve requests while preserving usage",async()=>{
+  for(let i=0;i<12;i++)await reserveStudioUsage("text",new Date(),"manual");
+  const batch=await enqueueStudioBatch({count:1,useWebSearch:true},"42");
+  await processNextStudioJob();
+  assert.equal(tables.ideaStudioBatch.find(row=>row.id===batch.id).status,"ready");
+  const overview=await getStudioOverview(batch.id);
+  assert.equal(overview.usage.text,14);
+  assert.equal(overview.usage.scheduledText,0);
+  assert.equal(overview.limits.manualTextUnlimited,true);
+  assert.equal(imageCalls,1);assert.equal(textCalls,1);assert.equal(telegramCalls,0);
+});
+test("scheduled text quota is separate and a manual rewrite of a scheduled draft bypasses it",async()=>{
+  const batch=await enqueueStudioBatch({count:1,useWebSearch:false},"42","daily:unit-test");
+  await processNextStudioJob();
+  const draft=tables.ideaStudioDraft.find(row=>row.batchId===batch.id);
+  for(let i=1;i<12;i++)await reserveStudioUsage("text");
+  await assert.rejects(()=>reserveStudioUsage("text"),/автоматических текстовых/);
+  await enqueueStudioDraftAction(draft.id,"rewrite","42","Change the lighting to warm afternoon sunlight");
+  await processNextStudioJob();
+  const overview=await getStudioOverview(batch.id);
+  assert.equal(overview.usage.scheduledText,12);
+  assert.equal(overview.usage.text,13);
+  assert.equal(tables.ideaStudioJob[1].status,"succeeded");
+  assert.equal(textCalls,2);assert.equal(imageCalls,1);
+});
+test("manual calls do not consume the scheduled allowance and scheduled jobs stop at their cap",async()=>{
+  for(let i=0;i<20;i++)await reserveStudioUsage("text",new Date(),"manual");
+  await reserveStudioUsage("text");
+  let overview=await getStudioOverview();
+  assert.equal(overview.usage.text,21);assert.equal(overview.usage.scheduledText,1);
+  for(let i=1;i<12;i++)await reserveStudioUsage("text");
+  const batch=await enqueueStudioBatch({count:1,useWebSearch:true},"42","daily:another-test");
+  await processNextStudioJob();
+  assert.equal(tables.ideaStudioBatch.find(row=>row.id===batch.id).status,"failed");
+  overview=await getStudioOverview();
+  assert.equal(overview.usage.scheduledText,12);assert.equal(overview.usage.text,32);
+  assert.equal(textCalls,0);assert.equal(imageCalls,0);
+});
+test("scheduled allowance resets at UTC midnight without losing total manual accounting",async()=>{
+  config.studioDailyTextLimit=1;
+  const first=new Date("2026-11-13T23:59:59Z"), next=new Date("2026-11-14T00:00:00Z");
+  await reserveStudioUsage("text",first,"manual");
+  await reserveStudioUsage("text",first);
+  await assert.rejects(()=>reserveStudioUsage("text",first),/автоматических/);
+  await reserveStudioUsage("text",next);
+  assert.equal(tables.ideaStudioUsage.find(row=>row.id==="2026-11-13:text").requests,2);
+  assert.equal(tables.ideaStudioUsage.find(row=>row.id==="2026-11-14:text").requests,1);
+});
 test("no paid text generation when there is insufficient image quota", async () => {
   config.studioDailyImageLimit = 1;
   await reserveStudioUsage("image");
