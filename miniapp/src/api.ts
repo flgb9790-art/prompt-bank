@@ -140,9 +140,9 @@ export const api = {
     if(!response.ok){const payload=await response.json().catch(()=>({}));throw new ApiError(response.status,payload.message||"Не удалось загрузить референс.");}
   },
   removeIdeaReference(){return request<{ok:true}>("/api/admin/idea-studio/reference",{method:"DELETE"});},
-  async ideaReferenceImage(batchId?:string) {
+  async ideaReferenceImage(batchId?:string, identity = false) {
     const path=batchId?`/batches/${encodeURIComponent(batchId)}/reference`:"/reference";
-    const response=await fetch(`${resolveBaseUrl()}/api/admin/idea-studio${path}`,{headers:buildAuthHeader(),credentials:"include",cache:"no-store"});
+    const response=await fetch(`${resolveBaseUrl()}/api/admin/idea-studio${path}${identity?"?view=identity":""}`,{headers:buildAuthHeader(),credentials:"include",cache:"no-store"});
     if(!response.ok)throw new ApiError(response.status,"Не удалось загрузить референс.");
     return response.blob();
   },

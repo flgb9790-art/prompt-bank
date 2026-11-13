@@ -76,10 +76,10 @@ router.delete(
 );
 router.get(
   "/reference",
-  handle(async (_req, res) => {
+  handle(async (req, res) => {
     res.setHeader("Cache-Control", "private, no-store");
     res.setHeader("X-Content-Type-Options", "nosniff");
-    res.type("jpeg").send(await getStudioReference());
+    res.type("jpeg").send(await getStudioReference(undefined, req.query.view === "identity"));
   }),
 );
 router.get(
@@ -87,7 +87,7 @@ router.get(
   handle(async (req, res) => {
     res.setHeader("Cache-Control", "private, no-store");
     res.setHeader("X-Content-Type-Options", "nosniff");
-    res.type("jpeg").send(await getStudioReference(req.params.id));
+    res.type("jpeg").send(await getStudioReference(req.params.id, req.query.view === "identity"));
   }),
 );
 router.put(

@@ -19,6 +19,7 @@ import {
   readStudioReference,
   storeStudioReference,
 } from "./ideaStudio.references";
+import { prepareStudioReference } from "./ideaStudio.faceReference";
 import {
   composeReusableIdea,
   validateReusablePrompt,
@@ -39,6 +40,7 @@ import {
 } from "./ideaStudio.validation";
 
 export const studioDependencies = {
+  prepareStudioReference,
   readStudioReference,
   generateStudioTexts,
   generateStudioImage,
@@ -64,19 +66,22 @@ export async function studioSettings() {
 }
 export async function setStudioReference(buffer: Buffer | null) {
   const key = buffer ? await storeStudioReference(buffer) : null;
+  if (key) await studioDependencies.prepareStudioReference(key);
   await studioSettings();
   await prisma.ideaStudioSettings.update({
     where: { id: SETTINGS },
     data: { referenceImageKey: key },
   });
 }
-export async function getStudioReference(batchId?: string) {
+export async function getStudioReference(batchId?: string, identity = false) {
   const source = batchId
     ? await prisma.ideaStudioBatch.findUnique({ where: { id: batchId } })
     : await studioSettings();
   if (!source?.referenceImageKey)
     throw new StudioError("Референс не найден.", 404);
-  return studioDependencies.readStudioReference(source.referenceImageKey);
+  return identity
+    ? studioDependencies.prepareStudioReference(source.referenceImageKey)
+    : studioDependencies.readStudioReference(source.referenceImageKey);
 }
 export async function reserveStudioUsage(
   kind: "text" | "image",
@@ -234,7 +239,7 @@ export async function enqueueStudioBatch(
     ? settings.referenceImageKey
     : null;
   if (referenceImageKey)
-    await studioDependencies.readStudioReference(referenceImageKey);
+    await studioDependencies.prepareStudioReference(referenceImageKey);
   const creativeContext = createCreativeContext(
     profile,
     Boolean(referenceImageKey),
@@ -467,7 +472,7 @@ async function createDraftImage(id: string, owner: string, lease: Lease) {
   });
   try {
     const reference = draft.batch.referenceImageKey
-      ? await studioDependencies.readStudioReference(
+      ? await studioDependencies.prepareStudioReference(
           draft.batch.referenceImageKey,
         )
       : undefined;

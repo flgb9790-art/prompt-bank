@@ -194,6 +194,7 @@ const idea = {
 };
 beforeEach(async () => {
   Object.assign(studioDependencies, dependencyOriginals);
+  studioDependencies.prepareStudioReference = async key => studioDependencies.readStudioReference(key);
   tables = Object.fromEntries(delegates.map((k) => [k, []]));
   seq = 0;
   imageCalls = 0;
@@ -332,6 +333,7 @@ test("character batches snapshot the reference and keep public prompts reusable 
     },
   });
   studioDependencies.readStudioReference = async (key) => Buffer.from(key);
+  studioDependencies.prepareStudioReference = async (key) => Buffer.from(`aligned:${key}`);
   studioDependencies.generateStudioTexts = async (_input, reserve) => {
     await reserve();
     return {
@@ -387,10 +389,10 @@ test("character batches snapshot the reference and keep public prompts reusable 
   const draft = tables.ideaStudioDraft.find((d) => d.batchId === batch.id);
   assert.match(draft.content, /sole identity reference/);
   assert.ok(!draft.content.includes("TestName"));
-  assert.equal(used[0], "photo-A");
+  assert.equal(used[0], "aligned:photo-A");
   await enqueueStudioDraftAction(draft.id, "image", "42");
   await processNextStudioJob();
-  assert.deepEqual(used, ["photo-A", "photo-A"]);
+  assert.deepEqual(used, ["aligned:photo-A", "aligned:photo-A"]);
 });
 test("a missing reference never silently generates another face or charges for an image", async () => {
   const settings = await studioSettings();

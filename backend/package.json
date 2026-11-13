@@ -5,7 +5,7 @@
   "type": "commonjs",
   "scripts": {
     "prisma:patch-studio-character": "prisma db execute --schema prisma/schema.prisma --file prisma/patches/20261113_studio_character.sql",
-    "test:studio": "tsx --test tests/ideaStudio.test.ts tests/ideaStudioCreative.test.ts",
+    "test:studio": "tsx --test tests/ideaStudio.test.ts tests/ideaStudioCreative.test.ts tests/ideaStudioFaceReference.test.ts",
     "prisma:patch-idea-studio": "prisma db execute --schema prisma/schema.prisma --file prisma/patches/20261113_idea_studio.sql",
     "test:cors": "tsx --test tests/cors.test.ts",
     "test:security": "tsx --test tests/pinterestSecurity.test.ts",
@@ -32,6 +32,10 @@
   },
   "dependencies": {
     "@prisma/client": "^6.8.2",
+    "@tensorflow-models/face-detection": "1.0.3",
+    "@tensorflow/tfjs-backend-cpu": "4.22.0",
+    "@tensorflow/tfjs-converter": "4.22.0",
+    "@tensorflow/tfjs-core": "4.22.0",
     "compression": "^1.8.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",

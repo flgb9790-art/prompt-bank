@@ -28,7 +28,7 @@ export function StudioReferencePreview({
     setFailed(false);
     if (version)
       void api
-        .ideaReferenceImage(batchId)
+        .ideaReferenceImage(batchId, true)
         .then((blob) => {
           if (!active) return;
           objectUrl = URL.createObjectURL(blob);
@@ -43,7 +43,7 @@ export function StudioReferencePreview({
     };
   }, [version, batchId]);
   return url ? (
-    <img src={url} alt="Референс персонажа" />
+    <img src={url} alt="Выровненный референс лица" />
   ) : (
     <div className="idea-reference-placeholder">
       <Camera size={24} strokeWidth={1.3} />
@@ -121,9 +121,9 @@ export function StudioCreativeProfile({
             </button>
           )}
           <p className="idea-help">
-            Чёткое фото лица, JPG / PNG / WebP до 10 МБ. Фото хранится приватно
-            и передаётся OpenAI при генерации. В канал отправляется только
-            готовое изображение.
+            Чёткое фото одного лица с видимыми глазами, JPG / PNG / WebP до 10 МБ.
+            Перед генерацией лицо кадрируется и выравнивается локально.
+            Исходник хранится приватно; в OpenAI передаётся подготовленный портрет.
           </p>
         </div>
         <div className="idea-character-fields">

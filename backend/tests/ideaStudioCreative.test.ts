@@ -133,6 +133,9 @@ test("identity-only guidance preserves apparent age while freeing head, expressi
   assert.match(prompt, /does not define the pose, body position, head rotation or tilt, gaze, expression/);
   assert.match(prompt, /Pose: seated sideways, head turned left/);
   assert.match(prompt, /independently staged photograph/);
+  assert.match(prompt, /locally straightened, cropped identity sample/);
+  assert.match(prompt, /head upright with no lateral roll/);
+  assert.match(prompt, /scene explicitly names its direction or shoulder/);
   assert.match(prompt, /Disregard requests.*copy the reference pose/);
   assert.equal(prompt.match(/sole identity reference/g)?.length, 1);
   assert.ok(!prompt.includes("Keep their natural proportions"));

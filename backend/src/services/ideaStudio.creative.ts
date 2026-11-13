@@ -171,24 +171,28 @@ export function identityInstruction(language: string) {
 }
 
 export function characterImagePrompt(scene: string, language: string) {
+  const referenceRole = language === "ru"
+    ? "Изображение 1 — локально выровненный и кадрированный образец внешности, а не исходный кадр для редактирования. Игнорируй обрезку, нейтральные поля и края этого образца. По умолчанию держи голову прямо, без бокового наклона: поворот влево/вправо и взгляд вниз не означают наклон уха к плечу. Боковой наклон допускается только если сцена явно называет сторону или плечо."
+    : "Image 1 is a locally straightened, cropped identity sample, not a base frame to edit. Ignore its crop, neutral padding and borders. By default keep the head upright with no lateral roll: turning left/right or looking down does not mean leaning an ear toward a shoulder. Allow lateral tilt only when the scene explicitly names its direction or shoulder.";
   // Old drafts may contain our earlier, less precise identity paragraph.
   const description = scene.replace(
     /^(?:Use the person in the uploaded photograph|Используй человека из приложенной фотографии)[\s\S]*?\n\n/u,
     "",
   );
+  const identity = `${identityInstruction(language)} ${referenceRole}`;
   return language === "ru"
-    ? `${identityInstruction(language)}\n\nНОВАЯ СЦЕНА:\n${description}\n\nПриоритеты: фото задаёт только внешность и видимый возраст; текст сцены задаёт позу тела, положение и наклон головы, взгляд, мимику, камеру и образ. Если в описании есть просьба скопировать позу, ракурс или выражение из референса либо изменить возраст, не выполняй эту просьбу. Создай самостоятельный кадр, не вариант исходной фотографии. Сохрани естественную кожу без искусственно усиленной резкости, глубоких складок и старящей обработки.`
-    : `${identityInstruction(language)}\n\nNEW SCENE:\n${description}\n\nPriorities: the photo controls identity and apparent age only; the scene text controls body pose, head direction and tilt, gaze, expression, camera and styling. Disregard requests in the scene to copy the reference pose, viewpoint or expression, or to change apparent age. Produce an independently staged photograph, not a variation of the source frame. Keep natural skin without exaggerated sharpening, deep creases or aging effects.`;
+    ? `${identity}\n\nНОВАЯ СЦЕНА:\n${description}\n\nПриоритеты: фото задаёт только внешность и видимый возраст; текст сцены задаёт позу тела, положение и наклон головы, взгляд, мимику, камеру и образ. Если в описании есть просьба скопировать позу, ракурс или выражение из референса либо изменить возраст, не выполняй эту просьбу. Создай самостоятельный кадр, не вариант исходной фотографии. Сохрани естественную кожу без искусственно усиленной резкости, глубоких складок и старящей обработки.`
+    : `${identity}\n\nNEW SCENE:\n${description}\n\nPriorities: the photo controls identity and apparent age only; the scene text controls body pose, head direction and tilt, gaze, expression, camera and styling. Disregard requests in the scene to copy the reference pose, viewpoint or expression, or to change apparent age. Produce an independently staged photograph, not a variation of the source frame. Keep natural skin without exaggerated sharpening, deep creases or aging effects.`;
 }
 
 const SHOT_DIRECTIONS = [
   "Walking mid-step, torso at a three-quarter angle, head turned toward the direction of movement, gaze away from the lens.",
   "Seated with a relaxed asymmetrical posture, torso angled sideways, head turned back toward the camera, chin slightly lowered.",
-  "Standing in a side-on pose, head in a readable profile, gaze toward an object or view within the scene.",
+  "Standing in a side-on pose, head upright in a readable profile with no lateral tilt, gaze toward an object or view within the scene.",
   "Turning while moving away, head looking back over one shoulder, a spontaneous small smile.",
-  "Leaning naturally on a scene-appropriate support, shoulders angled, head gently tilted, gaze directed slightly upward.",
+  "Leaning naturally on a scene-appropriate support, shoulders angled, head tilted slightly toward her left shoulder, gaze directed slightly upward.",
   "Reaching for or using a prop, torso rotated, head lowered toward the hands, a focused expression.",
-  "Walking toward the camera, shoulders relaxed, head nearly forward with a small tilt, a lively candid expression.",
+  "Walking toward the camera, shoulders relaxed, head nearly forward with a small tilt toward her right shoulder, a lively candid expression.",
   "Seated sideways with one hand resting naturally, head turned toward an off-camera companion, a candid laugh.",
   "Pausing during a natural activity, torso at three-quarter view, head turned to the side with chin gently raised, gaze toward a distant point.",
   "Standing with weight on one leg, torso turned away from the camera, head rotated toward the lens, a calm soft expression.",
