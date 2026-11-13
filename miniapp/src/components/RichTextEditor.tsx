@@ -11,13 +11,16 @@ type Props = {
   onChange: (html: string) => void;
   placeholder?: string;
   minHeight?: number;
+  ariaLabel?: string;
+  disabled?: boolean;
 };
 
-export function RichTextEditor({ value, onChange, placeholder, minHeight = 140 }: Props) {
+export function RichTextEditor({ value, onChange, placeholder, minHeight = 140, ariaLabel = "Текст", disabled = false }: Props) {
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
         heading: false,
+        link: false,
         bulletList: false,
         orderedList: false,
         blockquote: false,
@@ -33,13 +36,15 @@ export function RichTextEditor({ value, onChange, placeholder, minHeight = 140 }
       Placeholder.configure({ placeholder: placeholder ?? "Введите текст…" })
     ],
     content: plainTemplateToHtml(value),
+    editable: !disabled,
     onUpdate: ({ editor: ed }) => onChange(ed.getHTML()),
     editorProps: {
       attributes: {
-        class: "rich-text-editor-content"
+        class: "rich-text-editor-content", role:"textbox", "aria-label":ariaLabel, "aria-multiline":"true",
       }
     }
   });
+  useEffect(()=>{editor?.setEditable(!disabled);},[editor,disabled]);
 
   useEffect(() => {
     if (!editor) return;

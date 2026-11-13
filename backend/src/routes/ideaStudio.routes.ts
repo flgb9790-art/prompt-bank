@@ -139,6 +139,7 @@ router.post(
       req.body.draftIds,
       readTelegramId(req)!,
       req.body.confirmed,
+      req.body.publication,
     );
     res.status(202).json({ jobId: job.id });
     kickStudioWorker();

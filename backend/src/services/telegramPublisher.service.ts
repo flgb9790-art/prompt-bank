@@ -3,6 +3,7 @@ import { buildTelegramPostLink } from "../utils/telegramPostLink";
 import { config } from "../config";
 import { PromptService } from "./prompt.service";
 import { derivePromptTitle } from "../utils/promptTitle";
+import { renderStudioTelegramPostHtml, STUDIO_TELEGRAM_CAPTION_MAX } from "./ideaStudio.telegramPublication";
 import {
   type PublicationTemplateVars,
   resolveTelegramPostTemplate
@@ -30,6 +31,7 @@ type PromptForPost = {
   title: string;
   content: string;
   telegramPostTemplate?: string | null;
+  studioDraft?: {id:string} | null;
   coverMediaUrl: string | null;
   coverMediaType: string | null;
   category: { name: string };
@@ -109,6 +111,11 @@ export function buildTelegramPostHtml(prompt: PromptForPost): string {
   const template = stored || resolveTelegramPostTemplate(null, vars);
   const htmlSource = isHtmlTemplate(template) ? template : plainTemplateToHtml(template);
   const rendered = renderPublicationTemplateHtml(htmlSource, vars);
+  if (prompt.studioDraft) {
+    const html = renderStudioTelegramPostHtml(htmlSource,vars);
+    if (html.length>STUDIO_TELEGRAM_CAPTION_MAX) throw new Error("Подпись Telegram слишком длинная. Сократите текст публикации.");
+    return html;
+  }
   return truncateCaption(htmlToTelegramHtml(rendered));
 }
 
@@ -359,7 +366,8 @@ export function splitTelegramText(text: string): string[] {
   return chunks;
 }
 
-async function sendTelegramPost(chatId: string, postHtml: string, content: string, mediaItems: PostMediaItem[]) {
+async function sendTelegramPost(chatId: string, postHtml: string, content: string, mediaItems: PostMediaItem[], includeContent = true) {
+  if (!includeContent) return sendTelegramMediaPost(chatId,postHtml,mediaItems);
   const announcement = htmlToPlainText(postHtml);
   const text = announcement.includes(content) ? announcement : `${announcement}\n\n${content}`;
   if (mediaItems.length && text.length <= TELEGRAM_CAPTION_MAX) {
@@ -401,7 +409,8 @@ export async function sendPromptToTelegram(promptId: number) {
     include: {
       category: true,
       keywords: { include: { keyword: true } },
-      examples: { orderBy: { id: "asc" } }
+      examples: { orderBy: { id: "asc" } },
+      studioDraft: {select:{id:true}},
     }
   });
 
@@ -432,7 +441,7 @@ export async function sendPromptToTelegram(promptId: number) {
   });
 
   try {
-    const result = await sendTelegramPost(config.telegramChannelId, postHtml, prompt.content, mediaItems);
+    const result = await sendTelegramPost(config.telegramChannelId, postHtml, prompt.content, mediaItems, !prompt.studioDraft);
     const telegramPostUrl = buildTelegramPostLink(result.chat, result.message_id);
 
     await prisma.$transaction([

@@ -128,7 +128,7 @@ function delegate(name: string) {
               ? { status: "queued", sources: [] }
               : name === "ideaStudioUsage"
                 ? { requests: 0 }
-                : {};
+              : name === "prompt" ? {telegramPublished:false,telegramPostUrl:null} : {};
     const row = {
       id: ["prompt", "user", "category", "keyword"].includes(name)
         ? ++seq
@@ -521,6 +521,46 @@ test("changing prompt invalidates image and updates image instructions", async (
     () => enqueueStudioPublication([draft.id], "42", true),
     /актуальное/,
   );
+});
+test("publication captures the reviewed caption and resolves a distinct prompt on materialization",async()=>{
+  const draft=await makeDraft();
+  await prisma.category.create({data:{slug:"image-prompts"}} as any);
+  await editStudioDraft(draft.id,{selected:true});
+  const form={bodyHtml:"<p>Текст из формы</p>",promptLinkLabel:"Читать промпт"};
+  const job=await enqueueStudioPublication([draft.id],"42",true,form);
+  form.bodyHtml="<p>Поздняя правка</p>";
+  assert.match((job.payload as any).telegramPostTemplate,/Текст из формы/);
+  await processNextStudioJob();
+  assert.match(tables.prompt[0].telegramPostTemplate,/Текст из формы/);
+  assert.match(tables.prompt[0].telegramPostTemplate,/href="\{\{link\}\}"/);
+  assert.ok(!tables.prompt[0].telegramPostTemplate.includes("Поздняя правка"));
+  const original=tables.prompt[0].telegramPostTemplate;
+  await enqueueStudioPublication([draft.id],"42",true,{...form,bodyHtml:"<p>Другой текст</p>"});
+  await processNextStudioJob();
+  assert.equal(tables.prompt[0].telegramPostTemplate,original);
+  assert.equal(telegramCalls,1);
+});
+test("a reviewed retry updates only the unsent prompt caption and never creates a second prompt",async()=>{
+  const draft=await makeDraft();
+  await prisma.category.create({data:{slug:"image-prompts"}} as any);
+  await editStudioDraft(draft.id,{selected:true});
+  failTelegram=true;
+  await enqueueStudioPublication([draft.id],"42",true,{bodyHtml:"<p>Первый текст</p>",promptLinkLabel:"Открыть"});
+  await processNextStudioJob();
+  await allowStudioPublicationRetry(draft.id,true);
+  failTelegram=false;
+  await enqueueStudioPublication([draft.id],"42",true,{bodyHtml:"<p>Исправленный текст</p>",promptLinkLabel:"Открыть"});
+  await processNextStudioJob();
+  assert.equal(tables.prompt.length,1);
+  assert.match(tables.prompt[0].telegramPostTemplate,/Исправленный текст/);
+  assert.equal(telegramCalls,2);
+});
+test("invalid publication text never locks drafts or creates a Telegram job",async()=>{
+  const draft=await makeDraft();
+  await editStudioDraft(draft.id,{selected:true});
+  const jobs=tables.ideaStudioJob.length;
+  await assert.rejects(()=>enqueueStudioPublication([draft.id],"42",true,{bodyHtml:"<p></p>",promptLinkLabel:"Open"}),/пустым/);
+  assert.equal(tables.ideaStudioJob.length,jobs);assert.equal(draft.busyJobId,null);assert.equal(telegramCalls,0);
 });
 test("publication needs explicit selection and confirmation, locks duplicate clicks and saves the Telegram URL", async () => {
   const draft = await makeDraft();

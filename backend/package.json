@@ -5,7 +5,7 @@
   "type": "commonjs",
   "scripts": {
     "prisma:patch-studio-character": "prisma db execute --schema prisma/schema.prisma --file prisma/patches/20261113_studio_character.sql",
-    "test:studio": "tsx --test tests/ideaStudio.test.ts tests/ideaStudioCreative.test.ts tests/ideaStudioFaceReference.test.ts",
+    "test:studio": "tsx --test tests/ideaStudio.test.ts tests/ideaStudioCreative.test.ts tests/ideaStudioFaceReference.test.ts tests/ideaStudioTelegramPublication.test.ts",
     "prisma:patch-idea-studio": "prisma db execute --schema prisma/schema.prisma --file prisma/patches/20261113_idea_studio.sql",
     "test:cors": "tsx --test tests/cors.test.ts",
     "test:security": "tsx --test tests/pinterestSecurity.test.ts",
@@ -43,6 +43,7 @@
     "http-proxy-middleware": "^3.0.5",
     "multer": "^1.4.5-lts.1",
     "prisma": "^6.8.2",
+    "sanitize-html": "2.18.2",
     "sharp": "^0.34.5",
     "telegraf": "^4.16.3"
   },
@@ -54,6 +55,7 @@
     "@types/multer": "^1.4.12",
     "@types/node": "^22.10.1",
     "@types/pg": "^8.20.0",
+    "@types/sanitize-html": "2.16.2",
     "pg": "^8.21.0",
     "tsx": "^4.19.2",
     "typescript": "^5.6.3"

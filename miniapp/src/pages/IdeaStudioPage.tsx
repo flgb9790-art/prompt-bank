@@ -33,6 +33,8 @@ import type {
   IdeaStudioSettings,
 } from "../ideaStudioTypes";
 import { useDialogFocus } from "../hooks/useDialogFocus";
+import { StudioTelegramComposer } from "../components/studio/StudioTelegramComposer";
+import { defaultStudioTelegramPublication, validStudioTelegramPublication } from "../utils/studioTelegramPublication";
 import {
   StudioCreativeProfile,
   StudioReferencePreview,
@@ -60,12 +62,14 @@ function StudioDialog({
   onClose,
   busy,
   children,
+  footer,
   wide = false,
 }: {
   title: string;
   onClose: () => void;
   busy?: boolean;
   children: ReactNode;
+  footer?: ReactNode;
   wide?: boolean;
 }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -85,7 +89,7 @@ function StudioDialog({
         aria-modal="true"
         aria-labelledby="idea-dialog-title"
         tabIndex={-1}
-        className={`idea-dialog${wide ? " idea-dialog--wide" : ""}`}
+        className={`idea-dialog${wide ? " idea-dialog--wide" : ""}${footer ? " idea-dialog--footer" : ""}`}
       >
         <header>
           <h2 id="idea-dialog-title">{title}</h2>
@@ -99,7 +103,7 @@ function StudioDialog({
             <X size={19} />
           </button>
         </header>
-        {children}
+        {footer ? <><div className="idea-dialog-scroll">{children}</div><div className="idea-dialog-footer">{footer}</div></> : children}
       </div>
     </div>
   );
@@ -182,6 +186,7 @@ export function IdeaStudioPage({
   const [confirmation, setConfirmation] = useState<
     "generate" | "publish" | null
   >(null);
+  const [telegramPublication,setTelegramPublication]=useState(defaultStudioTelegramPublication);
   const [editor, setEditor] = useState<IdeaStudioDraft>(),
     [rewrite, setRewrite] = useState("");
   const [pinterest, setPinterest] = useState<PinterestStatus>();
@@ -942,6 +947,14 @@ export function IdeaStudioPage({
           }
           onClose={() => setConfirmation(null)}
           busy={busy}
+          wide={confirmation === "publish"}
+          footer={confirmation === "publish" ? <>
+            <p className="idea-help">После отправки сохраним ссылку каждого поста. Pinterest публикуется отдельным подтверждением.</p>
+            <button className="btn-primary" disabled={busy || !canPublish || !validStudioTelegramPublication(telegramPublication)} onClick={()=>void run(async()=>{
+              await api.publishIdeaDrafts(selected.map(d=>d.id),telegramPublication);
+              setConfirmation(null);
+            },"Выбранные материалы поставлены в очередь Telegram.")}><Send size={16}/>Подтверждаю публикацию</button>
+          </> : undefined}
         >
           {confirmation === "generate" ? (
             <div className="idea-confirm-body">
@@ -983,39 +996,9 @@ export function IdeaStudioPage({
           ) : (
             <div className="idea-confirm-body">
               <p>
-                В Telegram-канал будут отправлены {selected.length} выбранных
-                материалов. Они также появятся в библиотеке сайта.
+                Выбрано для публикации: {selected.length}. Материалы также появятся в библиотеке сайта.
               </p>
-              <div className="idea-confirm-list">
-                {selected.map((d) => (
-                  <div key={d.id}>
-                    {d.imageUrl && (
-                      <img src={resolveMediaUrl(d.imageUrl)} alt="" />
-                    )}
-                    <div>
-                      <strong>{d.title}</strong>
-                      <p>{d.content.slice(0, 200)}…</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <p className="idea-help">
-                После отправки сохраним ссылку каждого поста. Pinterest
-                публикуется отдельным подтверждением.
-              </p>
-              <button
-                className="btn-primary"
-                disabled={busy || !canPublish}
-                onClick={() =>
-                  void run(async () => {
-                    await api.publishIdeaDrafts(selected.map((d) => d.id));
-                    setConfirmation(null);
-                  }, "Выбранные материалы поставлены в очередь Telegram.")
-                }
-              >
-                <Send size={16} />
-                Подтверждаю публикацию
-              </button>
+              <StudioTelegramComposer value={telegramPublication} onChange={setTelegramPublication} drafts={selected} promptLinkBase={data.publication?.promptLinkBase} busy={busy}/>
             </div>
           )}
         </StudioDialog>

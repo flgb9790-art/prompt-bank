@@ -149,7 +149,7 @@ export const api = {
   editIdeaDraft(id:string,input:Partial<Pick<import("./ideaStudioTypes").IdeaStudioDraft,"title"|"concept"|"content"|"imagePrompt"|"selected"|"rejected">>) { return request<{ok:true}>(`/api/admin/idea-studio/drafts/${id}`,{method:"PATCH",body:JSON.stringify(input)}); },
   regenerateIdeaImage(id:string) { return request<{jobId:string}>(`/api/admin/idea-studio/drafts/${id}/image`,{method:"POST",body:"{}"}); },
   rewriteIdeaDraft(id:string,instructions:string) { return request<{jobId:string}>(`/api/admin/idea-studio/drafts/${id}/rewrite`,{method:"POST",body:JSON.stringify({instructions})}); },
-  publishIdeaDrafts(draftIds:string[]) { return request<{jobId:string}>("/api/admin/idea-studio/publish",{method:"POST",body:JSON.stringify({draftIds,confirmed:true})}); },
+  publishIdeaDrafts(draftIds:string[],publication?:import("./utils/studioTelegramPublication").StudioTelegramPublication) { return request<{jobId:string}>("/api/admin/idea-studio/publish",{method:"POST",body:JSON.stringify({draftIds,confirmed:true,publication})}); },
   allowIdeaTelegramRetry(id:string) { return request<{ok:true}>(`/api/admin/idea-studio/drafts/${id}/allow-telegram-retry`,{method:"POST",body:JSON.stringify({confirmed:true})}); },
   pinterestStatus() { return request<PinterestStatus>("/api/pinterest/status"); },
   connectPinterest() { return request<{url: string}>("/api/pinterest/connect", { method: "POST" }); },

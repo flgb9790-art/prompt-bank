@@ -75,6 +75,7 @@ export type IdeaStudioJob = {
   createdAt: string;
 };
 export type IdeaStudioOverview = {
+  publication?: {promptLinkBase:string};
   reference: { available: boolean; version: string | null };
   configured: boolean;
   models: { text: string; image: string; imageQuality: string };

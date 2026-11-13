@@ -77,6 +77,7 @@ const settings = {
   useWebSearch: true,
 };
 const data: IdeaStudioOverview = {
+  publication:{promptLinkBase:"https://t.me/prmtb_bot?startapp=prompt_"},
   reference: { available: false, version: null },
   configured: true,
   models: {

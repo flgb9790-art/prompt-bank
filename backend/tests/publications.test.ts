@@ -7,6 +7,7 @@ import { prisma } from "../src/db";
 import { config } from "../src/config";
 import { parseTelegramPostLink, buildTelegramPostLink } from "../src/utils/telegramPostLink";
 import { sendPromptToTelegram, splitTelegramText } from "../src/services/telegramPublisher.service";
+import { buildStudioTelegramPostTemplate } from "../src/services/ideaStudio.telegramPublication";
 import { buildPinterestPin, sendPromptToPinterest, preparePinterestPublication, previewPinterestPublication } from "../src/services/pinterestPublisher.service";
 import { encryptToken } from "../src/services/pinterestConnection.service";
 import { PromptService } from "../src/services/prompt.service";
@@ -101,6 +102,19 @@ test("validates post URLs, rejects channel/invite/non-Telegram URLs and normaliz
   assert.equal(buildTelegramPostLink({ id: "-1001234567890" }, 45), "https://t.me/c/1234567890/45");
 });
 
+test("studio publication sends one photo with the reviewed rich caption and a prompt-specific app link",async()=>{
+  prompt.studioDraft={id:"studio-draft"};
+  prompt.telegramPostTemplate=buildStudioTelegramPostTemplate();
+  prompt.coverMediaUrl="https://cdn.example.com/image.jpg";prompt.coverMediaType="image";
+  prompt.content="A very long generated prompt. ".repeat(100);
+  assert.equal((await sendPromptToTelegram(1)).status,"published");
+  assert.equal(requests.length,1);assert.ok(requests[0].url.endsWith("/sendPhoto"));
+  assert.equal(requests[0].body.parse_mode,"HTML");
+  assert.match(requests[0].body.caption,/syntxaibot\?start=aff_465351635/);
+  assert.match(requests[0].body.caption,/https:\/\/t.me\/sample_bot\?startapp=prompt_1/);
+  assert.ok(!requests[0].body.caption.includes(prompt.content));
+  assert.equal(prompt.telegramPostUrl,"https://t.me/sample_channel/100");
+});
 test("Telegram persists the message containing prompt text, then Pinterest uses its URL", async () => {
   assert.equal((await sendPromptToTelegram(1)).status, "published");
   assert.equal(prompt.telegramMessageId, "100");

@@ -6,7 +6,8 @@ import { config } from "../config";
 import { resolveUserIdByTelegramId } from "../user";
 import { extractKeywords } from "../keywordExtractor";
 import { persistMediaBuffer } from "./storage.service";
-import { sendPromptToTelegram } from "./telegramPublisher.service";
+import { sendPromptToTelegram, buildPromptUrl } from "./telegramPublisher.service";
+import { buildStudioTelegramPostTemplate } from "./ideaStudio.telegramPublication";
 import { PromptService } from "./prompt.service";
 import {
   creativeProfile,
@@ -156,6 +157,7 @@ export async function getStudioOverview(batchId?: string) {
     : null;
   return {
     configured: studioConfigured(),
+    publication: {promptLinkBase:buildPromptUrl(0).slice(0,-1)},
     reference: {
       available: Boolean(settings.referenceImageKey),
       version: settings.referenceImageKey
@@ -388,6 +390,7 @@ export async function enqueueStudioPublication(
   ids: unknown,
   owner: string,
   confirmed: unknown,
+  publication?: unknown,
 ) {
   if (confirmed !== true)
     throw new StudioError(
@@ -401,6 +404,7 @@ export async function enqueueStudioPublication(
   )
     throw new StudioError("Выберите от 1 до 10 черновиков.");
   const unique = [...new Set(ids as string[])];
+  const telegramPostTemplate = buildStudioTelegramPostTemplate(publication);
   return prisma.$transaction(async (tx) => {
     const drafts = await tx.ideaStudioDraft.findMany({
       where: { id: { in: unique } },
@@ -432,7 +436,7 @@ export async function enqueueStudioPublication(
       data: {
         kind: "publish",
         creatorTelegramId: owner,
-        payload: { draftIds: unique },
+        payload: { draftIds: unique, telegramPostTemplate },
         total: unique.length,
       },
     });
@@ -719,7 +723,7 @@ async function processRewrite(job: IdeaStudioJob, lease: Lease) {
     },
   });
 }
-async function materializeStudioPrompt(id: string, owner: string) {
+async function materializeStudioPrompt(id: string, owner: string, telegramPostTemplate: string) {
   const userId = await resolveUserIdByTelegramId(owner);
   const category = await prisma.category.findFirst({
     where: { slug: "image-prompts" },
@@ -731,7 +735,13 @@ async function materializeStudioPrompt(id: string, owner: string) {
     );
   return prisma.$transaction(async (tx) => {
     const draft = await tx.ideaStudioDraft.findUniqueOrThrow({ where: { id } });
-    if (draft.promptId) return draft.promptId;
+    if (draft.promptId) {
+      await tx.prompt.updateMany({
+        where:{id:draft.promptId,telegramPostUrl:null,telegramPublished:false},
+        data:{telegramPostTemplate},
+      });
+      return draft.promptId;
+    }
     const prompt = await tx.prompt.create({
       data: {
         userId,
@@ -740,6 +750,7 @@ async function materializeStudioPrompt(id: string, owner: string) {
         content: draft.content,
         coverMediaUrl: draft.imageUrl,
         coverMediaType: "image",
+        telegramPostTemplate,
       },
     });
     for (const name of extractKeywords(draft.content, draft.title)) {
@@ -760,7 +771,7 @@ async function materializeStudioPrompt(id: string, owner: string) {
   });
 }
 async function processPublications(job: IdeaStudioJob, lease: Lease) {
-  const { draftIds } = job.payload as { draftIds: string[] };
+  const { draftIds, telegramPostTemplate = buildStudioTelegramPostTemplate() } = job.payload as { draftIds: string[]; telegramPostTemplate?:string };
   let failed = 0;
   for (const id of draftIds) {
     lease.check();
@@ -781,7 +792,7 @@ async function processPublications(job: IdeaStudioJob, lease: Lease) {
           "Проверьте результат прежней отправки в канале.",
           409,
         );
-      const promptId = await materializeStudioPrompt(id, job.creatorTelegramId);
+      const promptId = await materializeStudioPrompt(id, job.creatorTelegramId, telegramPostTemplate);
       lease.check();
       // Retain this flag across crashes/timeouts: never blindly resend an ambiguous post.
       await prisma.ideaStudioDraft.update({
