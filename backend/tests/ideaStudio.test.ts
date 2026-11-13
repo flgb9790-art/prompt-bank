@@ -420,7 +420,8 @@ test("image failure preserves generated text for an explicit separate retry", as
   failImage = true;
   const draft = await makeDraft();
   assert.equal(draft.imageStatus, "failed");
-  assert.equal(draft.content, content);
+  assert.ok(draft.content.endsWith(content));
+  assert.match(draft.content,/Photographic treatment: photorealistic professional photography/);
   assert.equal(tables.ideaStudioBatch[0].status, "partial");
   assert.equal(draft.busyJobId, null);
 });
@@ -743,7 +744,7 @@ test("semantic filtering precedes images and retains only genuinely new candidat
   const stored=tables.ideaStudioBatch.find(row=>row.id===batch.id);
   assert.equal(stored.status,"ready");assert.equal(stored.count,1);
   assert.equal(imageCalls,1);assert.equal(tables.ideaStudioDraft[0].title,rows[1].title);
-  assert.match(stored.error,/Повторов и исключений пропущено: 2/);
+  assert.match(stored.error,/Повторов, исключений и нереалистичных сюжетов пропущено: 2/);
 });
 
 test("all rejected and old library records participate beyond the former history limits",async()=>{

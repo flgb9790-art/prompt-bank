@@ -28,6 +28,8 @@ import {
 } from "../src/services/ideaStudio.references";
 import { generateStudioImage, generateStudioTexts, researchStudioIdeas, responseText } from "../src/services/ideaStudio.openai";
 import { config } from "../src/config";
+import { studioPhotoInstruction } from "../src/services/ideaStudio.realism";
+import { similarIdea, ideaComparisonText } from "../src/services/ideaStudio.validation";
 const originalFetch = global.fetch;
 const originalKey = config.openaiApiKey;
 after(() => {
@@ -118,12 +120,15 @@ test("public prompts are complete and reusable while private previews may use ch
   assert.equal(result.imagePrompt, result.content);
   assert.match(result.content, /apparent age/);
   assert.match(result.content, /head rotation or tilt/);
+  assert.match(result.content, /photorealistic professional photography/);
+  assert.match(result.content, /scene-appropriate lens perspective/);
   const withoutRef = composeReusableIdea(
     { recipe },
     { ...context, hasCharacterReference: false },
     "en",
   );
   assert.match(withoutRef.imagePrompt, /Private preview guidance/);
+  assert.match(withoutRef.imagePrompt, /photorealistic professional photography/);
   assert.ok(!withoutRef.content.includes("Private preview guidance"));
 });
 test("identity-only guidance preserves apparent age while freeing head, expression and body pose", () => {
@@ -178,6 +183,8 @@ test("text requests carry the pose plan and age guidance, while rewrites keep th
   const reserve = async () => { reservations++; };
   await generateStudioTexts(input, reserve, new AbortController().signal);
   const brief = JSON.parse(requests[0].input);
+  assert.match(requests[0].instructions,/Photographic treatment overrides/);
+  assert.match(brief.photographicTreatment,/photorealistic professional photography/);
   assert.deepEqual(brief.shotDirections, characterShotPlan(10, "batch-A"));
   assert.match(brief.characterDirectionRequirements, /never as a pose, styling or composition template/);
   assert.match(brief.characterDirectionRequirements, /without aging or de-aging/);
@@ -207,6 +214,7 @@ test("unfinished research reuses found sources once without using truncated text
   assert.equal(calls.length, 1);
   assert.equal(reservations, 1);
   assert.equal(calls[0].max_output_tokens, 10000);
+  assert.match(calls[0].instructions,/Exclude fantasy concepts/);
   assert.match(calls[0].instructions, /at most 450 words/);
   assert.equal(result.sources[0].url, "https://example.test/exhibit");
   assert.match(result.notice!, /не завершил сводку/);
@@ -355,6 +363,9 @@ test("reference image bytes are sent to edits; no reference uses generations", a
     `data:image/jpeg;base64,${reference.toString("base64")}`,
   );
   assert.equal(calls[0].body.input_fidelity, undefined);
+  assert.match(calls[0].body.prompt,/photorealistic professional photography/);
+  assert.match(calls[0].body.prompt,/cannot override the photographic treatment/);
+  assert.match(calls[0].body.prompt,/Preserve reference identity and apparent age/);
   await generateStudioImage(
     "scene",
     "42",
@@ -365,7 +376,26 @@ test("reference image bytes are sent to edits; no reference uses generations", a
   );
   assert.ok(calls[1].url.endsWith("/images/generations"));
   assert.equal(calls[1].body.images, undefined);
+  assert.match(calls[1].body.prompt,/physically plausible surroundings/i);
+  assert.match(calls[1].body.prompt,/SCENE BRIEF:\nscene/);
   assert.equal(reservations, 2);
+});
+
+test("photographic treatment is bilingual, reusable and does not make different scenes duplicates",()=>{
+  const first="A ceramic bowl rests on a wooden table beside a linen napkin in a sunlit kitchen.";
+  const second="A cyclist repairs a bicycle beside a brick workshop with a wrench and spare wheel.";
+  for(const language of ["en","ru"]){
+    const rule=studioPhotoInstruction(language);
+    validateReusablePrompt(rule);
+    const a=composeReusableIdea({title:"Table Study",concept:first,content:first,imagePrompt:first},undefined,language);
+    const b=composeReusableIdea({title:"Cycle Workshop",concept:second,content:second,imagePrompt:second},undefined,language);
+    assert.equal(a.content,`${rule}\n\n${first}`);
+    assert.equal(a.imagePrompt,a.content);
+    assert.equal(ideaComparisonText(a.content),first);
+    assert.equal(similarIdea(a.content,b.content),false);
+  }
+  assert.match(studioPhotoInstruction("ru"),/настоящей камерой/);
+  assert.match(studioPhotoInstruction(),/Natural skin/);
 });
 test("private uploads are denied including encoded dot directories", async () => {
   const app = express();

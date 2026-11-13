@@ -1,5 +1,6 @@
 import { StudioError } from "./ideaStudio.validation";
 import { identityInstruction, type CreativeContext } from "./ideaStudio.creative";
+import { studioPhotoInstruction } from "./ideaStudio.realism";
 
 export const RECIPE_FIELDS = [
   "wardrobe",
@@ -32,7 +33,11 @@ export function composeReusableIdea(
   if (!context?.profile.useCharacter) {
     validateReusablePrompt(idea.content);
     validateReusablePrompt(idea.imagePrompt);
-    return idea;
+    return {
+      ...idea,
+      content: `${studioPhotoInstruction(language)}\n\n${idea.content}`,
+      imagePrompt: `${studioPhotoInstruction(language)}\n\n${idea.imagePrompt}`,
+    };
   }
   const recipe = idea.recipe;
   if (!recipe || typeof recipe !== "object")
@@ -102,9 +107,10 @@ export function composeReusableIdea(
   const scene = RECIPE_FIELDS.map(
     (key, i) => `${labels[i]}: ${recipe[key].trim()}`,
   ).join("\n\n");
-  const content = `${identityInstruction(language)}\n\n${scene}`;
+  const photographicScene = `${studioPhotoInstruction(language)}\n\n${scene}`;
+  const content = `${identityInstruction(language)}\n\n${photographicScene}`;
   const imagePrompt = context.hasCharacterReference
     ? content
-    : `Create an example image with an adult woman. Character guidance for this private preview: ${context.profile.characterDescription}.\n\n${scene}`;
+    : `Create a professional photographic example with an adult woman. Character guidance for this private preview: ${context.profile.characterDescription}.\n\n${photographicScene}`;
   return { ...idea, content, imagePrompt };
 }

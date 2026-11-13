@@ -67,3 +67,17 @@ test("incomplete provider review never retries or accepts images implicitly",asy
   await assert.rejects(()=>reviewStudioNovelty({candidates:[candidate("Scene New","A new scene")],previous:[],exclusions:["coffee"]},async()=>{},new AbortController().signal),/Проверка новизны/);
   assert.equal(calls,1);
 });
+
+test("the first idea is checked for physical realism even without history or custom exclusions",async()=>{
+  config.openaiApiKey="mock-key";let calls=0,reservations=0;
+  global.fetch=async(_url,init)=>{
+    calls++;const body=JSON.parse(String(init?.body)),input=JSON.parse(body.input);
+    assert.match(body.instructions,/verify photographic plausibility/);
+    assert.match(body.instructions,/physically impossible scenes/);
+    assert.match(body.instructions,/Negative constraints forbidding fantasy or CGI/);
+    assert.equal(input.history.length,0);assert.equal(input.exclusions.length,0);
+    return completed({decisions:[{candidate:0,decision:"excluded"}]});
+  };
+  const result=await reviewStudioNovelty({candidates:[candidate("Magic Castle","A photorealistic woman levitates above a floating castle with magical sparks")],previous:[],exclusions:[]},async()=>{reservations++;},new AbortController().signal);
+  assert.deepEqual(result,[]);assert.equal(calls,1);assert.equal(reservations,1);
+});

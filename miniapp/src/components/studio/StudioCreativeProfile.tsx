@@ -9,7 +9,7 @@ export const themeOptions = [
   { key: "fashion", label: "Мода и образы" },
   { key: "everyday", label: "Повседневность" },
   { key: "wellness", label: "Спорт и wellness" },
-  { key: "cinematic", label: "Кино и фантазия" },
+  { key: "cinematic", label: "Киношная фотосъёмка" },
   { key: "nature", label: "Город и природа" },
 ];
 export function StudioReferencePreview({
@@ -137,6 +137,7 @@ export function StudioCreativeProfile({
             />
             Создавать идеи для этого персонажа
           </label>
+          <p className="idea-help">Стиль всех подборок — реалистичная профессиональная фотосъёмка: естественная кожа, правдоподобный свет, оптика и материалы. Сказочные и физически невозможные сюжеты отсеиваются перед генерацией.</p>
           <div className="idea-character-name-row">
             <label className="idea-field">
               Название персонажа

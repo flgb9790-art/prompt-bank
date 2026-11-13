@@ -108,6 +108,8 @@ export function ideaComparisonText(text: string) {
   if (scene) return [scene, sections.get("pose and expression") || sections.get("поза и выражение")].filter(Boolean).join("\n");
   // Identity instructions are shared across unrelated prompts and are not an idea.
   return text.split(/\n\s*\n/).flatMap(paragraph => {
+    // Shared photographic requirements describe treatment, not a repeated idea.
+    if (/^(?:Photographic treatment|Фотографический стиль):/iu.test(paragraph.trim())) return [];
     if (!/^(?:Use (?:the person in the uploaded photograph|my reference photo|the (?:attached|uploaded|reference) (?:photo|image))|Используй (?:человека из приложенной фотографии|мо[её] (?:фото|референс)|(?:приложенное|загруженное) фото))/iu.test(paragraph.trim())) return [paragraph];
     // Older prompts often join the identity preamble and actual scene into one
     // paragraph. Keep the creative task instead of losing the entire scene.

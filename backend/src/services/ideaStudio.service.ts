@@ -493,7 +493,7 @@ async function createDraftImage(id: string, owner: string, lease: Lease, origin:
     const imagePrompt = reference
       ? characterImagePrompt(draft.imagePrompt, draft.batch.language)
       : creative?.profile.useCharacter
-        ? `No reference photo is attached. Create an illustrative example with an adult woman. Private character guidance: ${creative.profile.characterDescription}.\n\n${draft.imagePrompt.replace(/^(?:Use the person in the uploaded photograph|Используй человека из приложенной фотографии)[\s\S]*?\n\n/u, "")}`
+        ? `No reference photo is attached. Create a realistic professional photograph with an adult woman. Private character guidance: ${creative.profile.characterDescription}.\n\n${draft.imagePrompt.replace(/^(?:Use the person in the uploaded photograph|Используй человека из приложенной фотографии)[\s\S]*?\n\n/u, "")}`
         : draft.imagePrompt;
     const bytes = await studioDependencies.generateStudioImage(
       imagePrompt,
@@ -621,10 +621,10 @@ async function processGeneration(job: IdeaStudioJob, lease: Lease) {
     candidates, previous, exclusions:studioExclusions(creativeContext?.profile.exclusions),
   }, () => reserveStudioUsage("text", new Date(), textOrigin), lease.signal);
   lease.check();
-  if (!ideas.length) throw new StudioError("Подборка повторяет прежние сюжеты или попадает под исключения. Изображения не создавались. Уточните темы; платного повтора автоматически не будет.", 502);
+  if (!ideas.length) throw new StudioError("Подборка повторяет прежние сюжеты, попадает под исключения или не соответствует реалистичной фотосъёмке. Изображения не создавались. Уточните темы; платного повтора автоматически не будет.", 502);
   const duplicateCount = batch.count - ideas.length;
   const generationNotice = [researchNotice, duplicateCount
-    ? `Сохранено ${ideas.length} новых идей из ${batch.count}. Повторов и исключений пропущено: ${duplicateCount}; платная перегенерация не выполнялась.`
+    ? `Сохранено ${ideas.length} новых идей из ${batch.count}. Повторов, исключений и нереалистичных сюжетов пропущено: ${duplicateCount}; платная перегенерация не выполнялась.`
     : null].filter(Boolean).join(" ") || null;
   await prisma.$transaction(
     ideas.map((idea) =>
@@ -721,7 +721,7 @@ async function processRewrite(job: IdeaStudioJob, lease: Lease) {
   const candidates = validateGeneratedIdeas(prepared, 1, draft.batch.language, previous);
   const [idea] = await studioDependencies.reviewStudioNovelty({candidates,previous,exclusions:studioExclusions(exclusions)}, () => reserveStudioUsage("text",new Date(),"manual"),lease.signal);
   lease.check();
-  if (!idea) throw new StudioError("Переработанная идея повторяет другой сюжет или попадает под исключения. Исходный черновик сохранён.",502);
+  if (!idea) throw new StudioError("Переработанная идея повторяет другой сюжет, попадает под исключения или не соответствует реалистичной фотосъёмке. Исходный черновик сохранён.",502);
   await prisma.ideaStudioDraft.update({
     where: { id: draftId },
     data: {

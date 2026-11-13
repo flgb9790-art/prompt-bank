@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { studioPhotoInstruction } from "./ideaStudio.realism";
 import {
   localStudioClock,
   StudioError,
@@ -15,7 +16,7 @@ export const STUDIO_THEMES = {
   everyday:
     "Повседневность: кафе, утренние ритуалы, прогулки, домашний уют и работа",
   wellness: "Wellness: спорт, spa, йога, здоровый отдых и забота о себе",
-  cinematic: "Кино и фантазия: выразительные сцены и необычные истории",
+  cinematic: "Киношная фотосъёмка: выразительные, физически правдоподобные сцены и истории из реальной жизни",
   nature: "Природа: горы, море, сады, лес и загородная жизнь",
 } as const;
 export type CreativeProfile = {
@@ -159,7 +160,7 @@ export function creativeResearchTopics(
   context?: CreativeContext,
   novelty?: { recentScenes: object[]; explorationSeed: string },
 ) {
-  if (!context) return JSON.stringify({additionalTopics: topics, ...novelty});
+  if (!context) return JSON.stringify({additionalTopics: topics, photographicTreatment:studioPhotoInstruction(), ...novelty});
   const p = context.profile;
   // Never send the character's name, description or reference photo to web search.
   return JSON.stringify({
@@ -170,6 +171,7 @@ export function creativeResearchTopics(
     primary: STUDIO_THEMES[p.primaryTheme],
     extra: p.extraThemes.map((key) => STUDIO_THEMES[key]),
     calendar: context.calendar,
+    photographicTreatment: studioPhotoInstruction(),
     exclusions: studioExclusions(p.exclusions),
     ...novelty,
     request:
