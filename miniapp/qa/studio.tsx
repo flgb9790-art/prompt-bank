@@ -85,8 +85,8 @@ const data: IdeaStudioOverview = {
     imageQuality: "low",
   },
   settings,
-  limits: { image: 10, text: 12, resetTimeZone: "UTC", manualTextUnlimited: true },
-  usage: { image: 6, text: 2, scheduledText: 0 },
+  limits: { image: 10, text: 12, resetTimeZone: "UTC", manualTextUnlimited: true, manualImageUnlimited: true },
+  usage: { image: 6, text: 2, scheduledText: 0, scheduledImage: 0 },
   batches: [
     {
       hasReference: false,
@@ -113,6 +113,7 @@ const data: IdeaStudioOverview = {
   },
 };
 // Reproduce batches created before character profiles: the database default is {}.
+if (new URLSearchParams(location.search).has("exhausted-images")) data.usage.image = data.limits.image;
 const legacyContext = new URLSearchParams(location.search).has("legacy-context");
 api.ideaStudio = async () => {
   const overview = structuredClone(data);

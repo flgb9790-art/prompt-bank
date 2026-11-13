@@ -90,40 +90,23 @@ export async function reserveStudioUsage(
   origin: "manual" | "scheduled" = "scheduled",
 ) {
   const id = `${date.toISOString().slice(0, 10)}:${kind}`;
-  if (kind === "text") {
-    await prisma.$transaction(async tx => {
+  const limit = kind === "image" ? config.studioDailyImageLimit : config.studioDailyTextLimit;
+  await prisma.$transaction(async tx => {
       if (origin === "scheduled") {
         const scheduledId = `${id}:scheduled`;
         await tx.ideaStudioUsage.upsert({where:{id:scheduledId},create:{id:scheduledId},update:{}});
         const reserved = await tx.ideaStudioUsage.updateMany({
-          where:{id:scheduledId,requests:{lt:config.studioDailyTextLimit}},
+          where:{id:scheduledId,requests:{lt:limit}},
           data:{requests:{increment:1}},
         });
         if (!reserved.count) throw new StudioError(
-          `Достигнут дневной лимит автоматических текстовых запросов (${config.studioDailyTextLimit}). Он обновится в 00:00 UTC. Ручные запросы доступны без этого лимита.`, 429,
+          `Достигнут дневной лимит автоматических ${kind === "image" ? "изображений" : "текстовых запросов"} (${limit}). Он обновится в 00:00 UTC. Ручные запросы доступны без этого лимита.`, 429,
         );
       }
       await tx.ideaStudioUsage.upsert({
         where:{id},create:{id,requests:1},update:{requests:{increment:1}},
       });
-    });
-    return;
-  }
-  const limit = config.studioDailyImageLimit;
-  await prisma.ideaStudioUsage.upsert({
-    where: { id },
-    create: { id },
-    update: {},
   });
-  const result = await prisma.ideaStudioUsage.updateMany({
-    where: { id, requests: { lt: limit } },
-    data: { requests: { increment: 1 } },
-  });
-  if (!result.count)
-    throw new StudioError(
-      `Достигнут дневной лимит изображений (${limit}). Он обновится в 00:00 UTC.`,
-      429,
-    );
 }
 export async function getStudioOverview(batchId?: string) {
   const settings = await studioSettings();
@@ -148,7 +131,7 @@ export async function getStudioOverview(batchId?: string) {
       },
     }),
     prisma.ideaStudioUsage.findMany({
-      where: { id: { in: [`${day}:text`, `${day}:image`, `${day}:text:scheduled`] } },
+      where: { id: { in: [`${day}:text`, `${day}:image`, `${day}:text:scheduled`, `${day}:image:scheduled`] } },
     }),
   ]);
   const currentId = batchId || batches[0]?.id;
@@ -198,12 +181,14 @@ export async function getStudioOverview(batchId?: string) {
       image: config.studioDailyImageLimit,
       text: config.studioDailyTextLimit,
       manualTextUnlimited: true,
+      manualImageUnlimited: true,
       resetTimeZone: "UTC",
     },
     usage: {
       image: usage.find((x) => x.id.endsWith(":image"))?.requests || 0,
       text: usage.find((x) => x.id.endsWith(":text"))?.requests || 0,
       scheduledText: usage.find((x) => x.id.endsWith(":text:scheduled"))?.requests || 0,
+      scheduledImage: usage.find((x) => x.id.endsWith(":image:scheduled"))?.requests || 0,
     },
     batches: batches.map(({ referenceImageKey, ...batch }) => ({
       ...batch,
@@ -230,7 +215,7 @@ export async function saveStudioSettings(input: unknown, owner: string) {
   };
   if (data.dailyEnabled && !studioConfigured())
     throw new StudioError("Сначала настройте OPENAI_API_KEY на backend.", 503);
-  if (data.dailyCount > config.studioDailyImageLimit)
+  if (data.dailyEnabled && data.dailyCount > config.studioDailyImageLimit)
     throw new StudioError(
       "Идей в подборке больше, чем дневной лимит изображений.",
     );
@@ -480,7 +465,7 @@ export async function allowStudioPublicationRetry(
 }
 
 type Lease = { signal: AbortSignal; check: () => void };
-async function createDraftImage(id: string, owner: string, lease: Lease) {
+async function createDraftImage(id: string, owner: string, lease: Lease, origin: "manual" | "scheduled" = "manual") {
   const draft = await prisma.ideaStudioDraft.findUniqueOrThrow({
     where: { id },
     include: { batch: true },
@@ -505,7 +490,7 @@ async function createDraftImage(id: string, owner: string, lease: Lease) {
     const bytes = await studioDependencies.generateStudioImage(
       imagePrompt,
       owner,
-      () => reserveStudioUsage("image"),
+      () => reserveStudioUsage("image", new Date(), origin),
       lease.signal,
       reference,
     );
@@ -548,12 +533,12 @@ async function processGeneration(job: IdeaStudioJob, lease: Lease) {
   const batch = await prisma.ideaStudioBatch.findUniqueOrThrow({
     where: { id: batchId },
   });
-  const used = await prisma.ideaStudioUsage.findUnique({
-    where: { id: `${new Date().toISOString().slice(0, 10)}:image` },
-  });
-  if ((used?.requests || 0) + batch.count > config.studioDailyImageLimit)
+  const used = batch.dailyKey ? await prisma.ideaStudioUsage.findUnique({
+    where: { id: `${new Date().toISOString().slice(0, 10)}:image:scheduled` },
+  }) : null;
+  if (batch.dailyKey && (used?.requests || 0) + batch.count > config.studioDailyImageLimit)
     throw new StudioError(
-      "Для всей подборки не хватает дневного лимита изображений. Текстовые запросы не выполнялись; попробуйте завтра или уменьшите количество.",
+      "Для автоматической подборки не хватает дневного лимита изображений. Текстовые запросы не выполнялись; ручной запуск доступен без этого лимита.",
       429,
     );
   await prisma.ideaStudioBatch.update({
@@ -664,7 +649,7 @@ async function processGeneration(job: IdeaStudioJob, lease: Lease) {
   for (const draft of drafts) {
     lease.check();
     try {
-      await createDraftImage(draft.id, job.creatorTelegramId, lease);
+      await createDraftImage(draft.id, job.creatorTelegramId, lease, batch.dailyKey ? "scheduled" : "manual");
     } catch {
       lease.check();
       errors++;

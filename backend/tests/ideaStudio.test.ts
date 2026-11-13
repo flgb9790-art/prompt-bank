@@ -213,15 +213,17 @@ beforeEach(async () => {
   });
   for (const name of delegates)
     Object.assign((prisma as any)[name], delegate(name));
-  (prisma as any).$transaction = async (fn: any) => {
+  let transactionQueue = Promise.resolve();
+  (prisma as any).$transaction = (fn: any) => {
     if (Array.isArray(fn)) return Promise.all(fn);
-    const snapshot = structuredClone(tables);
-    try {
-      return await fn(prisma);
-    } catch (e) {
-      tables = snapshot;
-      throw e;
-    }
+    // Model database transaction isolation, including concurrent quota reservations.
+    const result = transactionQueue.then(async () => {
+      const snapshot = structuredClone(tables);
+      try { return await fn(prisma); }
+      catch (e) { tables = snapshot; throw e; }
+    });
+    transactionQueue = result.then(()=>undefined,()=>undefined);
+    return result;
   };
   const image = await sharp({
     create: { width: 32, height: 48, channels: 3, background: "#8b71ab" },
@@ -476,10 +478,33 @@ test("scheduled allowance resets at UTC midnight without losing total manual acc
   assert.equal(tables.ideaStudioUsage.find(row=>row.id==="2026-11-13:text").requests,2);
   assert.equal(tables.ideaStudioUsage.find(row=>row.id==="2026-11-14:text").requests,1);
 });
-test("no paid text generation when there is insufficient image quota", async () => {
+test("manual images continue beyond the former daily cap and remain accounted",async()=>{
+  for(let i=0;i<10;i++)await reserveStudioUsage("image",new Date(),"manual");
+  const batch=await enqueueStudioBatch({count:1,useWebSearch:false},"42");
+  await processNextStudioJob();
+  const overview=await getStudioOverview(batch.id);
+  assert.equal(overview.current?.status,"ready");
+  assert.equal(overview.usage.image,11);
+  assert.equal(overview.usage.scheduledImage,0);
+  assert.equal(overview.limits.manualImageUnlimited,true);
+  assert.equal(imageCalls,1);assert.equal(textCalls,1);assert.equal(telegramCalls,0);
+});
+test("manual retry of an automatic image bypasses the schedule quota",async()=>{
+  config.studioDailyImageLimit=1;
+  const batch=await enqueueStudioBatch({count:1,useWebSearch:false},"42","daily:image-test");
+  await processNextStudioJob();
+  const draft=tables.ideaStudioDraft.find(row=>row.batchId===batch.id);
+  await assert.rejects(()=>reserveStudioUsage("image"),/автоматических изображений/);
+  await enqueueStudioDraftAction(draft.id,"image","42");
+  await processNextStudioJob();
+  const overview=await getStudioOverview(batch.id);
+  assert.equal(overview.usage.image,2);assert.equal(overview.usage.scheduledImage,1);
+  assert.equal(tables.ideaStudioJob[1].status,"succeeded");assert.equal(imageCalls,2);
+});
+test("no paid text generation when there is insufficient automatic image quota", async () => {
   config.studioDailyImageLimit = 1;
   await reserveStudioUsage("image");
-  await enqueueStudioBatch({ count: 1, useWebSearch: false }, "42");
+  await enqueueStudioBatch({ count: 1, useWebSearch: false }, "42", "daily:exhausted-images");
   await processNextStudioJob();
   assert.equal(textCalls, 0);
   assert.equal(imageCalls, 0);

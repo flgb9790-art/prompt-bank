@@ -79,8 +79,8 @@ export type IdeaStudioOverview = {
   configured: boolean;
   models: { text: string; image: string; imageQuality: string };
   settings: IdeaStudioSettings;
-  limits: { image: number; text: number; resetTimeZone: string; manualTextUnlimited?: boolean };
-  usage: { image: number; text: number; scheduledText?: number };
+  limits: { image: number; text: number; resetTimeZone: string; manualTextUnlimited?: boolean; manualImageUnlimited?: boolean };
+  usage: { image: number; text: number; scheduledText?: number; scheduledImage?: number };
   batches: Array<Omit<IdeaStudioBatch, "drafts">>;
   jobs: IdeaStudioJob[];
   current: IdeaStudioBatch | null;

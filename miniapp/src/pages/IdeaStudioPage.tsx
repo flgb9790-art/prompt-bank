@@ -593,11 +593,11 @@ export function IdeaStudioPage({
             : "Ежедневная генерация выключена"}
         </span>
         <span>
-          Сегодня: {data.usage.image}/{data.limits.image} изображений ·{" "}
+          Сегодня: {data.usage.image}{!data.limits.manualImageUnlimited && `/${data.limits.image}`} изображений ·{" "}
           {data.usage.text}{!data.limits.manualTextUnlimited && `/${data.limits.text}`} текстовых запросов
           {data.limits.manualTextUnlimited && " · вручную без дневного лимита"}{" "}
           <span title={data.limits.manualTextUnlimited
-            ? `Неудачные и прерванные вызовы тоже учитываются. Вручную текст без дневного лимита; для расписания: ${data.usage.scheduledText || 0}/${data.limits.text}. Сброс счётчиков в 00:00 UTC.`
+            ? `Неудачные и прерванные вызовы тоже учитываются. Вручную текст${data.limits.manualImageUnlimited ? " и изображения" : ""} без дневного лимита. Расписание: ${data.usage.scheduledText || 0}/${data.limits.text} текстовых запросов и ${data.usage.scheduledImage || 0}/${data.limits.image} изображений. Сброс счётчиков в 00:00 UTC.`
             : "Неудачные и прерванные вызовы тоже учитываются; сброс в 00:00 UTC."}>
             ⓘ
           </span>
@@ -953,10 +953,9 @@ export function IdeaStudioPage({
                   : ""}
               </p>
               <p className="idea-help">
-                Осталось на сегодня:{" "}
-                {Math.max(0, data.limits.image - data.usage.image)} вызовов
-                изображений. Неудачные запросы тоже учитываются. Результаты
-                сохранятся в черновиках.
+                {data.limits.manualImageUnlimited
+                  ? "Ручная генерация без дневного лимита изображений. Вызовы оплачиваются через OpenAI API и учитываются в статистике. Результаты сохранятся в черновиках."
+                  : `Осталось на сегодня: ${Math.max(0, data.limits.image - data.usage.image)} вызовов изображений. Неудачные запросы тоже учитываются. Результаты сохранятся в черновиках.`}
               </p>
               {settings.creativeProfile.useCharacter && (
                 <p className="idea-help">
@@ -969,7 +968,7 @@ export function IdeaStudioPage({
                 className="btn-primary"
                 disabled={
                   busy ||
-                  settings.dailyCount > data.limits.image - data.usage.image
+                  (!data.limits.manualImageUnlimited && settings.dailyCount > data.limits.image - data.usage.image)
                 }
                 onClick={() => void generate()}
               >
