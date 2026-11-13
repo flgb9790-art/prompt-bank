@@ -112,7 +112,16 @@ const data: IdeaStudioOverview = {
     drafts,
   },
 };
-api.ideaStudio = async () => structuredClone(data);
+// Reproduce batches created before character profiles: the database default is {}.
+const legacyContext = new URLSearchParams(location.search).has("legacy-context");
+api.ideaStudio = async () => {
+  const overview = structuredClone(data);
+  if (legacyContext && overview.current)
+    overview.current.creativeContext = {} as NonNullable<
+      typeof overview.current.creativeContext
+    >;
+  return overview;
+};
 api.pinterestStatus = async () => ({
   connected: true,
   configured: true,

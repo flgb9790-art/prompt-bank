@@ -20,6 +20,7 @@ import {
   studioSettings,
   allowStudioPublicationRetry,
   enqueueStudioDraftAction,
+  getStudioOverview,
 } from "../src/services/ideaStudio.service";
 import {
   localStudioClock,
@@ -273,6 +274,28 @@ async function makeDraft() {
   await processNextStudioJob();
   return tables.ideaStudioDraft.find((d) => d.batchId === batch.id);
 }
+test("overview omits empty legacy creative contexts and preserves complete batch snapshots", async () => {
+  const batch = await enqueueStudioBatch({ count: 1, useWebSearch: false }, "42");
+  const row = tables.ideaStudioBatch.find((item) => item.id === batch.id)!;
+  const snapshot = structuredClone(row.creativeContext);
+  // Existing rows receive {} from the additive migration, not null.
+  for (const context of [{}, null, { profile: snapshot.profile }]) {
+    row.creativeContext = context;
+    const overview = JSON.parse(JSON.stringify(await getStudioOverview(batch.id)));
+    assert.equal(overview.current.id, batch.id);
+    assert.equal(overview.current.creativeContext, undefined);
+    assert.equal(overview.batches[0].creativeContext, undefined);
+    assert.equal(typeof overview.settings.creativeProfile.useCharacter, "boolean");
+  }
+  row.creativeContext = snapshot;
+  const overview = await getStudioOverview(batch.id);
+  assert.deepEqual(overview.current?.creativeContext, snapshot);
+  assert.deepEqual(overview.batches[0].creativeContext, snapshot);
+  assert.equal(imageCalls, 0);
+  assert.equal(textCalls, 0);
+  assert.equal(telegramCalls, 0);
+});
+
 test("generation saves ready private drafts and never creates a public prompt or sends Telegram", async () => {
   const draft = await makeDraft();
   assert.equal(draft.imageStatus, "ready");

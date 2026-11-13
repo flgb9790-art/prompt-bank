@@ -182,12 +182,14 @@ export async function getStudioOverview(batchId?: string) {
     },
     batches: batches.map(({ referenceImageKey, ...batch }) => ({
       ...batch,
+      creativeContext: readCreativeContext(batch.creativeContext),
       hasReference: Boolean(referenceImageKey),
     })),
     jobs,
     current: current
       ? (({ referenceImageKey, ...batch }) => ({
           ...batch,
+          creativeContext: readCreativeContext(batch.creativeContext),
           hasReference: Boolean(referenceImageKey),
         }))(current)
       : null,

@@ -231,6 +231,7 @@ export function IdeaStudioPage({
     }
   }
   const drafts = data?.current?.drafts || [];
+  const batchContext = data?.current?.creativeContext;
   const unpublished = (d: IdeaStudioDraft) => !d.prompt?.telegramPostUrl;
   const selected = drafts.filter(
     (d) => d.selected && !d.rejected && unpublished(d),
@@ -659,9 +660,9 @@ export function IdeaStudioPage({
           </select>
         </label>
       </div>
-      {data.current?.creativeContext && (
+      {batchContext?.profile && batchContext.calendar && (
         <div className="idea-batch-context">
-          {data.current.hasReference && (
+          {data.current?.hasReference && (
             <div className="idea-batch-avatar">
               <StudioReferencePreview
                 batchId={data.current.id}
@@ -671,25 +672,25 @@ export function IdeaStudioPage({
           )}
           <div>
             <span>
-              {data.current.creativeContext.profile.useCharacter
-                ? data.current.creativeContext.profile.characterName
+              {batchContext.profile.useCharacter
+                ? batchContext.profile.characterName
                 : "Без персонажа"}{" "}
               ·{" "}
               {
                 themeOptions.find(
                   (x) =>
                     x.key ===
-                    data.current?.creativeContext?.profile.primaryTheme,
+                    batchContext.profile.primaryTheme,
                 )?.label
               }
             </span>
             <p className="idea-help">
-              {data.current.creativeContext.calendar.date} ·{" "}
-              {data.current.creativeContext.calendar.region}
-              {data.current.creativeContext.calendar.season
-                ? ` · ${data.current.creativeContext.calendar.season}`
+              {batchContext.calendar.date} ·{" "}
+              {batchContext.calendar.region}
+              {batchContext.calendar.season
+                ? ` · ${batchContext.calendar.season}`
                 : ""}
-              {data.current.hasReference
+              {data.current?.hasReference
                 ? " · лицо из референса этой подборки"
                 : ""}
             </p>
