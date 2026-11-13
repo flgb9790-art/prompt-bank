@@ -425,6 +425,20 @@ test("image failure preserves generated text for an explicit separate retry", as
   assert.equal(tables.ideaStudioBatch[0].status, "partial");
   assert.equal(draft.busyJobId, null);
 });
+
+test("generated PNG is fully decoded and saved byte for byte without a JPEG conversion",async()=>{
+  const original=await sharp({create:{width:64,height:96,channels:3,background:"#856aa7"}}).withMetadata({density:144}).png().toBuffer();
+  studioDependencies.generateStudioImage=async(_prompt,_owner,reserve)=>{await reserve();imageCalls++;return original;};
+  let saved=false;
+  studioDependencies.persistMediaBuffer=async(kind,bytes,name,mime)=>{
+    assert.equal(kind,"image");assert.deepEqual(bytes,original);
+    assert.equal(name,"studio.png");assert.equal(mime,"image/png");
+    saved=true;return {url:"https://example.test/studio.png",type:"image",originalName:name};
+  };
+  const draft=await makeDraft();
+  assert.ok(saved);assert.equal(imageCalls,1);assert.equal(draft.imageStatus,"ready");
+  assert.equal(draft.imageUrl,"https://example.test/studio.png");
+});
 test("quota is reserved atomically before calls, including failed attempts", async () => {
   config.studioDailyImageLimit = 2;
   const results = await Promise.allSettled(

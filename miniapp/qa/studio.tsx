@@ -84,7 +84,7 @@ const data: IdeaStudioOverview = {
   models: {
     text: "gpt-5-mini",
     image: "gpt-image-2.5-flare",
-    imageQuality: "low",
+    imageQuality: "high",
   },
   settings,
   limits: { image: 10, text: 12, resetTimeZone: "UTC", manualTextUnlimited: true, manualImageUnlimited: true },

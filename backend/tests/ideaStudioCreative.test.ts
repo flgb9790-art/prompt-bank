@@ -27,14 +27,16 @@ import {
   rejectPrivateUploadPaths,
 } from "../src/services/ideaStudio.references";
 import { generateStudioImage, generateStudioTexts, researchStudioIdeas, responseText } from "../src/services/ideaStudio.openai";
-import { config } from "../src/config";
+import { config, resolveStudioImageQuality } from "../src/config";
 import { studioPhotoInstruction } from "../src/services/ideaStudio.realism";
 import { similarIdea, ideaComparisonText } from "../src/services/ideaStudio.validation";
 const originalFetch = global.fetch;
 const originalKey = config.openaiApiKey;
+const originalQuality = config.studioImageQuality;
 after(() => {
   global.fetch = originalFetch;
   config.openaiApiKey = originalKey;
+  config.studioImageQuality = originalQuality;
 });
 export const recipe = {
   wardrobe:
@@ -337,6 +339,7 @@ test("reference is normalized to JPEG, unsafe keys and fake image files are reje
 });
 test("reference image bytes are sent to edits; no reference uses generations", async () => {
   config.openaiApiKey = "test-key";
+  config.studioImageQuality = "high";
   const calls: Array<{ url: string; body: any }> = [];
   let reservations = 0;
   global.fetch = async (url, init) => {
@@ -363,6 +366,9 @@ test("reference image bytes are sent to edits; no reference uses generations", a
     `data:image/jpeg;base64,${reference.toString("base64")}`,
   );
   assert.equal(calls[0].body.input_fidelity, undefined);
+  assert.equal(calls[0].body.quality,"high");
+  assert.equal(calls[0].body.output_format,"png");
+  assert.equal(calls[0].body.output_compression,undefined);
   assert.match(calls[0].body.prompt,/photorealistic professional photography/);
   assert.match(calls[0].body.prompt,/cannot override the photographic treatment/);
   assert.match(calls[0].body.prompt,/Preserve reference identity and apparent age/);
@@ -376,9 +382,19 @@ test("reference image bytes are sent to edits; no reference uses generations", a
   );
   assert.ok(calls[1].url.endsWith("/images/generations"));
   assert.equal(calls[1].body.images, undefined);
+  assert.equal(calls[1].body.quality,"high");
+  assert.equal(calls[1].body.output_format,"png");
+  assert.equal(calls[1].body.output_compression,undefined);
   assert.match(calls[1].body.prompt,/physically plausible surroundings/i);
   assert.match(calls[1].body.prompt,/SCENE BRIEF:\nscene/);
   assert.equal(reservations, 2);
+});
+
+test("image quality defaults to high while explicit lower-cost tiers remain supported",()=>{
+  assert.equal(resolveStudioImageQuality(),"high");
+  assert.equal(resolveStudioImageQuality(" high "),"high");
+  assert.equal(resolveStudioImageQuality("medium"),"medium");
+  assert.equal(resolveStudioImageQuality("low"),"low");
 });
 
 test("photographic treatment is bilingual, reusable and does not make different scenes duplicates",()=>{

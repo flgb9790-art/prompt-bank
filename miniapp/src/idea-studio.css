@@ -831,6 +831,7 @@
 .idea-telegram-caption p {margin:0;min-height:1.7em;}
 .idea-telegram-caption .idea-telegram-footer {margin-top:16px;}
 .idea-telegram-caption a,.idea-telegram-link {color:#c4a8f1;text-decoration:none;}
+.idea-telegram-original {display:block;text-align:center;padding:11px 16px;border-top:1px solid #ffffff12;background:#ffffff06;color:#cfb7f4;text-decoration:none;font-size:12px;}
 .idea-dialog--footer {display:flex;flex-direction:column;overflow:hidden;}
 .idea-dialog--footer > header {flex-shrink:0;}
 .idea-dialog-scroll {overflow:auto;min-height:0;}

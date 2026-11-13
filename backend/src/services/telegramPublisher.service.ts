@@ -40,6 +40,13 @@ type PromptForPost = {
 };
 
 type PostMediaItem = { url: string; type: "image" | "video" };
+type OriginalImageKeyboard = {inline_keyboard:Array<Array<{text:string;url:string}>>};
+
+function originalImageKeyboard(media: PostMediaItem[]): OriginalImageKeyboard | undefined {
+  const images = media.filter(item => item.type === "image");
+  if (!images.length) return undefined;
+  return {inline_keyboard:images.map((item,index) => [{text:images.length===1?"Оригинал изображения":`Оригинал изображения ${index+1}`,url:item.url}])};
+}
 
 type TelegramMessage = {
   message_id: number;
@@ -208,7 +215,7 @@ async function loadAllMediaPayloads(mediaItems: PostMediaItem[]): Promise<Telegr
   return payloads;
 }
 
-async function sendTelegramMediaPost(chatId: string, postHtml: string, mediaItems: PostMediaItem[]): Promise<TelegramMessage> {
+async function sendTelegramMediaPost(chatId: string, postHtml: string, mediaItems: PostMediaItem[], originals?: OriginalImageKeyboard): Promise<TelegramMessage> {
   const token = config.telegramBotToken;
   if (!token) {
     throw new Error("TELEGRAM_BOT_TOKEN не указан");
@@ -274,7 +281,8 @@ async function sendTelegramMediaPost(chatId: string, postHtml: string, mediaItem
         chat_id: String(chatId),
         photo: "attach://photo",
         caption: postHtml,
-        parse_mode: "HTML"
+        parse_mode: "HTML",
+        ...(originals ? {reply_markup:JSON.stringify(originals)} : {}),
       },
       [{ field: "photo", payload: photos[0] }]
     );
@@ -288,7 +296,8 @@ async function sendTelegramMediaPost(chatId: string, postHtml: string, mediaItem
         chat_id: String(chatId),
         photo: "attach://photo",
         caption: postHtml,
-        parse_mode: "HTML"
+        parse_mode: "HTML",
+        ...(originals ? {reply_markup:JSON.stringify(originals)} : {}),
       },
       [{ field: "photo", payload: photos[0] }]
     );
@@ -374,8 +383,8 @@ export function splitTelegramText(text: string): string[] {
   return chunks;
 }
 
-async function sendTelegramPost(chatId: string, postHtml: string, content: string, mediaItems: PostMediaItem[], includeContent = true) {
-  if (!includeContent) return sendTelegramMediaPost(chatId,postHtml,mediaItems);
+async function sendTelegramPost(chatId: string, postHtml: string, content: string, mediaItems: PostMediaItem[], includeContent = true, originals?: OriginalImageKeyboard) {
+  if (!includeContent) return sendTelegramMediaPost(chatId,postHtml,mediaItems,originals);
   const announcement = htmlToPlainText(postHtml);
   const text = announcement.includes(content) ? announcement : `${announcement}\n\n${content}`;
   if (mediaItems.length && text.length <= TELEGRAM_CAPTION_MAX) {
@@ -438,6 +447,7 @@ export async function sendPromptToTelegram(promptId: number) {
   const postHtml = buildTelegramPostHtml(prompt);
   const mediaItems = collectPostMedia(prompt);
   const mediaType = resolvePublicationMediaType(mediaItems);
+  const originals = prompt.studioDraft ? originalImageKeyboard(mediaItems) : undefined;
 
   const publication = await prisma.telegramPublication.create({
     data: {
@@ -449,7 +459,7 @@ export async function sendPromptToTelegram(promptId: number) {
   });
 
   try {
-    const result = await sendTelegramPost(config.telegramChannelId, postHtml, prompt.content, mediaItems, !prompt.studioDraft);
+    const result = await sendTelegramPost(config.telegramChannelId, postHtml, prompt.content, mediaItems, !prompt.studioDraft, originals);
     const telegramPostUrl = buildTelegramPostLink(result.chat, result.message_id);
 
     await prisma.$transaction([
@@ -472,6 +482,18 @@ export async function sendPromptToTelegram(promptId: number) {
         }
       })
     ]);
+
+    // sendMediaGroup has no reply_markup parameter. Attach original-file links
+    // only after the album and its exact Telegram URL have been persisted.
+    if (originals && mediaItems.filter(item=>item.type==="image").length>=2) {
+      try {
+        await callTelegramApi("editMessageReplyMarkup", {chat_id:result.chat.id,message_id:result.message_id,reply_markup:originals});
+      } catch {
+        // A missing convenience button must never turn a confirmed post into
+        // a failed publication or cause the album to be posted a second time.
+        console.warn(`Telegram original-file buttons could not be attached to published prompt ${promptId}`);
+      }
+    }
 
     const updated = await getLatestTelegramPublication(promptId);
     PromptService.invalidateDetailCache(promptId);

@@ -15,6 +15,7 @@ import express from "express";
 import adminRouter from "../src/routes/admin.routes";
 import promptsRouter from "../src/routes/prompts.routes";
 import { once } from "node:events";
+import sharp from "sharp";
 
 // No real network or database calls: all publishers use the fake Prisma methods below.
 const realFetch = global.fetch;
@@ -26,6 +27,7 @@ let mediaRequests: string[];
 let sequence: string[];
 let failTelegram = false;
 let failPinterest = false;
+let failOriginalMarkup = false;
 let nextMessage = 100;
 
 function fakeCollection(getRows: () => any[]) {
@@ -47,7 +49,7 @@ beforeEach(() => {
     telegramPostUrl: null, telegramPublished: false
   };
   telegramPublications = []; pinterestPublications = []; requests = []; mediaRequests = []; sequence = [];
-  failTelegram = false; failPinterest = false; nextMessage = 100;
+  failTelegram = false; failPinterest = false; failOriginalMarkup = false; nextMessage = 100;
   Object.assign(config, {
     telegramBotToken: "test-token", telegramChannelId: "-1001234567890",
     telegramChannelUrl: "https://t.me/sample_channel", telegramBotUsername: "sample_bot",
@@ -79,6 +81,7 @@ beforeEach(() => {
     if (String(url).includes("api.telegram.org/")) {
       sequence.push("telegram");
       if (failTelegram) return new Response(JSON.stringify({ ok: false, description: "Forbidden" }), { status: 403 });
+      if (failOriginalMarkup && String(url).endsWith("/editMessageReplyMarkup")) return new Response(JSON.stringify({ok:false,description:"Cannot edit markup"}),{status:400});
       const result = {
         message_id: nextMessage++, chat: { id: "-1001234567890", username: "sample_channel" }
       };
@@ -164,7 +167,38 @@ test("studio publication sends one photo with the reviewed rich caption and a pr
   assert.match(requests[0].body.caption,/syntxaibot\?start=aff_465351635/);
   assert.match(requests[0].body.caption,/https:\/\/t.me\/sample_bot\?startapp=prompt_1/);
   assert.ok(!requests[0].body.caption.includes(prompt.content));
+  assert.deepEqual(JSON.parse(requests[0].body.reply_markup),{inline_keyboard:[[{text:"Оригинал изображения",url:prompt.coverMediaUrl}]]});
   assert.equal(prompt.telegramPostUrl,"https://t.me/sample_channel/100");
+});
+
+test("studio PNG reaches Telegram unchanged with a link to its original file",async()=>{
+  const original=await sharp({create:{width:64,height:96,channels:3,background:"#836aa1"}}).png().toBuffer();
+  const mockFetch=global.fetch;
+  prompt.studioDraft={id:"studio-png"};prompt.telegramPostTemplate=buildStudioTelegramPostTemplate();
+  prompt.coverMediaUrl="https://cdn.example.com/original.png";prompt.coverMediaType="image";
+  global.fetch=(async(url:any,init:any)=>String(url)===prompt.coverMediaUrl
+    ? new Response(original,{headers:{"Content-Type":"image/png"}})
+    : mockFetch(url,init)) as typeof fetch;
+  assert.equal((await sendPromptToTelegram(1)).status,"published");
+  assert.equal(requests.length,1);
+  const file=requests[0].body.photo as Blob;
+  assert.equal(file.type,"image/png");assert.deepEqual(Buffer.from(await file.arrayBuffer()),original);
+  assert.equal(JSON.parse(requests[0].body.reply_markup).inline_keyboard[0][0].url,prompt.coverMediaUrl);
+  assert.match(requests[0].body.caption,/startapp=prompt_1/);
+});
+
+test("studio albums attach original links after saving the post and retain publication if markup fails",async()=>{
+  prompt.studioDraft={id:"studio-album"};prompt.telegramPostTemplate=buildStudioTelegramPostTemplate();
+  prompt.examples=[{type:"image",url:"https://cdn.example.com/a.png"},{type:"image",url:"https://cdn.example.com/b.png"}];
+  failOriginalMarkup=true;
+  assert.equal((await sendPromptToTelegram(1)).status,"published");
+  assert.equal(requests.length,2);assert.ok(requests[0].url.endsWith("/sendMediaGroup"));
+  assert.ok(requests[1].url.endsWith("/editMessageReplyMarkup"));
+  assert.equal(requests[1].body.message_id,100);
+  assert.deepEqual(requests[1].body.reply_markup.inline_keyboard.map((row:any)=>row[0].url),prompt.examples.map((item:any)=>item.url));
+  assert.ok(sequence.indexOf("save-telegram-link")<sequence.lastIndexOf("telegram"));
+  assert.equal(prompt.telegramPublished,true);assert.equal(prompt.telegramPostUrl,"https://t.me/sample_channel/100");
+  await sendPromptToTelegram(1);assert.equal(requests.length,2,"A button failure must not republish the album");
 });
 test("Telegram persists the message containing prompt text, then Pinterest uses its URL", async () => {
   assert.equal((await sendPromptToTelegram(1)).status, "published");

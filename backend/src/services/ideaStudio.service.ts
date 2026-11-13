@@ -510,12 +510,15 @@ async function createDraftImage(id: string, owner: string, lease: Lease, origin:
       !["jpeg", "png", "webp"].includes(meta.format || "")
     )
       throw new StudioError("ИИ вернул повреждённое изображение.", 502);
-    const jpeg = await sharp(bytes).jpeg({ quality: 90 }).toBuffer();
+    // Decode fully to reject damaged images, then persist the provider's exact
+    // bytes. Thumbnails are separate files; never re-encode the original.
+    await sharp(bytes, {limitInputPixels:30_000_000}).stats();
+    const extension = meta.format === "jpeg" ? "jpg" : meta.format;
     const media = await studioDependencies.persistMediaBuffer(
       "image",
-      jpeg,
-      "studio.jpg",
-      "image/jpeg",
+      bytes,
+      `studio.${extension}`,
+      `image/${meta.format}`,
     );
     lease.check();
     await prisma.ideaStudioDraft.update({

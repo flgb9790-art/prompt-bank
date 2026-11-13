@@ -46,7 +46,9 @@ export function StudioTelegramComposer({value,onChange,drafts,promptLinkBase,bus
           <div dangerouslySetInnerHTML={{__html:studioTelegramPreview(value.bodyHtml)}}/>
           <p className="idea-telegram-footer">{promptUrl?<a href={promptUrl}>{value.promptLinkLabel}</a>:<span className="idea-telegram-link">{value.promptLinkLabel||"Открыть промпт"}</span>}</p>
         </div>
+        {preview?.imageUrl&&<a className="idea-telegram-original" href={resolveMediaUrl(preview.imageUrl)} onClick={e=>e.preventDefault()}>Оригинал изображения ↗</a>}
       </article>
+      <p className="idea-help">Кнопка «Оригинал изображения» открывает сохранённый файл без сжатия Telegram. Фото в ленте канала обрабатывается Telegram отдельно.</p>
       {preview&&<p className="idea-help">{preview.title}{!promptUrl&&" · индивидуальная ссылка подставится после создания материала."}</p>}
     </section>
   </div>;
