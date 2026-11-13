@@ -121,13 +121,21 @@ export function buildTelegramPostHtml(prompt: PromptForPost): string {
 
 export function resolvePublicMediaUrl(url: string | null | undefined): string | null {
   if (!url?.trim()) return null;
+  url = url.trim();
   if (/^https?:\/\//i.test(url)) {
     if (isSamePublicHost(url, config.webAppUrl)) {
-      throw new Error(
-        "Абсолютный URL медиа ведёт на mini app. Сохраните относительный путь /uploads/... или задайте PUBLIC_BACKEND_URL на API."
-      );
+      const media = new URL(url);
+      if (!/^\/uploads\/(?:images|videos)\/[^/]+(?:\/[^/]+)*$/.test(media.pathname)) {
+        throw new Error(
+          "Абсолютный URL медиа ведёт на mini app. Используйте файл из /uploads/images/... или /uploads/videos/...."
+        );
+      }
+      // The public site can share the API host. Older records may instead use
+      // a frontend origin; route only owned upload paths to the configured API.
+      url = `${media.pathname}${media.search}`;
+    } else {
+      return url;
     }
-    return url;
   }
   const base = config.publicBackendUrl.replace(/\/$/, "");
   if (!base) {

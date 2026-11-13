@@ -6,7 +6,7 @@ import { PGlite } from "@electric-sql/pglite";
 import { prisma } from "../src/db";
 import { config } from "../src/config";
 import { parseTelegramPostLink, buildTelegramPostLink } from "../src/utils/telegramPostLink";
-import { sendPromptToTelegram, splitTelegramText } from "../src/services/telegramPublisher.service";
+import { sendPromptToTelegram, splitTelegramText, resolvePublicMediaUrl } from "../src/services/telegramPublisher.service";
 import { buildStudioTelegramPostTemplate } from "../src/services/ideaStudio.telegramPublication";
 import { buildPinterestPin, sendPromptToPinterest, preparePinterestPublication, previewPinterestPublication } from "../src/services/pinterestPublisher.service";
 import { encryptToken } from "../src/services/pinterestConnection.service";
@@ -22,6 +22,7 @@ let prompt: any;
 let telegramPublications: any[];
 let pinterestPublications: any[];
 let requests: Array<{ url: string; body: any }>;
+let mediaRequests: string[];
 let sequence: string[];
 let failTelegram = false;
 let failPinterest = false;
@@ -45,13 +46,14 @@ beforeEach(() => {
     keywords: [], examples: [], coverMediaUrl: null, coverMediaType: null,
     telegramPostUrl: null, telegramPublished: false
   };
-  telegramPublications = []; pinterestPublications = []; requests = []; sequence = [];
+  telegramPublications = []; pinterestPublications = []; requests = []; mediaRequests = []; sequence = [];
   failTelegram = false; failPinterest = false; nextMessage = 100;
   Object.assign(config, {
     telegramBotToken: "test-token", telegramChannelId: "-1001234567890",
     telegramChannelUrl: "https://t.me/sample_channel", telegramBotUsername: "sample_bot",
     pinterestAccessToken: "test-pin-token", pinterestBoardId: "board", adminTelegramIds: ["42"],
-    pinterestApiBaseUrl:"https://api.pinterest.com/v5"
+    pinterestApiBaseUrl:"https://api.pinterest.com/v5",
+    webAppUrl: "https://app.example.com", publicBackendUrl: "https://api.example.com"
   });
   Object.assign(prisma.prompt, {
     findUnique: async () => prompt,
@@ -68,7 +70,8 @@ beforeEach(() => {
   (prisma as any).$transaction = async (ops: any[]) => Promise.all(ops);
   PromptService.invalidateDetailCache();
   global.fetch = (async (url: any, init: any) => {
-    if (String(url).startsWith("https://cdn.example.com/")) {
+    if (String(url).startsWith("https://cdn.example.com/") || String(url).startsWith(config.publicBackendUrl + "/uploads/")) {
+      mediaRequests.push(String(url));
       return new Response(new Uint8Array(300), { headers: { "Content-Type": "image/jpeg" } });
     }
     const body = init.body instanceof FormData ? Object.fromEntries(init.body.entries()) : JSON.parse(init.body);
@@ -90,6 +93,54 @@ beforeEach(() => {
 });
 
 after(() => { global.fetch = realFetch; });
+
+test("owned upload URLs resolve on shared site/API hosts and migrate from an old frontend host", () => {
+  config.webAppUrl = "https://prompt-bank.one";
+  config.publicBackendUrl = config.webAppUrl;
+  assert.equal(resolvePublicMediaUrl("https://prompt-bank.one/uploads/images/generated.jpg"), "https://prompt-bank.one/uploads/images/generated.jpg");
+  assert.equal(resolvePublicMediaUrl("/uploads/videos/example.mp4"), "https://prompt-bank.one/uploads/videos/example.mp4");
+  config.publicBackendUrl = "https://api.example.com";
+  assert.equal(resolvePublicMediaUrl("https://prompt-bank.one/uploads/images/generated.jpg?v=1"), "https://api.example.com/uploads/images/generated.jpg?v=1");
+  assert.equal(resolvePublicMediaUrl("https://cdn.example.com/photo.jpg"), "https://cdn.example.com/photo.jpg");
+  for (const pathname of ["/studio", "/", "/uploads/.studio-references/face.jpg", "/uploads/images/../page", "/uploads/images/"]) {
+    assert.throws(() => resolvePublicMediaUrl(`https://prompt-bank.one${pathname}`), /mini app/);
+  }
+});
+
+test("studio photo stored at the public site is uploaded once and saves the exact Telegram post link", async () => {
+  config.webAppUrl = "https://prompt-bank.one";
+  config.publicBackendUrl = config.webAppUrl;
+  prompt.studioDraft = {id:"studio-draft"};
+  prompt.telegramPostTemplate = buildStudioTelegramPostTemplate();
+  prompt.coverMediaUrl = "https://prompt-bank.one/uploads/images/generated.jpg";
+  prompt.coverMediaType = "image";
+  assert.equal((await sendPromptToTelegram(1)).status, "published");
+  assert.deepEqual(mediaRequests, [prompt.coverMediaUrl]);
+  assert.equal(requests.length, 1);
+  assert.ok(requests[0].url.endsWith("/sendPhoto"));
+  assert.match(requests[0].body.caption, /aff_465351635/);
+  assert.match(requests[0].body.caption, /startapp=prompt_1/);
+  assert.equal(prompt.telegramPostUrl, "https://t.me/sample_channel/100");
+  await sendPromptToTelegram(1);
+  assert.equal(requests.length, 1, "Retry cannot duplicate a confirmed Telegram post");
+});
+
+test("HTML from a media route is rejected before uploading anything to Telegram", async () => {
+  config.webAppUrl = "https://prompt-bank.one";
+  config.publicBackendUrl = config.webAppUrl;
+  prompt.studioDraft = {id:"studio-draft"};
+  prompt.telegramPostTemplate = buildStudioTelegramPostTemplate();
+  prompt.coverMediaUrl = "https://prompt-bank.one/uploads/images/missing.jpg";
+  prompt.coverMediaType = "image";
+  global.fetch = (async (url: any) => {
+    assert.equal(String(url), prompt.coverMediaUrl, "No Telegram API call is allowed for an HTML response");
+    return new Response("<html>" + "app".repeat(100) + "</html>", {headers:{"Content-Type":"text/html; charset=utf-8"}});
+  }) as typeof fetch;
+  const result = await sendPromptToTelegram(1);
+  assert.equal(result.status,"failed");
+  assert.match(result.error!,/HTML/);
+  assert.equal(prompt.telegramPostUrl,null);
+});
 
 test("validates post URLs, rejects channel/invite/non-Telegram URLs and normalizes tracking", () => {
   assert.equal(parseTelegramPostLink(" https://t.me/sample_channel/123?single ").url, "https://t.me/sample_channel/123");

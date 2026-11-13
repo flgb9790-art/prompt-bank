@@ -169,6 +169,12 @@ export async function loadTelegramMediaPayload(
       throw new Error(`Медиа недоступно (HTTP ${response.status}): ${publicUrl}`);
     }
 
+    const responseContentType = (response.headers.get("content-type") ?? "").split(";")[0].trim();
+    if (/^(?:text\/html|application\/xhtml\+xml)$/i.test(responseContentType)) {
+      await response.body?.cancel();
+      throw new Error("Медиа-URL отдаёт HTML (страницу приложения), а не файл изображения или видео.");
+    }
+
     const arrayBuffer = await response.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
     if (buffer.length < MIN_MEDIA_BYTES) {
@@ -177,7 +183,7 @@ export async function loadTelegramMediaPayload(
 
     const filename = filenameFromUrl(publicUrl, kind);
     const contentType =
-      (response.headers.get("content-type") ?? "").split(";")[0].trim() ||
+      responseContentType ||
       guessContentType(kind, filename);
 
     if (kind === "image") {
