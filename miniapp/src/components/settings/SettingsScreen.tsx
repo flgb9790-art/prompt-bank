@@ -19,6 +19,7 @@ type Props = {
   onUpdateSettings: (settings: Partial<UserSettings>) => Promise<void>;
   showLogout?: boolean;
   onOpenPrivacyPolicy?: () => void;
+  onOpenStudio?: () => void;
 };
 
 function displayName(user: TelegramUser | null, me: MeResponse | null) {
@@ -43,7 +44,8 @@ export function SettingsScreen({
   onLogin,
   onUpdateSettings,
   showLogout = true,
-  onOpenPrivacyPolicy
+  onOpenPrivacyPolicy,
+  onOpenStudio
 }: Props) {
   const stats = me?.stats;
   const settings = me?.settings;
@@ -258,6 +260,7 @@ export function SettingsScreen({
           {actionCards}
           {privacyCard}
           {me?.isAdmin && <PinterestSettings />}
+          {me?.isAdmin && onOpenStudio && <section className="settings-card"><h2 className="settings-card-title">Студия идей</h2><p className="settings-help">Новые промпты и изображения, твой отбор и публикация.</p><button className="btn-secondary" onClick={onOpenStudio}>Открыть студию</button></section>}
           <ReadingSettings />
         </div>
       </div>
@@ -276,6 +279,7 @@ export function SettingsScreen({
         {actionCards}
         {privacyCard}
         {me?.isAdmin && <PinterestSettings />}
+        {me?.isAdmin && onOpenStudio && <section className="settings-card"><h2 className="settings-card-title">Студия идей</h2><p className="settings-help">Новые промпты и изображения, твой отбор и публикация.</p><button className="btn-secondary" onClick={onOpenStudio}>Открыть студию</button></section>}
         <ReadingSettings />
       </div>
       {privacyFooter}

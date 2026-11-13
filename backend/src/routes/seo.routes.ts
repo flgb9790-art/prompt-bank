@@ -47,7 +47,7 @@ async function buildSitemapXml() {
 
 router.get("/robots.txt", (_req, res) => {
   res.type("text/plain").send(
-    `User-agent: *\nAllow: /\nDisallow: /favorites\nDisallow: /settings\nDisallow: /copied\nDisallow: /viewed\n\nSitemap: ${config.webAppUrl}/sitemap.xml\n`
+    `User-agent: *\nAllow: /\nDisallow: /favorites\nDisallow: /settings\nDisallow: /copied\nDisallow: /viewed\nDisallow: /studio\n\nSitemap: ${config.webAppUrl}/sitemap.xml\n`
   );
 });
 

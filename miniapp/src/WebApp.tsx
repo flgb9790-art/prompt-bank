@@ -10,6 +10,7 @@ import { BrandSplash } from "./components/BrandSplash";
 import { PromptDetailsModal, type PromptEditPayload } from "./components/PromptDetailsModal";
 import { useDialogFocus } from "./hooks/useDialogFocus";
 const PromptForm = lazy(() => import("./components/PromptForm").then((module) => ({ default: module.PromptForm })));
+const IdeaStudioPage = lazy(() => import("./pages/IdeaStudioPage").then(module=>({default:module.IdeaStudioPage})));
 import { runDeferred } from "./utils/deferredPrefetch";
 import { hideAppSplash } from "./utils/appSplash";
 import { writeReferenceCache } from "./utils/referenceCache";
@@ -71,7 +72,7 @@ import {
 } from "./utils/promptFavorite";
 
 type SortValue = "new" | "old" | "usage";
-type RoutePath = "/" | "/prompts" | "/favorites" | "/categories" | "/tags" | "/recent" | "/settings" | "/copied" | "/viewed" | "/privacy";
+type RoutePath = "/" | "/prompts" | "/favorites" | "/categories" | "/tags" | "/recent" | "/settings" | "/copied" | "/viewed" | "/privacy" | "/studio";
 
 const storageKey = "prompt-bank-web-auth";
 const CATEGORIES_CACHE_KEY = "prompt-bank-categories";
@@ -83,7 +84,7 @@ const telegramBotUsernameFromEnv = (import.meta.env.VITE_TELEGRAM_BOT_USERNAME a
 function getRoutePath(pathname: string): RoutePath {
   if (parsePromptIdFromPathname(pathname)) return "/";
   if (["/prompts", "/categories", "/tags", "/recent"].includes(pathname)) return "/";
-  const allowed: RoutePath[] = ["/", "/prompts", "/favorites", "/categories", "/tags", "/recent", "/settings", "/copied", "/viewed", "/privacy"];
+  const allowed: RoutePath[] = ["/", "/prompts", "/favorites", "/categories", "/tags", "/recent", "/settings", "/copied", "/viewed", "/privacy", "/studio"];
   return allowed.includes(pathname as RoutePath) ? (pathname as RoutePath) : "/";
 }
 
@@ -1012,10 +1013,12 @@ export function WebApp() {
           onLogin={loginTelegram}
           onUpdateSettings={handleUpdateSettings}
           onOpenPrivacyPolicy={() => navigate("/privacy")}
+          onOpenStudio={() => navigate("/studio")}
         />
       ) : null}
 
       {path === "/privacy" ? <PrivacyPolicyPage onBack={() => navigate("/settings")} /> : null}
+      {path === "/studio" ? isAdmin ? <Suspense fallback={<div className="skeleton h-64"/>}><IdeaStudioPage onOpenSettings={()=>navigate("/settings")}/></Suspense> : <div className="library-empty"><h2>Студия доступна администратору</h2>{!isAuthenticated&&<button className="btn-primary" onClick={loginTelegram}>Войти через Telegram</button>}</div> : null}
 
       {path === "/copied" ? (
         <PromptHistoryScreen
@@ -1135,7 +1138,7 @@ export function WebApp() {
         </div>
       ) : (
         <MobileWebShell
-          currentPath={path === "/privacy" ? "/settings" : path}
+          currentPath={path === "/privacy" || path === "/studio" ? "/settings" : path}
           search={search}
           onSearchChange={setSearch}
           onNavigate={navigate}

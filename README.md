@@ -126,6 +126,10 @@ npm run dev
 
 ## 12) Структура проекта
 
+Студия идей для администратора: автоматические тексты и изображения OpenAI,
+ручной отбор и публикация в Telegram. Настройка, лимиты и миграция:
+[docs/IDEA_STUDIO_DEPLOY.md](docs/IDEA_STUDIO_DEPLOY.md).
+
 ```text
 prompt-bank-telegram-miniapp/
   README.md

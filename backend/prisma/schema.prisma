@@ -8,6 +8,90 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
+model IdeaStudioSettings {
+  id              String    @id @default("main")
+  dailyEnabled    Boolean   @default(false)
+  dailyCount      Int       @default(10)
+  runAt           String    @default("09:00")
+  timeZone        String    @default("Europe/Minsk")
+  language        String    @default("en")
+  topics          String    @default("Портреты, предметная съёмка, архитектура, мода, природа, сюрреализм")
+  useWebSearch    Boolean   @default(true)
+  ownerTelegramId String?
+  workerToken     String?
+  leaseUntil      DateTime?
+  updatedAt       DateTime  @updatedAt
+}
+
+model IdeaStudioBatch {
+  id                String            @id @default(cuid())
+  dailyKey          String?           @unique
+  creatorTelegramId String
+  status            String            @default("queued")
+  count             Int
+  topics            String
+  language          String
+  useWebSearch      Boolean
+  sourcePrompt      String?           @db.Text
+  sources           Json              @default("[]")
+  error             String?
+  drafts            IdeaStudioDraft[]
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  @@index([createdAt(sort: Desc)])
+}
+
+model IdeaStudioDraft {
+  id                 String          @id @default(cuid())
+  batchId            String
+  title              String
+  concept            String          @db.Text
+  content            String          @db.Text
+  imagePrompt        String          @db.Text
+  theme              String
+  visualStyle        String
+  fingerprint        String
+  selected           Boolean         @default(false)
+  rejected           Boolean         @default(false)
+  imageUrl           String?
+  imageStatus        String          @default("pending")
+  imageError         String?
+  imageStale         Boolean         @default(false)
+  busyJobId          String?
+  publishError       String?
+  publishUncertain   Boolean         @default(false)
+  promptId           Int?            @unique
+  revision           Int             @default(0)
+  batch              IdeaStudioBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  prompt             Prompt?         @relation(fields: [promptId], references: [id], onDelete: SetNull)
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+
+  @@index([batchId, createdAt])
+  @@index([fingerprint])
+}
+
+model IdeaStudioJob {
+  id                String    @id @default(cuid())
+  kind              String
+  status            String    @default("queued")
+  creatorTelegramId String
+  payload           Json
+  completed         Int       @default(0)
+  total             Int       @default(1)
+  error             String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@index([status, createdAt])
+}
+
+model IdeaStudioUsage {
+  id       String @id
+  requests Int    @default(0)
+}
+
 model PinterestConnection {
   id                    String    @id
   apiBaseUrl            String    @default("https://api.pinterest.com/v5")
@@ -85,6 +169,7 @@ model Prompt {
   copies              PromptCopy[]
   telegramPublications TelegramPublication[]
   pinterestPublications PinterestPublication[]
+  studioDraft         IdeaStudioDraft?
   createdAt           DateTime              @default(now())
   updatedAt           DateTime              @updatedAt
 

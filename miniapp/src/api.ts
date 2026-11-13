@@ -15,6 +15,7 @@ import type {
 } from "./types";
 import { readReferenceCache, removeReferenceCache, writeReferenceCache } from "./utils/referenceCache";
 import { getBackendBaseUrl, getMediaCdnBaseUrl, isBackendConfigured } from "./runtimeConfig";
+import type { IdeaStudioOverview, IdeaStudioSettings } from "./ideaStudioTypes";
 
 function resolveBaseUrl(): string {
   return getBackendBaseUrl();
@@ -130,6 +131,14 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const api = {
+  ideaStudio(batchId?:string) { return request<IdeaStudioOverview>(`/api/admin/idea-studio${batchId?`?batchId=${encodeURIComponent(batchId)}`:""}`); },
+  saveIdeaStudioSettings(settings:IdeaStudioSettings) { return request<{ok:true}>("/api/admin/idea-studio/settings",{method:"PUT",body:JSON.stringify(settings)}); },
+  generateIdeaBatch(input:{count:number;topics:string;language:string;useWebSearch:boolean;sourcePrompt?:string}) { return request<{batchId:string}>("/api/admin/idea-studio/batches",{method:"POST",body:JSON.stringify(input)}); },
+  editIdeaDraft(id:string,input:Partial<Pick<import("./ideaStudioTypes").IdeaStudioDraft,"title"|"concept"|"content"|"imagePrompt"|"selected"|"rejected">>) { return request<{ok:true}>(`/api/admin/idea-studio/drafts/${id}`,{method:"PATCH",body:JSON.stringify(input)}); },
+  regenerateIdeaImage(id:string) { return request<{jobId:string}>(`/api/admin/idea-studio/drafts/${id}/image`,{method:"POST",body:"{}"}); },
+  rewriteIdeaDraft(id:string,instructions:string) { return request<{jobId:string}>(`/api/admin/idea-studio/drafts/${id}/rewrite`,{method:"POST",body:JSON.stringify({instructions})}); },
+  publishIdeaDrafts(draftIds:string[]) { return request<{jobId:string}>("/api/admin/idea-studio/publish",{method:"POST",body:JSON.stringify({draftIds,confirmed:true})}); },
+  allowIdeaTelegramRetry(id:string) { return request<{ok:true}>(`/api/admin/idea-studio/drafts/${id}/allow-telegram-retry`,{method:"POST",body:JSON.stringify({confirmed:true})}); },
   pinterestStatus() { return request<PinterestStatus>("/api/pinterest/status"); },
   connectPinterest() { return request<{url: string}>("/api/pinterest/connect", { method: "POST" }); },
   disconnectPinterest() { return request<PinterestStatus>("/api/pinterest/connection", { method: "DELETE" }); },

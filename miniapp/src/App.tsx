@@ -54,6 +54,7 @@ const CATEGORIES_CACHE_KEY = "prompt-bank-categories";
 const TAGS_CACHE_KEY = "prompt-bank-tags";
 
 const WebApp = lazy(() => import("./WebApp").then((module) => ({ default: module.WebApp })));
+const IdeaStudioPage = lazy(() => import("./pages/IdeaStudioPage").then(module=>({default:module.IdeaStudioPage})));
 
 const quickTags = ["beauty", "video", "logo", "telegram", "cursor", "ads", "react", "realistic"];
 const BOOTSTRAP_PROMPTS_LIMIT = 12;
@@ -213,7 +214,7 @@ function MiniAppApp() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [userUsageTotal, setUserUsageTotal] = useState(0);
   const [me, setMe] = useState<MeResponse | null>(null);
-  const [profileScreen, setProfileScreen] = useState<"copied" | "viewed" | null>(null);
+  const [profileScreen, setProfileScreen] = useState<"copied" | "viewed" | "studio" | null>(null);
   const [user, setUser] = useState<TelegramUser>(() => resolveTelegramUser() ?? mockTelegramUser);
   const [toastMessage, setToastMessage] = useState("");
   const [favoriteIds, setFavoriteIds] = useState<Set<number>>(() => favoriteIdsFromCache());
@@ -1070,8 +1071,10 @@ function MiniAppApp() {
           onLogout={() => undefined}
           onLogin={() => undefined}
           onUpdateSettings={handleUpdateSettings}
+          onOpenStudio={() => setProfileScreen("studio")}
         />
       ) : null}
+      {tab === "profile" && profileScreen === "studio" && isAdmin ? <Suspense fallback={<div className="skeleton h-64"/>}><IdeaStudioPage onBack={()=>setProfileScreen(null)} onOpenSettings={()=>setProfileScreen(null)}/></Suspense> : null}
       {tab === "add" && (
         <AddPromptPage
           categories={categories}

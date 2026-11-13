@@ -1,4 +1,8 @@
 /* Studio layout: one library, a compact navigation, and content-first cards. */
+@media(min-width:1024px) and (max-width:1250px) {
+  .studio-header .studio-topbar {padding:0 28px;gap:20px;}
+  .studio-header .studio-navigation button {padding:10px 9px;font-size:11px;gap:6px;}
+}
 html.web-mode {
   --bg: #101014; --bg-soft: #16161d; --sidebar-bg: #111116; --card: #19191f;
   --card-soft: #1e1e27; --border: #ffffff17; --border-soft: #ffffff0c;

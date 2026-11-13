@@ -14,6 +14,8 @@ import bootstrapRouter from "./routes/bootstrap.routes";
 import meRouter from "./routes/me.routes";
 import adminRouter from "./routes/admin.routes";
 import pinterestRouter from "./routes/pinterest.routes";
+import ideaStudioRouter from "./routes/ideaStudio.routes";
+import { startIdeaStudioWorker } from "./services/ideaStudio.service";
 import seoRouter from "./routes/seo.routes";
 import { extractKeywords } from "./keywordExtractor";
 import { startBot } from "./bot";
@@ -79,6 +81,7 @@ app.get("/api/health", (_req, res) => {
 app.use("/api/bootstrap", bootstrapRouter);
 app.use("/api/me", meRouter);
 app.use("/api/admin", adminRouter);
+app.use("/api/admin/idea-studio", ideaStudioRouter);
 app.use("/api/pinterest", pinterestRouter);
 
 app.use("/api/prompts", promptsRouter);
@@ -229,6 +232,7 @@ async function bootstrap() {
   // Schema: `npx prisma db push` against Railway Postgres (DATABASE_PUBLIC_URL from local).
   await seedInitialData();
   await ensureSearchExtensions();
+  startIdeaStudioWorker();
   if (process.env.MIGRATE_SUPABASE_MEDIA === "true") {
     await migrateSupabaseMedia();
   }

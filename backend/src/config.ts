@@ -71,6 +71,12 @@ const webAppUrl = resolveWebAppUrl();
 const publicBackendUrl = resolvePublicBackendUrl(webAppUrl);
 
 export const config = {
+  openaiApiKey: process.env.OPENAI_API_KEY?.trim() || "",
+  studioTextModel: process.env.STUDIO_TEXT_MODEL?.trim() || "gpt-5-mini",
+  studioImageModel: process.env.STUDIO_IMAGE_MODEL?.trim() || "gpt-image-2.5-flare",
+  studioImageQuality: process.env.STUDIO_IMAGE_QUALITY === "medium" ? "medium" : "low",
+  studioDailyImageLimit: Math.min(100, Math.max(1, Number(process.env.STUDIO_DAILY_IMAGE_LIMIT) || 10)),
+  studioDailyTextLimit: Math.min(100, Math.max(1, Number(process.env.STUDIO_DAILY_TEXT_LIMIT) || 12)),
   port: Number(process.env.PORT ?? 3001),
   botToken: process.env.BOT_TOKEN ?? "",
   telegramBotToken: process.env.TELEGRAM_BOT_TOKEN?.trim() || process.env.BOT_TOKEN?.trim() || "",

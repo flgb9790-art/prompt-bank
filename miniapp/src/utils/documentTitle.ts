@@ -39,6 +39,7 @@ export function webRouteDocumentTitle(input: {
   if (input.path === "/recent") return "Последние";
   if (input.path === "/settings") return "Настройки";
   if (input.path === "/privacy") return "Политика конфиденциальности";
+  if (input.path === "/studio") return "Студия идей";
   if (input.path === "/copied") return "Скопированные промпты";
   if (input.path === "/viewed") return "Просмотренные промпты";
   if (input.path === "/prompts") {
@@ -58,13 +59,14 @@ export function miniRouteDocumentTitle(input: {
   activeTag?: string;
   searchQuery?: string;
   selectedPromptLabel?: string;
-  profileScreen?: "copied" | "viewed" | null;
+  profileScreen?: "copied" | "viewed" | "studio" | null;
 }) {
   if (input.selectedPromptLabel) {
     return input.selectedPromptLabel;
   }
   if (input.profileScreen === "copied") return "Скопированные";
   if (input.profileScreen === "viewed") return "Просмотренные";
+  if (input.profileScreen === "studio") return "Студия идей";
   if (input.tab === "home") return "Главная";
   if (input.tab === "prompts") {
     return input.activeTag ? `Тег: ${input.activeTag}` : "Промпты";

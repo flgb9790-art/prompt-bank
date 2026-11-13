@@ -18,7 +18,7 @@ type Input = {
   isAddModalOpen?: boolean;
 };
 
-const PRIVATE_PATHS = new Set(["/favorites", "/settings", "/copied", "/viewed"]);
+const PRIVATE_PATHS = new Set(["/favorites", "/settings", "/copied", "/viewed", "/studio"]);
 
 export function useWebSeo(input: Input) {
   useEffect(() => {
