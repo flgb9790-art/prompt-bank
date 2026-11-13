@@ -12,6 +12,9 @@ import {
   createCreativeContext,
   studioCalendar,
   creativeResearchTopics,
+  identityInstruction,
+  characterImagePrompt,
+  characterShotPlan,
 } from "../src/services/ideaStudio.creative";
 import {
   composeReusableIdea,
@@ -23,7 +26,7 @@ import {
   studioReferencePath,
   rejectPrivateUploadPaths,
 } from "../src/services/ideaStudio.references";
-import { generateStudioImage } from "../src/services/ideaStudio.openai";
+import { generateStudioImage, generateStudioTexts } from "../src/services/ideaStudio.openai";
 import { config } from "../src/config";
 const originalFetch = global.fetch;
 const originalKey = config.openaiApiKey;
@@ -113,6 +116,8 @@ test("public prompts are complete and reusable while private previews may use ch
   assert.ok(!result.content.includes("PrivateName"));
   assert.ok(!result.content.includes("Private preview guidance"));
   assert.equal(result.imagePrompt, result.content);
+  assert.match(result.content, /apparent age/);
+  assert.match(result.content, /head rotation or tilt/);
   const withoutRef = composeReusableIdea(
     { recipe },
     { ...context, hasCharacterReference: false },
@@ -121,6 +126,66 @@ test("public prompts are complete and reusable while private previews may use ch
   assert.match(withoutRef.imagePrompt, /Private preview guidance/);
   assert.ok(!withoutRef.content.includes("Private preview guidance"));
 });
+test("identity-only guidance preserves apparent age while freeing head, expression and body pose", () => {
+  const oldDraft = "Use the person in the uploaded photograph as the sole identity reference. Keep their natural proportions.\n\nPose: seated sideways, head turned left, looking down toward a book.";
+  const prompt = characterImagePrompt(oldDraft, "en");
+  assert.match(prompt, /Do not age or de-age/);
+  assert.match(prompt, /does not define the pose, body position, head rotation or tilt, gaze, expression/);
+  assert.match(prompt, /Pose: seated sideways, head turned left/);
+  assert.match(prompt, /independently staged photograph/);
+  assert.match(prompt, /Disregard requests.*copy the reference pose/);
+  assert.equal(prompt.match(/sole identity reference/g)?.length, 1);
+  assert.ok(!prompt.includes("Keep their natural proportions"));
+  const russian = characterImagePrompt("Поза: идёт по улице, голова повёрнута влево.", "ru");
+  assert.match(russian, /видимый возраст/);
+  assert.match(russian, /поворот или наклон головы/);
+  assert.match(russian, /Поза: идёт по улице/);
+  validateReusablePrompt(identityInstruction("en"));
+  validateReusablePrompt(identityInstruction("ru"));
+});
+
+test("ten-character staging plans vary pose and head direction without changing identity", () => {
+  const plan = characterShotPlan(10, "batch-A");
+  assert.equal(plan.length, 10);
+  assert.equal(new Set(plan.map(item => item.direction)).size, 10);
+  assert.deepEqual(plan.map(item => item.idea), [1,2,3,4,5,6,7,8,9,10]);
+  assert.deepEqual(plan, characterShotPlan(10, "batch-A"));
+  assert.ok(plan.every(item => /head/.test(item.direction)));
+  assert.ok(plan.some(item => /Seated/.test(item.direction)));
+  assert.ok(plan.some(item => /Walking/.test(item.direction)));
+  assert.ok(plan.some(item => /profile/.test(item.direction)));
+  assert.equal(characterShotPlan(1, "batch-B").length, 1);
+});
+
+test("text requests carry the pose plan and age guidance, while rewrites keep the user's staging request", async () => {
+  config.openaiApiKey = "test-key";
+  const requests: any[] = [];
+  global.fetch = async (_url, init) => {
+    requests.push(JSON.parse(String(init?.body)));
+    return new Response(JSON.stringify({
+      status: "completed",
+      output: [{ type: "message", content: [{ type: "output_text", text: JSON.stringify({ ideas: [] }) }] }],
+    }));
+  };
+  const input = {
+    count: 10, topics: "Lifestyle", language: "en", previous: [], shotSeed: "batch-A",
+    creativeContext: createCreativeContext(creativeProfile({}), true, "Europe/Minsk"),
+  };
+  let reservations = 0;
+  const reserve = async () => { reservations++; };
+  await generateStudioTexts(input, reserve, new AbortController().signal);
+  const brief = JSON.parse(requests[0].input);
+  assert.deepEqual(brief.shotDirections, characterShotPlan(10, "batch-A"));
+  assert.match(brief.characterDirectionRequirements, /never as a pose, styling or composition template/);
+  assert.match(brief.characterDirectionRequirements, /without aging or de-aging/);
+  assert.match(brief.characterDirectionRequirements, /head yaw/);
+  await generateStudioTexts({...input, count: 1, sourcePrompt: "Seated, head turned toward a window"}, reserve, new AbortController().signal);
+  const rewrite = JSON.parse(requests[1].input);
+  assert.equal(rewrite.shotDirections, undefined);
+  assert.equal(rewrite.sourcePrompt, "Seated, head turned toward a window");
+  assert.equal(reservations, 2);
+});
+
 test("output formats and fixed appearance cannot enter reusable prompts", () => {
   for (const value of [
     "portrait, 9:16",

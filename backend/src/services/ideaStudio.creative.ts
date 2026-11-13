@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import {
   localStudioClock,
   StudioError,
@@ -165,6 +166,37 @@ export function creativeResearchTopics(
 }
 export function identityInstruction(language: string) {
   return language === "ru"
-    ? "Используй приложенное фото взрослой девушки как референс личности. Сохрани её лицо, черты, оттенок кожи и узнаваемую внешность. Меняй место, одежду, позу и свет в соответствии со сценой; не заменяй персонажа другим человеком."
-    : "Use the attached photo of the adult woman as the identity reference. Preserve her face, facial features, skin tone and recognizable appearance. Change the setting, outfit, pose and lighting to match the scene; do not replace her with another person.";
+    ? "Используй человека из приложенной фотографии как единственный референс внешности. Сохрани узнаваемое лицо, черты и пропорции лица, видимый возраст, оттенок кожи и цвет волос. Не делай человека старше или моложе, не добавляй морщины и не усиливай возрастные признаки. Референс не задаёт позу, положение тела, поворот или наклон головы, направление взгляда, выражение лица, одежду, фон, освещение или композицию. Создай новую фотографию: поставь человека в позу и ракурс из описания ниже, естественно поверни голову и измени выражение лица по сцене. Не копируй геометрию исходного кадра и не вклеивай неподвижное лицо. Одежду и окружение создай по описанию."
+    : "Use the person in the uploaded photograph as the sole identity reference. Preserve their recognizable face, facial features and facial proportions, apparent age, skin tone and hair color. Do not age or de-age the person, add wrinkles or exaggerate age-related features. The reference does not define the pose, body position, head rotation or tilt, gaze, expression, outfit, background, lighting or composition. Create a new photograph: pose the person and choose the viewpoint described below, naturally rotate their head and change their expression to fit the scene. Do not copy the source frame geometry or paste an immobile face into it. Create the outfit and surroundings from the description.";
+}
+
+export function characterImagePrompt(scene: string, language: string) {
+  // Old drafts may contain our earlier, less precise identity paragraph.
+  const description = scene.replace(
+    /^(?:Use the person in the uploaded photograph|Используй человека из приложенной фотографии)[\s\S]*?\n\n/u,
+    "",
+  );
+  return language === "ru"
+    ? `${identityInstruction(language)}\n\nНОВАЯ СЦЕНА:\n${description}\n\nПриоритеты: фото задаёт только внешность и видимый возраст; текст сцены задаёт позу тела, положение и наклон головы, взгляд, мимику, камеру и образ. Если в описании есть просьба скопировать позу, ракурс или выражение из референса либо изменить возраст, не выполняй эту просьбу. Создай самостоятельный кадр, не вариант исходной фотографии. Сохрани естественную кожу без искусственно усиленной резкости, глубоких складок и старящей обработки.`
+    : `${identityInstruction(language)}\n\nNEW SCENE:\n${description}\n\nPriorities: the photo controls identity and apparent age only; the scene text controls body pose, head direction and tilt, gaze, expression, camera and styling. Disregard requests in the scene to copy the reference pose, viewpoint or expression, or to change apparent age. Produce an independently staged photograph, not a variation of the source frame. Keep natural skin without exaggerated sharpening, deep creases or aging effects.`;
+}
+
+const SHOT_DIRECTIONS = [
+  "Walking mid-step, torso at a three-quarter angle, head turned toward the direction of movement, gaze away from the lens.",
+  "Seated with a relaxed asymmetrical posture, torso angled sideways, head turned back toward the camera, chin slightly lowered.",
+  "Standing in a side-on pose, head in a readable profile, gaze toward an object or view within the scene.",
+  "Turning while moving away, head looking back over one shoulder, a spontaneous small smile.",
+  "Leaning naturally on a scene-appropriate support, shoulders angled, head gently tilted, gaze directed slightly upward.",
+  "Reaching for or using a prop, torso rotated, head lowered toward the hands, a focused expression.",
+  "Walking toward the camera, shoulders relaxed, head nearly forward with a small tilt, a lively candid expression.",
+  "Seated sideways with one hand resting naturally, head turned toward an off-camera companion, a candid laugh.",
+  "Pausing during a natural activity, torso at three-quarter view, head turned to the side with chin gently raised, gaze toward a distant point.",
+  "Standing with weight on one leg, torso turned away from the camera, head rotated toward the lens, a calm soft expression.",
+];
+export function characterShotPlan(count: number, seed: string) {
+  const offset = createHash("sha256").update(seed).digest()[0] % SHOT_DIRECTIONS.length;
+  return Array.from({ length: Math.min(count, SHOT_DIRECTIONS.length) }, (_, i) => ({
+    idea: i + 1,
+    direction: SHOT_DIRECTIONS[(offset + i) % SHOT_DIRECTIONS.length],
+  }));
 }

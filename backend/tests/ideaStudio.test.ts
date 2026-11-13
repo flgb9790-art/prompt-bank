@@ -342,13 +342,16 @@ test("character batches snapshot the reference and keep public prompts reusable 
   };
   const used: string[] = [];
   studioDependencies.generateStudioImage = async (
-    _prompt,
+    imagePrompt,
     _owner,
     reserve,
     _signal,
     reference,
   ) => {
     await reserve();
+    assert.match(imagePrompt, /Do not age or de-age/);
+    assert.match(imagePrompt, /does not define the pose/);
+    assert.match(imagePrompt, /independently staged photograph/);
     used.push(reference!.toString());
     return sharp({
       create: { width: 32, height: 48, channels: 3, background: "#9988aa" },

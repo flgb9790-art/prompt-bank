@@ -1,5 +1,5 @@
 import { StudioError } from "./ideaStudio.validation";
-import type { CreativeContext } from "./ideaStudio.creative";
+import { identityInstruction, type CreativeContext } from "./ideaStudio.creative";
 
 export const RECIPE_FIELDS = [
   "wardrobe",
@@ -99,14 +99,10 @@ export function composeReusableIdea(
           "Camera and composition",
           "Textures and finish",
         ];
-  const identity =
-    language === "ru"
-      ? "Используй человека из приложенной фотографии как единственный референс внешности. Сохрани узнаваемое лицо, черты, оттенок кожи, цвет волос и естественные пропорции. Не подменяй человека другой моделью. Одежду, позу и окружение создай по описанию ниже."
-      : "Use the person in the uploaded photograph as the sole identity reference. Preserve their recognizable face, facial features, skin tone, hair color and natural proportions. Do not substitute a different model. Create the outfit, pose and surroundings described below.";
   const scene = RECIPE_FIELDS.map(
     (key, i) => `${labels[i]}: ${recipe[key].trim()}`,
   ).join("\n\n");
-  const content = `${identity}\n\n${scene}`;
+  const content = `${identityInstruction(language)}\n\n${scene}`;
   const imagePrompt = context.hasCharacterReference
     ? content
     : `Create an example image with an adult woman. Character guidance for this private preview: ${context.profile.characterDescription}.\n\n${scene}`;

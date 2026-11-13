@@ -13,7 +13,7 @@ import {
   createCreativeContext,
   readCreativeContext,
   creativeResearchTopics,
-  identityInstruction,
+  characterImagePrompt,
 } from "./ideaStudio.creative";
 import {
   readStudioReference,
@@ -473,7 +473,7 @@ async function createDraftImage(id: string, owner: string, lease: Lease) {
       : undefined;
     const creative = readCreativeContext(draft.batch.creativeContext);
     const imagePrompt = reference
-      ? `${identityInstruction(draft.batch.language)}\n\n${draft.imagePrompt}`
+      ? characterImagePrompt(draft.imagePrompt, draft.batch.language)
       : creative?.profile.useCharacter
         ? `No reference photo is attached. Create an illustrative example with an adult woman. Private character guidance: ${creative.profile.characterDescription}.\n\n${draft.imagePrompt.replace(/^(?:Use the person in the uploaded photograph|Используй человека из приложенной фотографии)[\s\S]*?\n\n/u, "")}`
         : draft.imagePrompt;
@@ -579,6 +579,7 @@ async function processGeneration(job: IdeaStudioJob, lease: Lease) {
       previous,
       research,
       creativeContext,
+      shotSeed: batch.id,
     },
     () => reserveStudioUsage("text"),
     lease.signal,
