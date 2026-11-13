@@ -556,6 +556,7 @@ async function processGeneration(job: IdeaStudioJob, lease: Lease) {
     })),
   ];
   let research = "";
+  let researchNotice: string | null = null;
   const creativeContext = readCreativeContext(batch.creativeContext);
   if (batch.useWebSearch) {
     const result = await studioDependencies.researchStudioIdeas(
@@ -565,9 +566,10 @@ async function processGeneration(job: IdeaStudioJob, lease: Lease) {
     );
     lease.check();
     research = result.text;
+    researchNotice = result.notice || null;
     await prisma.ideaStudioBatch.update({
       where: { id: batchId },
-      data: { sources: result.sources },
+      data: { sources: result.sources, error: researchNotice },
     });
   }
   const raw = await studioDependencies.generateStudioTexts(
@@ -641,9 +643,9 @@ async function processGeneration(job: IdeaStudioJob, lease: Lease) {
     where: { id: batchId },
     data: {
       status: errors ? "partial" : "ready",
-      error: errors
+      error: [researchNotice, errors
         ? `Не удалось подготовить ${errors} изображений. Тексты сохранены, изображения можно повторить отдельно.`
-        : null,
+        : null].filter(Boolean).join(" ") || null,
     },
   });
 }

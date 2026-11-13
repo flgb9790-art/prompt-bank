@@ -26,7 +26,7 @@ import {
   studioReferencePath,
   rejectPrivateUploadPaths,
 } from "../src/services/ideaStudio.references";
-import { generateStudioImage, generateStudioTexts } from "../src/services/ideaStudio.openai";
+import { generateStudioImage, generateStudioTexts, researchStudioIdeas, responseText } from "../src/services/ideaStudio.openai";
 import { config } from "../src/config";
 const originalFetch = global.fetch;
 const originalKey = config.openaiApiKey;
@@ -184,6 +184,66 @@ test("text requests carry the pose plan and age guidance, while rewrites keep th
   assert.equal(rewrite.shotDirections, undefined);
   assert.equal(rewrite.sourcePrompt, "Seated, head turned toward a window");
   assert.equal(reservations, 2);
+});
+
+test("unfinished research reuses found sources once without using truncated text or retrying", async () => {
+  config.openaiApiKey = "test-key";
+  const calls: any[] = [];
+  global.fetch = async (_url, init) => {
+    calls.push(JSON.parse(String(init?.body)));
+    return new Response(JSON.stringify({
+      status: "incomplete", incomplete_details: { reason: "max_output_tokens" },
+      output: [
+        { type: "web_search_call", status: "completed", action: { sources: [{title:"Fashion exhibit",url:"https://example.test/exhibit"}] } },
+        { type: "message", content: [{ type: "output_text", text: "UNFINISHED AND UNVERIFIED SUMMARY" }] },
+      ],
+    }));
+  };
+  let reservations = 0;
+  const result = await researchStudioIdeas("fashion", async()=>{reservations++;}, new AbortController().signal);
+  assert.equal(calls.length, 1);
+  assert.equal(reservations, 1);
+  assert.equal(calls[0].max_output_tokens, 10000);
+  assert.match(calls[0].instructions, /at most 450 words/);
+  assert.equal(result.sources[0].url, "https://example.test/exhibit");
+  assert.match(result.notice!, /не завершил сводку/);
+  assert.ok(!result.text.includes("UNFINISHED AND UNVERIFIED SUMMARY"));
+  assert.match(result.text, /not verified excerpts/);
+});
+
+test("research without sources or blocked content stops with a specific error and never retries", async () => {
+  config.openaiApiKey = "test-key";
+  for (const [reason, pattern] of [["max_output_tokens", /лимит длины ответа/], ["content_filter", /ограничений содержимого/]] as const) {
+    let calls = 0;
+    global.fetch = async () => {
+      calls++;
+      return new Response(JSON.stringify({
+        status: "incomplete", incomplete_details: { reason },
+        output: reason === "content_filter" ? [{type:"web_search_call",status:"completed",action:{sources:[{title:"Title",url:"https://example.test/"}]}}] : [],
+      }));
+    };
+    await assert.rejects(()=>researchStudioIdeas("fashion",async()=>{},new AbortController().signal),pattern);
+    assert.equal(calls, 1);
+  }
+});
+
+test("unfinished response diagnostics keep only safe status and token metadata", () => {
+  const originalWarn = console.warn;
+  const logs: unknown[][] = [];
+  console.warn = (...args)=>{logs.push(args);};
+  try {
+    assert.throws(()=>responseText({
+      status:"incomplete",incomplete_details:{reason:"max_output_tokens",private:"do-not-log"},
+      usage:{output_tokens:2800,output_tokens_details:{reasoning_tokens:2700}},
+      output:[{type:"message",content:[{type:"output_text",text:"do-not-log"}]}],
+      error:{message:"do-not-log"},
+    }, "research"), /Это не сообщение о балансе/);
+    assert.equal((logs[0][1] as any).reason, "max_output_tokens");
+    assert.equal((logs[0][1] as any).reasoningTokens, 2700);
+    assert.ok(!JSON.stringify(logs).includes("do-not-log"));
+    assert.throws(()=>responseText({status:"incomplete",incomplete_details:{reason:"do-not-log"},output:[]}),/не завершил/);
+    assert.equal((logs[1][1] as any).reason, "unknown");
+  } finally { console.warn = originalWarn; }
 });
 
 test("output formats and fixed appearance cannot enter reusable prompts", () => {

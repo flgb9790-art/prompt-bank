@@ -296,6 +296,22 @@ test("overview omits empty legacy creative contexts and preserves complete batch
   assert.equal(telegramCalls, 0);
 });
 
+test("research notice survives successful generation alongside real search sources", async () => {
+  studioDependencies.researchStudioIdeas = async (_topics, reserve) => {
+    await reserve();
+    return {text:"Source titles only; no verified excerpts",sources:[{title:"Source",url:"https://example.test/inspiration"}],notice:"Поиск нашёл источники, но не завершил сводку."};
+  };
+  const batch = await enqueueStudioBatch({count:1,useWebSearch:true},"42");
+  await processNextStudioJob();
+  const stored = tables.ideaStudioBatch.find(item=>item.id===batch.id);
+  assert.equal(stored.status, "ready");
+  assert.match(stored.error, /не завершил сводку/);
+  assert.equal(stored.sources[0].url,"https://example.test/inspiration");
+  assert.equal(textCalls,1);
+  assert.equal(imageCalls,1);
+  assert.equal(telegramCalls,0);
+});
+
 test("generation saves ready private drafts and never creates a public prompt or sends Telegram", async () => {
   const draft = await makeDraft();
   assert.equal(draft.imageStatus, "ready");
