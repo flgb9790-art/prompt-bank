@@ -99,13 +99,27 @@ function tokens(text: string) {
     ),
   );
 }
+export function ideaComparisonText(text: string) {
+  const headings = [...text.matchAll(/^(Outfit and accessories|Styling|Pose and expression|Scene|Lighting|Camera and composition|Textures and finish|Одежда и аксессуары|Образ|Поза и выражение|Сцена|Свет|Камера и композиция|Текстуры и обработка):[ \t]*/gimu)];
+  const sections = new Map(headings.map((match, i) => [
+    match[1].toLowerCase(), text.slice(match.index! + match[0].length, headings[i+1]?.index ?? text.length).trim(),
+  ]));
+  const scene = sections.get("scene") || sections.get("сцена");
+  if (scene) return [scene, sections.get("pose and expression") || sections.get("поза и выражение")].filter(Boolean).join("\n");
+  // Identity instructions are shared across unrelated prompts and are not an idea.
+  return text.split(/\n\s*\n/).filter(paragraph => !/^(?:Use (?:the person in the uploaded photograph|my reference photo|the (?:attached|uploaded|reference) (?:photo|image))|Используй (?:человека из приложенной фотографии|мо[её] (?:фото|референс)|(?:приложенное|загруженное) фото))/iu.test(paragraph.trim())).join("\n\n").trim();
+}
 export function similarIdea(a: string, b: string) {
+  if (!a.trim() || !b.trim()) return false;
   if (fingerprint(a) === fingerprint(b)) return true;
-  const aa = tokens(a),
-    bb = tokens(b);
+  const left = ideaComparisonText(a), right = ideaComparisonText(b);
+  if (!left || !right) return false;
+  if (fingerprint(left) === fingerprint(right)) return true;
+  const aa = tokens(left),
+    bb = tokens(right);
   const overlap = [...aa].filter((x) => bb.has(x)).length;
   return (
-    aa.size >= 5 && bb.size >= 5 && overlap / Math.min(aa.size, bb.size) >= 0.78
+    aa.size >= 5 && bb.size >= 5 && overlap / Math.max(aa.size, bb.size) >= 0.85
   );
 }
 export type GeneratedIdea = {
@@ -121,6 +135,7 @@ export function validateGeneratedIdeas(
   count: number,
   language: string,
   previous: Array<{ title: string; concept: string; content?: string }>,
+  options: { skipDuplicates?: boolean } = {},
 ) {
   if (!value || !Array.isArray(value.ideas) || value.ideas.length !== count)
     throw new StudioError(
@@ -159,28 +174,18 @@ export function validateGeneratedIdeas(
     if (
       [...previous, ...accepted].some(
         (p) =>
-          fingerprint(p.title) === fingerprint(row.title) ||
           similarIdea(row.concept, p.concept) ||
           (p.content && similarIdea(row.content, p.content)),
       )
     ) {
+      if (options.skipDuplicates) continue;
       throw new StudioError(
         "В подборке обнаружена похожая идея. Автоматического платного повтора нет: измените темы и запустите новую подборку.",
         502,
       );
     }
-    if (
-      accepted.some(
-        (p) =>
-          fingerprint(p.theme) === fingerprint(row.theme) &&
-          fingerprint(p.visualStyle) === fingerprint(row.visualStyle),
-      )
-    )
-      throw new StudioError(
-        "ИИ повторил сочетание темы и стиля. Запустите новую подборку.",
-        502,
-      );
     accepted.push(row);
   }
+  if (!accepted.length) throw new StudioError("Все предложенные сцены повторяют уже сохранённые идеи. Новых изображений не создавали. Уточните места, действия или сюжет для следующей подборки.", 502);
   return accepted;
 }

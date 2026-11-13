@@ -27,7 +27,9 @@ import {
   similarIdea,
   validateGeneratedIdeas,
   validateStudioSettings,
+  ideaComparisonText,
 } from "../src/services/ideaStudio.validation";
+import { identityInstruction } from "../src/services/ideaStudio.creative";
 import {
   openaiStudioRequest,
   responseSources,
@@ -536,6 +538,60 @@ test("daily scheduling respects local time and creates only one batch on repeate
     localStudioClock(new Date("2026-11-13T22:01:00Z"), "Europe/Minsk"),
     { date: "2026-11-14", time: "01:01" },
   );
+});
+function characterIdea(title:string, concept:string, scene:string, pose:string) {
+  const content = `${identityInstruction("en")}\n\nOutfit and accessories: A tailored camel coat over an ivory satin blouse, straight trousers, leather ankle boots, a structured shoulder bag and small gold earrings.\n\nStyling: Natural polished makeup and softly groomed hair.\n\nPose and expression: ${pose}\n\nScene: ${scene}\n\nLighting: Soft warm daylight with gentle shadows and natural reflections.\n\nCamera and composition: Eye-level editorial photograph, gentle background separation.\n\nTextures and finish: Natural skin, visible fabric weave, restrained warm color grading.`;
+  return {...idea,title,concept,content,imagePrompt:content,theme:"everyday",visualStyle:"quiet luxury editorial"};
+}
+const distinctScenes = () => [
+  characterIdea("Morning Café", "A quiet breakfast while writing postcards at a sidewalk café.", "A sidewalk café table with coffee, croissants, handwritten postcards and passing street trams.", "Seated sideways, writing a postcard with one hand while holding a coffee cup in the other."),
+  characterIdea("Home Workspace", "An illustrator edits a digital drawing with a stylus in her home studio.", "A home studio desk with a drawing tablet, color samples, a large monitor and open bookshelves.", "Leaning toward the tablet, holding a stylus, eyes focused on the drawing, shoulders relaxed."),
+  characterIdea("Autumn Stroll", "Walking a small dog through fallen maple leaves on a park trail.", "A woodland trail under golden maple trees with fallen leaves and a dog running alongside the path.", "Walking mid-step and looking back over a shoulder toward the dog, carrying a loose leash."),
+];
+test("shared identity, clothing and photographic style do not make different scenes duplicates",()=>{
+  const rows=distinctScenes();
+  assert.equal(validateGeneratedIdeas({ideas:rows},3,"en",[]).length,3);
+  assert.equal(similarIdea(rows[0].content,rows[1].content),false);
+  const unstructured = "Use my reference photo as the base image and preserve identity. Create a woman writing postcards at a sunny café table with coffee and croissants.";
+  assert.equal(similarIdea(unstructured, unstructured), true);
+  assert.equal(ideaComparisonText(rows[0].content).includes("sole identity reference"),false);
+  assert.match(ideaComparisonText(rows[0].content),/sidewalk café table/);
+  assert.equal(validateGeneratedIdeas({ideas:[rows[1]]},1,"en",[{...rows[0],concept:rows[0].content.slice(0,500),content:rows[0].content.slice(0,1200)}]).length,1);
+  // A short, repeated title alone does not mean the scenes are the same.
+  assert.equal(validateGeneratedIdeas({ideas:[{...rows[1],title:rows[0].title}]},1,"en",[rows[0]]).length,1);
+});
+test("true scene copies are rejected even after renaming; partial selection keeps new ideas",()=>{
+  const [first, second]=distinctScenes();
+  const renamed={...first,title:"Breakfast Notes",concept:"A newly worded description of a familiar morning scene."};
+  assert.throws(()=>validateGeneratedIdeas({ideas:[renamed]},1,"en",[first]),/похожая/);
+  const kept=validateGeneratedIdeas({ideas:[first,renamed,second]},3,"en",[],{skipDuplicates:true});
+  assert.deepEqual(kept.map(row=>row.title),[first.title,second.title]);
+  assert.throws(()=>validateGeneratedIdeas({ideas:[renamed]},1,"en",[first],{skipDuplicates:true}),/Все предложенные сцены/);
+});
+test("a partly repetitive batch saves unique drafts and charges images only for them",async()=>{
+  const rows=distinctScenes();
+  studioDependencies.generateStudioTexts=async(input,reserve)=>{
+    await reserve();textCalls++;
+    return {ideas:[rows[0],{...rows[0],title:"Breakfast Notes"},rows[1]]};
+  };
+  const batch=await enqueueStudioBatch({count:3,useWebSearch:false},"42");
+  await processNextStudioJob();
+  const stored=tables.ideaStudioBatch.find(row=>row.id===batch.id);
+  assert.equal(stored.status,"ready");
+  assert.equal(stored.count,2);
+  assert.match(stored.error,/Сохранено 2 новых идей из 3/);
+  assert.equal(tables.ideaStudioDraft.length,2);
+  assert.equal(imageCalls,2);assert.equal(textCalls,1);assert.equal(telegramCalls,0);
+  const job=tables.ideaStudioJob[0];
+  assert.equal(job.status,"succeeded");assert.equal(job.completed,2);assert.equal(job.total,2);
+});
+test("a fully repetitive batch never calls image generation or retries the paid text request",async()=>{
+  await makeDraft();
+  const batch=await enqueueStudioBatch({count:1,useWebSearch:false},"42");
+  await processNextStudioJob();
+  assert.equal(tables.ideaStudioBatch.find(row=>row.id===batch.id).status,"failed");
+  assert.match(tables.ideaStudioBatch.find(row=>row.id===batch.id).error,/Все предложенные сцены/);
+  assert.equal(imageCalls,1);assert.equal(textCalls,2);assert.equal(telegramCalls,0);
 });
 test("generation rejects repeat concepts and wrong-language titles", () => {
   assert.ok(similarIdea(idea.concept, idea.concept));

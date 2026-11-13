@@ -37,6 +37,7 @@ import {
   studioString,
   validateGeneratedIdeas,
   validateStudioSettings,
+  ideaComparisonText,
 } from "./ideaStudio.validation";
 
 export const studioDependencies = {
@@ -553,11 +554,11 @@ async function processGeneration(job: IdeaStudioJob, lease: Lease) {
     }),
   ]);
   const previous = [
-    ...draftHistory.map((x) => ({ ...x, content: x.content.slice(0, 1200) })),
+    ...draftHistory,
     ...promptHistory.map((p) => ({
       title: p.title,
-      concept: p.content.slice(0, 500),
-      content: p.content.slice(0, 1200),
+      concept: ideaComparisonText(p.content),
+      content: p.content,
     })),
   ];
   let research = "";
@@ -583,7 +584,11 @@ async function processGeneration(job: IdeaStudioJob, lease: Lease) {
       topics: batch.topics,
       language: batch.language,
       sourcePrompt: batch.sourcePrompt,
-      previous,
+      previous: previous.map(p => ({
+        title: p.title,
+        concept: ideaComparisonText(p.concept).slice(0,800),
+        content: ideaComparisonText(p.content || "").slice(0,1600),
+      })),
       research,
       creativeContext,
       shotSeed: batch.id,
@@ -605,7 +610,12 @@ async function processGeneration(job: IdeaStudioJob, lease: Lease) {
     batch.count,
     batch.language,
     previous,
+    { skipDuplicates: true },
   );
+  const duplicateCount = batch.count - ideas.length;
+  const generationNotice = [researchNotice, duplicateCount
+    ? `Сохранено ${ideas.length} новых идей из ${batch.count}. Повторов пропущено: ${duplicateCount}; дополнительные платные запросы не выполнялись.`
+    : null].filter(Boolean).join(" ") || null;
   await prisma.$transaction(
     ideas.map((idea) =>
       prisma.ideaStudioDraft.create({
@@ -620,7 +630,10 @@ async function processGeneration(job: IdeaStudioJob, lease: Lease) {
   );
   await prisma.ideaStudioBatch.update({
     where: { id: batchId },
-    data: { status: "images" },
+    data: { status: "images", count: ideas.length, error: generationNotice },
+  });
+  if (duplicateCount) await prisma.ideaStudioJob.update({
+    where: { id: job.id }, data: { total: ideas.length },
   });
   const drafts = await prisma.ideaStudioDraft.findMany({
     where: { batchId },
@@ -648,11 +661,12 @@ async function processGeneration(job: IdeaStudioJob, lease: Lease) {
     where: { id: batchId },
     data: {
       status: errors ? "partial" : "ready",
-      error: [researchNotice, errors
+      error: [generationNotice, errors
         ? `Не удалось подготовить ${errors} изображений. Тексты сохранены, изображения можно повторить отдельно.`
         : null].filter(Boolean).join(" ") || null,
     },
   });
+  return drafts.length;
 }
 async function processRewrite(job: IdeaStudioJob, lease: Lease) {
   const { draftId, instructions } = job.payload as {
@@ -892,7 +906,8 @@ export async function processNextStudioJob() {
           "У автора задачи больше нет доступа администратора.",
           403,
         );
-      if (job.kind === "generate") await processGeneration(job, lease);
+      let total = job.total;
+      if (job.kind === "generate") total = await processGeneration(job, lease);
       else if (job.kind === "image")
         await createDraftImage(
           (job.payload as any).draftId,
@@ -905,7 +920,7 @@ export async function processNextStudioJob() {
       lease.check();
       await prisma.ideaStudioJob.update({
         where: { id: job.id },
-        data: { status: "succeeded", completed: job.total },
+        data: { status: "succeeded", completed: total, total },
       });
     } catch (error) {
       lease.check();
