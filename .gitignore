@@ -7,5 +7,6 @@ backend/src/uploads/images/*
 backend/src/uploads/videos/*
 !backend/src/uploads/images/.gitkeep
 !backend/src/uploads/videos/.gitkeep
+backend/src/uploads/.studio-references/
 backups/
 *.zip

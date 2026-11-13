@@ -1,4 +1,16 @@
+export type StudioCreativeProfile = {
+  useCharacter: boolean;
+  characterName: string;
+  characterDescription: string;
+  primaryTheme: string;
+  extraThemes: string[];
+  seasonal: boolean;
+  holidays: boolean;
+  region: string;
+  hemisphere: "north" | "south";
+};
 export type IdeaStudioSettings = {
+  creativeProfile: StudioCreativeProfile;
   dailyEnabled: boolean;
   dailyCount: number;
   runAt: string;
@@ -33,6 +45,17 @@ export type IdeaStudioDraft = {
   } | null;
 };
 export type IdeaStudioBatch = {
+  hasReference: boolean;
+  creativeContext?: {
+    profile: StudioCreativeProfile;
+    hasCharacterReference: boolean;
+    calendar: {
+      date: string;
+      region: string;
+      season: string | null;
+      upcomingOccasions: Array<{ name: string; date: string }>;
+    };
+  };
   id: string;
   status: string;
   count: number;
@@ -52,6 +75,7 @@ export type IdeaStudioJob = {
   createdAt: string;
 };
 export type IdeaStudioOverview = {
+  reference: { available: boolean; version: string | null };
   configured: boolean;
   models: { text: string; image: string; imageQuality: string };
   settings: IdeaStudioSettings;

@@ -19,6 +19,7 @@ import {
   studioDependencies,
   studioSettings,
   allowStudioPublicationRetry,
+  enqueueStudioDraftAction,
 } from "../src/services/ideaStudio.service";
 import {
   localStudioClock,
@@ -103,6 +104,8 @@ function delegate(name: string) {
             topics: "Architecture, portrait, surreal still life",
             useWebSearch: false,
             leaseUntil: null,
+            creativeProfile: { useCharacter: false },
+            referenceImageKey: null,
           }
         : name === "ideaStudioDraft"
           ? {
@@ -189,6 +192,7 @@ const idea = {
   visualStyle: "Architectural minimalism",
 };
 beforeEach(async () => {
+  Object.assign(studioDependencies, dependencyOriginals);
   tables = Object.fromEntries(delegates.map((k) => [k, []]));
   seq = 0;
   imageCalls = 0;
@@ -278,6 +282,89 @@ test("generation saves ready private drafts and never creates a public prompt or
   assert.equal(tables.prompt.length, 0);
   assert.equal(telegramCalls, 0);
   assert.equal(tables.ideaStudioBatch[0].status, "ready");
+});
+test("character batches snapshot the reference and keep public prompts reusable on image retry", async () => {
+  const settings = await studioSettings();
+  await prisma.ideaStudioSettings.update({
+    where: { id: settings.id },
+    data: {
+      creativeProfile: { useCharacter: true, characterName: "TestName" },
+      referenceImageKey: "photo-A",
+    },
+  });
+  studioDependencies.readStudioReference = async (key) => Buffer.from(key);
+  studioDependencies.generateStudioTexts = async (_input, reserve) => {
+    await reserve();
+    return {
+      ideas: [
+        {
+          ...idea,
+          recipe: Object.fromEntries(
+            [
+              "wardrobe",
+              "styling",
+              "poseExpression",
+              "scene",
+              "lighting",
+              "cameraComposition",
+              "finish",
+            ].map((key) => [
+              key,
+              "A tailored camel wool coat, ivory satin blouse, taupe trousers, leather ankle boots, structured shoulder bag and small gold earrings; soft natural light and an elegant hotel courtyard.",
+            ]),
+          ),
+        },
+      ],
+    };
+  };
+  const used: string[] = [];
+  studioDependencies.generateStudioImage = async (
+    _prompt,
+    _owner,
+    reserve,
+    _signal,
+    reference,
+  ) => {
+    await reserve();
+    used.push(reference!.toString());
+    return sharp({
+      create: { width: 32, height: 48, channels: 3, background: "#9988aa" },
+    })
+      .jpeg()
+      .toBuffer();
+  };
+  const batch = await enqueueStudioBatch(
+    { count: 1, useWebSearch: false },
+    "42",
+  );
+  await prisma.ideaStudioSettings.update({
+    where: { id: settings.id },
+    data: { referenceImageKey: "photo-B" },
+  });
+  await processNextStudioJob();
+  const draft = tables.ideaStudioDraft.find((d) => d.batchId === batch.id);
+  assert.match(draft.content, /sole identity reference/);
+  assert.ok(!draft.content.includes("TestName"));
+  assert.equal(used[0], "photo-A");
+  await enqueueStudioDraftAction(draft.id, "image", "42");
+  await processNextStudioJob();
+  assert.deepEqual(used, ["photo-A", "photo-A"]);
+});
+test("a missing reference never silently generates another face or charges for an image", async () => {
+  const settings = await studioSettings();
+  await prisma.ideaStudioSettings.update({
+    where: { id: settings.id },
+    data: {
+      referenceImageKey: "missing-photo",
+      creativeProfile: { useCharacter: true },
+    },
+  });
+  studioDependencies.readStudioReference = async () => {
+    throw Error("missing file");
+  };
+  await assert.rejects(() => enqueueStudioBatch({ count: 1 }, "42"));
+  assert.equal(imageCalls, 0);
+  assert.equal(textCalls, 0);
 });
 test("image failure preserves generated text for an explicit separate retry", async () => {
   failImage = true;
@@ -488,6 +575,7 @@ test("all studio routes require a signed administrator identity", async () => {
       "/drafts/id/image",
       "/drafts/id/rewrite",
       "/drafts/id/allow-telegram-retry",
+      "/reference",
     ]) {
       const method =
         path === "/"
@@ -528,6 +616,12 @@ test("additive SQL patch is repeatable, preserves existing prompts, and defaults
     );
     await db.exec(patch);
     await db.exec(patch);
+    const characterPatch = readFileSync(
+      "prisma/patches/20261113_studio_character.sql",
+      "utf8",
+    );
+    await db.exec(characterPatch);
+    await db.exec(characterPatch);
     await db.exec(
       'INSERT INTO "IdeaStudioSettings" ("updatedAt") VALUES (CURRENT_TIMESTAMP)',
     );

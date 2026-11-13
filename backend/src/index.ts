@@ -16,6 +16,7 @@ import adminRouter from "./routes/admin.routes";
 import pinterestRouter from "./routes/pinterest.routes";
 import ideaStudioRouter from "./routes/ideaStudio.routes";
 import { startIdeaStudioWorker } from "./services/ideaStudio.service";
+import { rejectPrivateUploadPaths } from "./services/ideaStudio.references";
 import seoRouter from "./routes/seo.routes";
 import { extractKeywords } from "./keywordExtractor";
 import { startBot } from "./bot";
@@ -67,6 +68,7 @@ app.get("/uploads/images/thumbs/:filename", async (req, res, next) => {
 
 app.use(
   "/uploads",
+  rejectPrivateUploadPaths,
   express.static(uploadsDir, {
     maxAge: "7d",
     etag: true,

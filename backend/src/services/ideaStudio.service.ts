@@ -9,6 +9,21 @@ import { persistMediaBuffer } from "./storage.service";
 import { sendPromptToTelegram } from "./telegramPublisher.service";
 import { PromptService } from "./prompt.service";
 import {
+  creativeProfile,
+  createCreativeContext,
+  readCreativeContext,
+  creativeResearchTopics,
+  identityInstruction,
+} from "./ideaStudio.creative";
+import {
+  readStudioReference,
+  storeStudioReference,
+} from "./ideaStudio.references";
+import {
+  composeReusableIdea,
+  validateReusablePrompt,
+} from "./ideaStudio.quality";
+import {
   generateStudioTexts,
   generateStudioImage,
   researchStudioIdeas,
@@ -24,6 +39,7 @@ import {
 } from "./ideaStudio.validation";
 
 export const studioDependencies = {
+  readStudioReference,
   generateStudioTexts,
   generateStudioImage,
   researchStudioIdeas,
@@ -45,6 +61,22 @@ export async function studioSettings() {
     create: { id: SETTINGS },
     update: {},
   });
+}
+export async function setStudioReference(buffer: Buffer | null) {
+  const key = buffer ? await storeStudioReference(buffer) : null;
+  await studioSettings();
+  await prisma.ideaStudioSettings.update({
+    where: { id: SETTINGS },
+    data: { referenceImageKey: key },
+  });
+}
+export async function getStudioReference(batchId?: string) {
+  const source = batchId
+    ? await prisma.ideaStudioBatch.findUnique({ where: { id: batchId } })
+    : await studioSettings();
+  if (!source?.referenceImageKey)
+    throw new StudioError("Референс не найден.", 404);
+  return studioDependencies.readStudioReference(source.referenceImageKey);
 }
 export async function reserveStudioUsage(
   kind: "text" | "image",
@@ -118,6 +150,12 @@ export async function getStudioOverview(batchId?: string) {
     : null;
   return {
     configured: studioConfigured(),
+    reference: {
+      available: Boolean(settings.referenceImageKey),
+      version: settings.referenceImageKey
+        ? fingerprint(settings.referenceImageKey).slice(0, 16)
+        : null,
+    },
     models: {
       text: config.studioTextModel,
       image: config.studioImageModel,
@@ -131,6 +169,7 @@ export async function getStudioOverview(batchId?: string) {
       language: settings.language,
       topics: settings.topics,
       useWebSearch: settings.useWebSearch,
+      creativeProfile: creativeProfile(settings.creativeProfile),
     },
     limits: {
       image: config.studioDailyImageLimit,
@@ -141,13 +180,27 @@ export async function getStudioOverview(batchId?: string) {
       image: usage.find((x) => x.id.endsWith(":image"))?.requests || 0,
       text: usage.find((x) => x.id.endsWith(":text"))?.requests || 0,
     },
-    batches,
+    batches: batches.map(({ referenceImageKey, ...batch }) => ({
+      ...batch,
+      hasReference: Boolean(referenceImageKey),
+    })),
     jobs,
-    current,
+    current: current
+      ? (({ referenceImageKey, ...batch }) => ({
+          ...batch,
+          hasReference: Boolean(referenceImageKey),
+        }))(current)
+      : null,
   };
 }
 export async function saveStudioSettings(input: unknown, owner: string) {
-  const data = validateStudioSettings(input);
+  const existing = await studioSettings();
+  const data = {
+    ...validateStudioSettings(input),
+    creativeProfile: creativeProfile(
+      (input as any)?.creativeProfile ?? existing.creativeProfile,
+    ),
+  };
   if (data.dailyEnabled && !studioConfigured())
     throw new StudioError("Сначала настройте OPENAI_API_KEY на backend.", 503);
   if (data.dailyCount > config.studioDailyImageLimit)
@@ -172,6 +225,19 @@ export async function enqueueStudioBatch(
     );
   const count = studioCount(input.count);
   const settings = await studioSettings();
+  const profile = creativeProfile(
+    input.creativeProfile ?? settings.creativeProfile,
+  );
+  const referenceImageKey = profile.useCharacter
+    ? settings.referenceImageKey
+    : null;
+  if (referenceImageKey)
+    await studioDependencies.readStudioReference(referenceImageKey);
+  const creativeContext = createCreativeContext(
+    profile,
+    Boolean(referenceImageKey),
+    settings.timeZone,
+  );
   const topics = studioString(
     input.topics ?? settings.topics,
     "Тематики",
@@ -207,6 +273,8 @@ export async function enqueueStudioBatch(
         topics,
         language,
         sourcePrompt,
+        creativeContext,
+        referenceImageKey,
         creatorTelegramId: owner,
         useWebSearch: input.useWebSearch ?? settings.useWebSearch,
       },
@@ -223,6 +291,7 @@ export async function enqueueStudioBatch(
   });
 }
 export async function editStudioDraft(id: string, input: any) {
+  if (typeof input.content === "string") validateReusablePrompt(input.content);
   const draft = await prisma.ideaStudioDraft.findUnique({ where: { id } });
   if (!draft) throw new StudioError("Черновик не найден.", 404);
   const data: Prisma.IdeaStudioDraftUpdateManyMutationInput = {
@@ -328,6 +397,7 @@ export async function enqueueStudioPublication(
     if (drafts.length !== unique.length)
       throw new StudioError("Один из черновиков не найден.", 404);
     for (const draft of drafts) {
+      validateReusablePrompt(draft.content);
       if (
         draft.busyJobId ||
         draft.rejected ||
@@ -386,6 +456,7 @@ type Lease = { signal: AbortSignal; check: () => void };
 async function createDraftImage(id: string, owner: string, lease: Lease) {
   const draft = await prisma.ideaStudioDraft.findUniqueOrThrow({
     where: { id },
+    include: { batch: true },
   });
   lease.check();
   await prisma.ideaStudioDraft.update({
@@ -393,11 +464,23 @@ async function createDraftImage(id: string, owner: string, lease: Lease) {
     data: { imageStatus: "generating", imageError: null },
   });
   try {
+    const reference = draft.batch.referenceImageKey
+      ? await studioDependencies.readStudioReference(
+          draft.batch.referenceImageKey,
+        )
+      : undefined;
+    const creative = readCreativeContext(draft.batch.creativeContext);
+    const imagePrompt = reference
+      ? `${identityInstruction(draft.batch.language)}\n\n${draft.imagePrompt}`
+      : creative?.profile.useCharacter
+        ? `No reference photo is attached. Create an illustrative example with an adult woman. Private character guidance: ${creative.profile.characterDescription}.\n\n${draft.imagePrompt.replace(/^(?:Use the person in the uploaded photograph|Используй человека из приложенной фотографии)[\s\S]*?\n\n/u, "")}`
+        : draft.imagePrompt;
     const bytes = await studioDependencies.generateStudioImage(
-      draft.imagePrompt,
+      imagePrompt,
       owner,
       () => reserveStudioUsage("image"),
       lease.signal,
+      reference,
     );
     lease.check();
     const meta = await sharp(bytes).metadata();
@@ -471,9 +554,10 @@ async function processGeneration(job: IdeaStudioJob, lease: Lease) {
     })),
   ];
   let research = "";
+  const creativeContext = readCreativeContext(batch.creativeContext);
   if (batch.useWebSearch) {
     const result = await studioDependencies.researchStudioIdeas(
-      batch.topics,
+      creativeResearchTopics(batch.topics, creativeContext),
       () => reserveStudioUsage("text"),
       lease.signal,
     );
@@ -492,13 +576,22 @@ async function processGeneration(job: IdeaStudioJob, lease: Lease) {
       sourcePrompt: batch.sourcePrompt,
       previous,
       research,
+      creativeContext,
     },
     () => reserveStudioUsage("text"),
     lease.signal,
   );
   lease.check();
+  const prepared = {
+    ...raw,
+    ideas: Array.isArray(raw?.ideas)
+      ? raw.ideas.map((idea: any) =>
+          composeReusableIdea(idea, creativeContext, batch.language),
+        )
+      : raw?.ideas,
+  };
   const ideas = validateGeneratedIdeas(
-    raw,
+    prepared,
     batch.count,
     batch.language,
     previous,
@@ -567,12 +660,25 @@ async function processRewrite(job: IdeaStudioJob, lease: Lease) {
       language: draft.batch.language,
       sourcePrompt: draft.content,
       previous: [],
+      creativeContext: readCreativeContext(draft.batch.creativeContext),
     },
     () => reserveStudioUsage("text"),
     lease.signal,
   );
   lease.check();
-  const [idea] = validateGeneratedIdeas(raw, 1, draft.batch.language, []);
+  const prepared = {
+    ...raw,
+    ideas: Array.isArray(raw?.ideas)
+      ? raw.ideas.map((idea: any) =>
+          composeReusableIdea(
+            idea,
+            readCreativeContext(draft.batch.creativeContext),
+            draft.batch.language,
+          ),
+        )
+      : raw?.ideas,
+  };
+  const [idea] = validateGeneratedIdeas(prepared, 1, draft.batch.language, []);
   await prisma.ideaStudioDraft.update({
     where: { id: draftId },
     data: {

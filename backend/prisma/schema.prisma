@@ -15,8 +15,10 @@ model IdeaStudioSettings {
   runAt           String    @default("09:00")
   timeZone        String    @default("Europe/Minsk")
   language        String    @default("en")
-  topics          String    @default("Портреты, предметная съёмка, архитектура, мода, природа, сюрреализм")
+  topics          String    @default("Идеи для девушки: роскошная жизнь, красивые места, путешествия, стильные образы и интересные занятия")
   useWebSearch    Boolean   @default(true)
+  creativeProfile Json      @default("{}")
+  referenceImageKey String?
   ownerTelegramId String?
   workerToken     String?
   leaseUntil      DateTime?
@@ -33,6 +35,8 @@ model IdeaStudioBatch {
   language          String
   useWebSearch      Boolean
   sourcePrompt      String?           @db.Text
+  creativeContext   Json              @default("{}")
+  referenceImageKey  String?
   sources           Json              @default("[]")
   error             String?
   drafts            IdeaStudioDraft[]

@@ -133,7 +133,19 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 export const api = {
   ideaStudio(batchId?:string) { return request<IdeaStudioOverview>(`/api/admin/idea-studio${batchId?`?batchId=${encodeURIComponent(batchId)}`:""}`); },
   saveIdeaStudioSettings(settings:IdeaStudioSettings) { return request<{ok:true}>("/api/admin/idea-studio/settings",{method:"PUT",body:JSON.stringify(settings)}); },
-  generateIdeaBatch(input:{count:number;topics:string;language:string;useWebSearch:boolean;sourcePrompt?:string}) { return request<{batchId:string}>("/api/admin/idea-studio/batches",{method:"POST",body:JSON.stringify(input)}); },
+  generateIdeaBatch(input:{count:number;topics:string;language:string;useWebSearch:boolean;sourcePrompt?:string;creativeProfile:import("./ideaStudioTypes").StudioCreativeProfile}) { return request<{batchId:string}>("/api/admin/idea-studio/batches",{method:"POST",body:JSON.stringify(input)}); },
+  async uploadIdeaReference(file:File) {
+    const body=new FormData();body.append("file",file);
+    const response=await fetch(`${resolveBaseUrl()}/api/admin/idea-studio/reference`,{method:"POST",headers:buildAuthHeader(),credentials:"include",body});
+    if(!response.ok){const payload=await response.json().catch(()=>({}));throw new ApiError(response.status,payload.message||"Не удалось загрузить референс.");}
+  },
+  removeIdeaReference(){return request<{ok:true}>("/api/admin/idea-studio/reference",{method:"DELETE"});},
+  async ideaReferenceImage(batchId?:string) {
+    const path=batchId?`/batches/${encodeURIComponent(batchId)}/reference`:"/reference";
+    const response=await fetch(`${resolveBaseUrl()}/api/admin/idea-studio${path}`,{headers:buildAuthHeader(),credentials:"include",cache:"no-store"});
+    if(!response.ok)throw new ApiError(response.status,"Не удалось загрузить референс.");
+    return response.blob();
+  },
   editIdeaDraft(id:string,input:Partial<Pick<import("./ideaStudioTypes").IdeaStudioDraft,"title"|"concept"|"content"|"imagePrompt"|"selected"|"rejected">>) { return request<{ok:true}>(`/api/admin/idea-studio/drafts/${id}`,{method:"PATCH",body:JSON.stringify(input)}); },
   regenerateIdeaImage(id:string) { return request<{jobId:string}>(`/api/admin/idea-studio/drafts/${id}/image`,{method:"POST",body:"{}"}); },
   rewriteIdeaDraft(id:string,instructions:string) { return request<{jobId:string}>(`/api/admin/idea-studio/drafts/${id}/rewrite`,{method:"POST",body:JSON.stringify({instructions})}); },

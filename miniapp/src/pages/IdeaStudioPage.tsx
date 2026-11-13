@@ -33,6 +33,11 @@ import type {
   IdeaStudioSettings,
 } from "../ideaStudioTypes";
 import { useDialogFocus } from "../hooks/useDialogFocus";
+import {
+  StudioCreativeProfile,
+  StudioReferencePreview,
+  themeOptions,
+} from "../components/studio/StudioCreativeProfile";
 import "../idea-studio.css";
 
 const statuses: Record<string, string> = {
@@ -260,6 +265,7 @@ export function IdeaStudioPage({
         language: settings.language,
         useWebSearch: settings.useWebSearch,
         sourcePrompt: mode === "rewrite" ? sourcePrompt : undefined,
+        creativeProfile: settings.creativeProfile,
       });
       setBatchId(result.batchId);
       setGeneratorOpen(false);
@@ -381,6 +387,33 @@ export function IdeaStudioPage({
         </div>
       )}
 
+      <StudioCreativeProfile
+        value={settings.creativeProfile}
+        onChange={(creativeProfile) =>
+          setSettings({ ...settings, creativeProfile })
+        }
+        reference={data.reference}
+        busy={busy}
+        onUpload={(file) => {
+          if (file.size > 10 * 1024 * 1024) {
+            setError("Фото должно быть не больше 10 МБ.");
+            return;
+          }
+          void run(async () => {
+            await api.uploadIdeaReference(file);
+          }, "Фото персонажа сохранено. Новые подборки будут использовать этот референс.");
+        }}
+        onRemove={() =>
+          void run(async () => {
+            await api.removeIdeaReference();
+          }, "Фото убрано из профиля. Старые подборки сохраняют свой референс.")
+        }
+        onSave={() =>
+          void run(async () => {
+            await api.saveIdeaStudioSettings(settings);
+          }, "Персонаж и тематики сохранены для следующих подборок.")
+        }
+      />
       {(generatorOpen || !data.current) && (
         <section className="idea-panel idea-generator">
           <div className="idea-panel-heading">
@@ -626,6 +659,43 @@ export function IdeaStudioPage({
           </select>
         </label>
       </div>
+      {data.current?.creativeContext && (
+        <div className="idea-batch-context">
+          {data.current.hasReference && (
+            <div className="idea-batch-avatar">
+              <StudioReferencePreview
+                batchId={data.current.id}
+                version={data.current.id}
+              />
+            </div>
+          )}
+          <div>
+            <span>
+              {data.current.creativeContext.profile.useCharacter
+                ? data.current.creativeContext.profile.characterName
+                : "Без персонажа"}{" "}
+              ·{" "}
+              {
+                themeOptions.find(
+                  (x) =>
+                    x.key ===
+                    data.current?.creativeContext?.profile.primaryTheme,
+                )?.label
+              }
+            </span>
+            <p className="idea-help">
+              {data.current.creativeContext.calendar.date} ·{" "}
+              {data.current.creativeContext.calendar.region}
+              {data.current.creativeContext.calendar.season
+                ? ` · ${data.current.creativeContext.calendar.season}`
+                : ""}
+              {data.current.hasReference
+                ? " · лицо из референса этой подборки"
+                : ""}
+            </p>
+          </div>
+        </div>
+      )}
       {data.current?.error && (
         <p className="idea-help" role="status">
           {data.current.error}
@@ -884,6 +954,13 @@ export function IdeaStudioPage({
                 изображений. Неудачные запросы тоже учитываются. Результаты
                 сохранятся в черновиках.
               </p>
+              {settings.creativeProfile.useCharacter && (
+                <p className="idea-help">
+                  {data.reference.available
+                    ? "Для превью используем сохранённое фото персонажа. Публичный промпт будет подходить для другого референса."
+                    : "Фото не загружено: превью будет иллюстративным, с придуманной моделью. Публичный промпт рассчитан на загрузку своего референса."}
+                </p>
+              )}
               <button
                 className="btn-primary"
                 disabled={

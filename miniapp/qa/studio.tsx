@@ -56,6 +56,18 @@ const drafts: IdeaStudioDraft[] = titles.map((title, i) => ({
   prompt: null,
 }));
 const settings = {
+  creativeProfile: {
+    useCharacter: true,
+    characterName: "Героиня",
+    characterDescription:
+      "Взрослая девушка, естественная внешность и современный стиль.",
+    primaryTheme: "luxury",
+    extraThemes: ["travel", "fashion", "wellness"],
+    seasonal: true,
+    holidays: true,
+    region: "Беларусь, Европа",
+    hemisphere: "north" as const,
+  },
   dailyEnabled: false,
   dailyCount: 10,
   runAt: "09:00",
@@ -65,6 +77,7 @@ const settings = {
   useWebSearch: true,
 };
 const data: IdeaStudioOverview = {
+  reference: { available: false, version: null },
   configured: true,
   models: {
     text: "gpt-5-mini",
@@ -76,6 +89,7 @@ const data: IdeaStudioOverview = {
   usage: { image: 6, text: 2 },
   batches: [
     {
+      hasReference: false,
       id: "local-batch",
       status: "partial",
       count: 6,
@@ -87,6 +101,7 @@ const data: IdeaStudioOverview = {
   ],
   jobs: [],
   current: {
+    hasReference: false,
     id: "local-batch",
     status: "partial",
     count: 6,
@@ -124,6 +139,9 @@ api.generateIdeaBatch = async () => {
 api.regenerateIdeaImage = async () => {
   throw Error("Локальная проверка: реальные генерации отключены.");
 };
+api.uploadIdeaReference=async()=>{data.reference={available:true,version:"local-reference"};};
+api.removeIdeaReference=async()=>{data.reference={available:false,version:null};return{ok:true};};
+api.ideaReferenceImage=async()=>new Blob([await(await fetch("/qa/poster.svg")).text()],{type:"image/svg+xml"});
 api.rewriteIdeaDraft = async () => {
   throw Error("Локальная проверка: реальные генерации отключены.");
 };

@@ -4,7 +4,8 @@
   "private": true,
   "type": "commonjs",
   "scripts": {
-    "test:studio": "tsx --test tests/ideaStudio.test.ts",
+    "prisma:patch-studio-character": "prisma db execute --schema prisma/schema.prisma --file prisma/patches/20261113_studio_character.sql",
+    "test:studio": "tsx --test tests/ideaStudio.test.ts tests/ideaStudioCreative.test.ts",
     "prisma:patch-idea-studio": "prisma db execute --schema prisma/schema.prisma --file prisma/patches/20261113_idea_studio.sql",
     "test:cors": "tsx --test tests/cors.test.ts",
     "test:security": "tsx --test tests/pinterestSecurity.test.ts",

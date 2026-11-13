@@ -1,4 +1,5 @@
 import { Router, type Request, type Response } from "express";
+import multer from "multer";
 import { isAdminRequest, readTelegramId } from "../auth";
 import { StudioError } from "../services/ideaStudio.validation";
 import {
@@ -10,6 +11,8 @@ import {
   getStudioOverview,
   kickStudioWorker,
   saveStudioSettings,
+  setStudioReference,
+  getStudioReference,
 } from "../services/ideaStudio.service";
 
 const router = Router();
@@ -27,14 +30,12 @@ function handle(fn: (req: Request, res: Response) => Promise<unknown>) {
     try {
       await fn(req, res);
     } catch (error) {
-      res
-        .status(error instanceof StudioError ? error.status : 500)
-        .json({
-          message:
-            error instanceof StudioError
-              ? error.message
-              : "Не удалось выполнить действие в студии. Попробуйте обновить страницу.",
-        });
+      res.status(error instanceof StudioError ? error.status : 500).json({
+        message:
+          error instanceof StudioError
+            ? error.message
+            : "Не удалось выполнить действие в студии. Попробуйте обновить страницу.",
+      });
     }
   };
 }
@@ -46,6 +47,47 @@ router.get(
         typeof req.query.batchId === "string" ? req.query.batchId : undefined,
       ),
     );
+  }),
+);
+const referenceUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024, files: 1 },
+  fileFilter: (_req, file, cb) => {
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.mimetype))
+      return cb(new StudioError("Используйте фото JPG, PNG или WebP."));
+    cb(null, true);
+  },
+});
+router.post(
+  "/reference",
+  referenceUpload.single("file"),
+  handle(async (req, res) => {
+    if (!req.file) throw new StudioError("Выберите фото персонажа.");
+    await setStudioReference(req.file.buffer);
+    res.status(201).json({ ok: true });
+  }),
+);
+router.delete(
+  "/reference",
+  handle(async (_req, res) => {
+    await setStudioReference(null);
+    res.json({ ok: true });
+  }),
+);
+router.get(
+  "/reference",
+  handle(async (_req, res) => {
+    res.setHeader("Cache-Control", "private, no-store");
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    res.type("jpeg").send(await getStudioReference());
+  }),
+);
+router.get(
+  "/batches/:id/reference",
+  handle(async (req, res) => {
+    res.setHeader("Cache-Control", "private, no-store");
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    res.type("jpeg").send(await getStudioReference(req.params.id));
   }),
 );
 router.put(
@@ -109,4 +151,20 @@ router.post(
     res.json({ ok: true });
   }),
 );
+router.use((error: Error, _req: Request, res: Response, _next: unknown) => {
+  res
+    .status(
+      error instanceof multer.MulterError && error.code === "LIMIT_FILE_SIZE"
+        ? 413
+        : 400,
+    )
+    .json({
+      message:
+        error instanceof multer.MulterError
+          ? "Фото должно быть не больше 10 МБ. Загружайте один файл."
+          : error instanceof StudioError
+            ? error.message
+            : "Не удалось загрузить фото.",
+    });
+});
 export default router;
